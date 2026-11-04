@@ -1,0 +1,788 @@
+/* ======================================================================
+   Plan4 · Tokens, grund, tavlan, kort och sidopaneler
+   ====================================================================== */
+
+:root {
+  --bg-main: #f8f6f0;
+  --bg-alt: #eee8dc;
+  --bg-card: #ffffff;
+  --bg-glass: rgba(248, 246, 240, 0.82);
+  --text-main: #181c19;
+  --text-muted: #56615a;
+  --border-color: #ded8cb;
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --btn-text: #ffffff;
+  --bg-footer: #111315;
+  --accent-main: #1f2428;
+  --accent-hover: #323a40;
+  --accent-light: #e3e7ea;
+  --accent-pop: #38bdf8;
+
+  /* härledda nyanser */
+  --border-light: #ebe6da;
+  --border-strong: #d6cfbf;
+  --text-faint: #8e968f;
+  --accent-lofte: #c98416;
+  --varning: #8a5b12;
+  --varning-fyll: #fbf3e3;
+  --varning-kant: #eccf9a;
+  --varning-stark: #d79a2b;
+
+  /* posttyper på tavlan */
+  --mote: #1f2428;
+  --mote-fyll: #f1efe9;
+  --mote-kant: #d9d4c8;
+  --produktion: #0a6f61;
+  --produktion-fyll: #e6f2ee;
+  --produktion-kant: #bcdad2;
+  --avrop: #6b4a9c;
+  --avrop-fyll: #f2ecf6;
+  --avrop-kant: #dacde8;
+  --leverans: #b32d22;
+  --leverans-fyll: #fbece8;
+  --leverans-kant: #efcdc5;
+  --ovrigt: #254e9c;
+  --ovrigt-fyll: #eaf0f8;
+  --ovrigt-kant: #c9d6ec;
+  --franvaro: #7a5c3e;
+  --franvaro-fyll: #f4ede2;
+  --franvaro-kant: #e1d2bd;
+
+  /* form och typografi */
+  --hh: 68px;
+  --sb: 252px;
+  --r-l: 20px;
+  --r-m: 14px;
+  --r-s: 10px;
+  --pop-ring: 0 0 0 3px rgba(56,189,248,.28);
+  --rubrik: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --brod: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+.dold {
+  display: none !important;
+}
+
+/* ==== Grund: projekt och flikar ======================================= */
+
+.logga {
+  max-height: 22px;
+  max-width: 120px;
+  object-fit: contain;
+  margin-right: 4px;
+}
+.loggaval {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.loggaval img {
+  max-height: 46px;
+  max-width: 170px;
+  object-fit: contain;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 4px;
+  background: var(--bg-card);
+}
+.punkt {
+  color: var(--text-muted);
+}
+.projektrad {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  background: var(--bg-card);
+  border-radius: var(--r-m);
+  border-color: var(--border-color);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.projektrad .pnamn {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.projektrad .pmeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.projektrad .pfaces {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+.projektrad .ptavla {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+  padding: 0;
+  color: var(--accent-main);
+}
+.projektrad .ptal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 7px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.projektrad .ptal b {
+  color: var(--text-main);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.projektrad .ptal em {
+  font-style: normal;
+  font-size: 12px;
+}
+.rodtal {
+  color: var(--leverans);
+  font-weight: 700;
+}
+.projektrad .parkiv {
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.projektrad .parkiv:hover {
+  color: var(--leverans);
+}
+.hoger {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.status {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==== Tavlans huvud =================================================== */
+
+.tavlanamn {
+  min-width: 140px;
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  font-family: var(--rubrik);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px dashed transparent;
+  padding: 2px 0;
+  margin: 0;
+  color: var(--text-main);
+  border-radius: 0;
+}
+.spann {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ==== Rutnätet ======================================================== */
+
+.rutnat {
+  display: grid;
+  grid-template-columns: 112px repeat(5, minmax(0, 1fr));
+}
+
+@media(max-width:900px) {
+  .tavla {
+    overflow-x: auto;
+  }
+  .rutnat {
+    min-width: 900px;
+  }
+}
+.dagrubrik:last-child {
+  border-right: 0;
+}
+.vhuvud {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: relative;
+  background: var(--bg-main);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  padding: 14px 12px;
+}
+.vhuvud .vdatum {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.vhuvud.forberedelse .vnr {
+  color: var(--text-muted);
+}
+.vhuvud:hover .kopieravecka {
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+.ruta:nth-child(6n) {
+  border-right: 0;
+}
+.vader {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.vader .blast {
+  color: var(--leverans);
+  font-weight: 600;
+}
+.vader .vind {
+  color: var(--text-muted);
+}
+.vrad .vtext {
+  color: var(--leverans);
+  font-weight: 700;
+}
+.varningsremsa .vdag {
+  color: var(--leverans);
+  font-weight: 700;
+  background: rgba(255,255,255,.18);
+  border-radius: 3px;
+  padding: 1px 9px;
+}
+.vader.overskriden {
+  color: var(--leverans);
+  font-weight: 700;
+  background: var(--leverans-fyll);
+  border: 1px solid var(--leverans-kant);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.vader.overskriden .vind, .vader.overskriden .blast {
+  color: var(--leverans);
+}
+.aterkomsymbol {
+  flex: none;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  opacity: .7;
+}
+.kort.virtuell {
+  border-style: dashed;
+}
+.notprick {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .4;
+}
+.detalj {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 14px;
+}
+.detalj li:last-child {
+  border-bottom: 0;
+}
+.detalj .et {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.kedjelista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.kedjelista li {
+  display: flex;
+  gap: 9px;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--border-light);
+}
+.kedjelista li:last-child {
+  border-bottom: 0;
+}
+.kedjelista .nar {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 104px;
+}
+.kedjelista .avbockat {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.kedjelista .utanforflagg {
+  font-size: 11px;
+  color: var(--avrop);
+  background: var(--avrop-fyll);
+  border-radius: 3px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.kedjelista .kedjebock {
+  margin-left: auto;
+  border: 1px solid var(--produktion-kant);
+  background: var(--bg-card);
+  color: var(--produktion);
+  border-radius: 3px;
+  padding: 2px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kedjelista .kedjebock:hover {
+  background: var(--produktion-fyll);
+}
+.ruta.idag .dagnr {
+  font-weight: 700;
+  color: #0b7fae;
+}
+.plus {
+  position: absolute;
+  border: 1px dashed var(--border-light);
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+}
+.ruta:hover .plus, .plus:focus {
+  opacity: 1;
+}
+
+/* ==== Kort på tavlan ================================================== */
+
+.kort.dragging {
+  opacity: .35;
+}
+.kort.t-mote .txt {
+  color: var(--mote);
+}
+.kort.t-produktion .txt {
+  color: var(--produktion);
+}
+.kort.t-avrop .txt {
+  color: var(--avrop);
+}
+.kort.t-leverans .txt {
+  color: var(--leverans);
+}
+.kort.t-ovrigt .txt {
+  color: var(--ovrigt);
+}
+.kort.t-franvaro .txt {
+  color: var(--franvaro);
+}
+.kort .franvarounder {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--franvaro);
+  opacity: .85;
+  margin-top: 1px;
+}
+body.visning .kort .franvarounder {
+  font-size: 13px;
+}
+body.visning.v1 .kort .franvarounder {
+  font-size: 16px;
+}
+.kort .franvarorad {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--franvaro);
+  margin-bottom: 1px;
+}
+.kort .meta {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.kort .momentref.utanfor {
+  color: var(--avrop);
+  font-weight: 600;
+  opacity: 1;
+}
+.kort .momentref.fristaende {
+  font-style: italic;
+  opacity: .7;
+}
+.kort .tidrad {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  margin-bottom: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.kort .platsrad {
+  display: block;
+  font-size: 11.5px;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.kort .flyttmark {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  margin-top: 2px;
+  white-space: nowrap;
+  background: var(--varning-fyll);
+  color: var(--varning);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+body.visning .kort .tidrad {
+  font-size: 15px;
+}
+body.visning.v1 .dagrubrik {
+  font-size: 20px;
+  padding: 12px 14px;
+}
+body.visning.v1 .kort {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+}
+body.visning.v1 .kort .txt {
+  font-size: 21px;
+  line-height: 1.3;
+}
+body.visning.v1 .kort .tidrad {
+  font-size: 19px;
+}
+body.visning.v1 .kort .meta,
+body.visning.v1 .kort .platsrad,
+body.visning.v1 .kort .momentref {
+  font-size: 15px;
+}
+body.visning.v1 .kort .franvarorad {
+  font-size: 13px;
+}
+body.visning.v1 .kort .bock {
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+  line-height: 20px;
+}
+body.visning.v1 .dagnr {
+  font-size: 15px;
+  top: 7px;
+}
+body.visning.v1 .ruta {
+  padding-top: 32px;
+}
+body.visning.v1 .vhuvud .vnr {
+  font-size: 34px;
+}
+body.visning.v1 .lagemark.satt {
+  font-size: 20px;
+}
+body.visning .kort .platsrad {
+  font-size: 13px;
+}
+.kort .momentref {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  opacity: .85;
+  margin-top: 1px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+body.visning .kort .momentref {
+  font-size: 13px;
+}
+.kort .bock:hover {
+  border-color: var(--produktion);
+}
+.kort.klar .txt {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+.kedjemark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid currentColor;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  opacity: .75;
+}
+.kort.kedja-vald .kedjemark {
+  opacity: 1;
+}
+
+/* ==== Tom tavla ======================================================= */
+
+.tomtavla {
+  font-size: 14px;
+  margin-top: 16px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-l);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ==== Sidopaneler och hinder ========================================== */
+
+.panel > h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-family: var(--rubrik);
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  gap: 10px;
+}
+.hinder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hinder li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13.5px;
+}
+.hinder li:last-child {
+  border-bottom: 0;
+}
+.hinder li.klick {
+  cursor: pointer;
+}
+.hinder .h-kropp {
+  flex: 1;
+  min-width: 0;
+}
+.hinder .h-txt {
+  line-height: 1.3;
+  font-weight: 600;
+}
+.hinder .h-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hinder .h-meta .saknas {
+  color: var(--leverans);
+}
+.hinder .h-meta .forfallen {
+  color: var(--leverans);
+  font-weight: 600;
+}
+.hinder .h-kop {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--produktion);
+  background: var(--produktion-fyll);
+  border: 1px solid var(--produktion-kant);
+  cursor: pointer;
+  max-width: 100%;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.hinder .h-kop:hover {
+  background: #dcece9;
+}
+.hinder .h-los:hover {
+  border-color: var(--produktion);
+  background: var(--produktion-fyll);
+}
+.hindertopp {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-bottom-color: var(--border-light);
+}
+.hindertopp .larm {
+  color: var(--leverans);
+  font-weight: 600;
+}
+.lage {
+  display: flex;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  flex: none;
+  border-radius: 12px;
+  border-color: var(--border-color);
+  background: var(--bg-main);
+  padding: 3px;
+  gap: 2px;
+}
+.lage button:last-child {
+  border-right: 0;
+}
+.lage button.vald::before {
+  content: "✓ ";
+  font-weight: 700;
+}
+.lage button.vald[data-l="ej"] {
+  background: #6b7681;
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.egetknapp {
+  border: 1px dashed var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  padding: 7px 10px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 13.5px;
+  border-radius: var(--r-s);
+  border-color: var(--border-strong);
+}
+.tomrad {
+  padding: 11px 13px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.hinderform {
+  display: grid;
+  background: var(--bg-main);
+  border-top: 1px solid var(--border-light);
+  padding: 12px 16px 14px;
+  gap: 8px;
+}
+.hinderform .rad2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.f {
+  width: 100%;
+}
+.varn {
+  color: var(--leverans);
+  font-size: 12px;
+  padding: 7px 13px 0;
+  line-height: 1.35;
+}
+.hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  max-height: 260px;
+}
+.hist li {
+  padding: 6px 13px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.hist li:last-child {
+  border-bottom: 0;
+}
+.hist b {
+  color: var(--text-main);
+  font-weight: 600;
+}
+.ordlista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  border-top: 1px solid var(--border-light);
+  border-top-color: var(--border-light);
+  padding: 10px 16px;
+}
+.ord.larm {
+  background: #fceeec;
+  color: var(--leverans);
+  font-weight: 600;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details > summary::before {
+  content: "▸ ";
+  color: var(--text-faint);
+}
+details[open] > summary::before {
+  content: "▾ ";
+}
+.agenda {
+  margin: 0;
+  font-size: 12.5px;
+  padding: 0 16px 14px 34px;
+  color: var(--text-muted);
+}
+.agenda li {
+  margin: 4px 0;
+}

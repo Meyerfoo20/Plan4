@@ -1,0 +1,458 @@
+/* ======================================================================
+   Plan4 · Visningsläge, projektöversikt och listor
+   ====================================================================== */
+
+/* ==== Visningsläge (storbildsskärm) =================================== */
+
+body.visning .flik.plus,
+body.visning .plus,
+body.visning .kopieravecka,
+body.visning .hinderform,
+body.visning .projekt {
+  display: none;
+}
+body.visning .rutnat {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(min-content, 1fr);
+}
+body.visning .ruta {
+  cursor: zoom-in;
+  min-height: 0;
+  overflow: visible;
+}
+body.visning aside {
+  display: none;
+}
+body.visning .kort .txt {
+  font-size: 16px;
+}
+body.visning .kort .meta {
+  font-size: 13px;
+}
+body.visning .vhuvud .vnr {
+  font-size: 26px;
+}
+body.visning .dagrubrik {
+  font-size: 15px;
+}
+
+/* ==== Projektöversikt och Att göra ==================================== */
+
+.fatabell tbody tr {
+  cursor: pointer;
+}
+.fatabell tr.markerad td {
+  background: #f2edf8;
+}
+.fatabell .fkom, .fatabell .fkopp {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.fatabell .fkopp {
+  color: var(--produktion);
+}
+.fstat.ej {
+  color: var(--text-muted);
+}
+.fstat.pagar {
+  background: var(--varning-fyll);
+  border-color: var(--varning-kant);
+  color: var(--varning);
+}
+.fstat.klar {
+  background: var(--produktion-fyll);
+  border-color: var(--produktion-kant);
+  color: var(--produktion);
+}
+.fstat.ejakt {
+  background: var(--bg-main);
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+.dashtopp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.dashtopp b {
+  font-size: 16px;
+}
+.dashtopp .dashrub {
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border-color);
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left-color: var(--border-color);
+  font-weight: 700;
+}
+.dashtopp .dashvecka {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.dashtopp .hoger {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.dashval {
+  width: auto;
+  padding: 5px 9px;
+  border-radius: var(--r-s);
+}
+.kpirad {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--r-l);
+  border-color: var(--border-color);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-elevated);
+  transition: transform .15s, border-color .15s;
+}
+.kpi .kpirub {
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.kpi .kpiunder {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.kpi.rod .kpital {
+  color: var(--leverans);
+}
+.kpi.orange .kpital {
+  color: var(--varning);
+}
+.lagesrad {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+  padding-left: 2px;
+}
+.dashblock {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-l);
+  border-color: var(--border-color);
+  padding: 18px 20px 20px;
+  box-shadow: var(--shadow-elevated);
+  margin-bottom: 16px;
+}
+.dashblock h3 .antal {
+  margin-left: auto;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.dashkol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media(max-width:900px) {
+  .kpirad {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashkol {
+    grid-template-columns: 1fr;
+  }
+}
+.atglista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.atglista li:last-child {
+  border-bottom: 0;
+}
+.atglista .prick {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.atglista .prick.rod {
+  background: var(--leverans);
+}
+.atglista .prick.orange {
+  background: var(--varning-stark);
+}
+.atglista .prick.gul {
+  background: #e8c65a;
+}
+.atglista .atgtavla {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 118px;
+  flex: none;
+}
+.atglista .atgtext {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.atglista .atgmeta {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.trend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.trend li {
+  display: grid;
+  grid-template-columns: 34px 1fr 46px;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  cursor: pointer;
+}
+.trend li:hover .tv {
+  color: var(--produktion);
+}
+.trend .tv {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.trend .stapelbg {
+  height: 10px;
+  background: var(--bg-alt);
+  border-radius: 999px;
+}
+.trend .stapel {
+  display: block;
+  height: 10px;
+  background: var(--accent-main);
+  border-radius: 999px;
+}
+.trend .tp {
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.framlista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.framlista li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 14px;
+  cursor: pointer;
+}
+.framlista li:last-child {
+  border-bottom: 0;
+}
+.framlista li:hover {
+  color: var(--produktion);
+}
+.framlista b {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+.veckoval2 {
+  margin-left: auto;
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  border-radius: 10px;
+  border-color: var(--border-color);
+}
+.veckoval2 button {
+  border: 0;
+  background: var(--bg-card);
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-light);
+}
+.veckoval2 button:last-child {
+  border-right: 0;
+}
+.dashtabell tr {
+  cursor: pointer;
+}
+.dashtabell .rodtal {
+  color: var(--leverans);
+  font-weight: 700;
+}
+.gammalavst {
+  opacity: .55;
+  font-size: 12px;
+}
+.vaderblock {
+  border-color: var(--leverans-kant);
+  background: var(--leverans-fyll);
+}
+.dashfot {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 6px 2px 0;
+}
+body.dashtv #dash {
+  font-size: 17px;
+}
+body.dashtv .dashtopp .dashprojekt {
+  font-size: 28px;
+}
+body.dashtv .kpi .kpital {
+  font-size: 52px;
+}
+body.dashtv .kpi .kpirub {
+  font-size: 14px;
+}
+body.dashtv .kpi .kpiunder {
+  font-size: 15px;
+}
+body.dashtv .atglista .atgtext {
+  font-size: 19px;
+}
+body.dashtv .atglista .atgmeta {
+  font-size: 15px;
+}
+body.dashtv .atglista .atgtavla {
+  font-size: 15px;
+  min-width: 170px;
+}
+body.dashtv .atglista li:nth-child(n+7) {
+  display: none;
+}
+body.dashtv .dashkol, body.dashtv .dashfot {
+  display: none;
+}
+body.dashtv .dashtabell {
+  font-size: 19px;
+}
+body.dashtv .dashtabell th {
+  font-size: 14px;
+}
+body.dashtv .lagesrad {
+  font-size: 16px;
+}
+
+/* ==== Listor och tabeller ============================================= */
+
+table.lista {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.lista td.dat {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+table.lista tr.sen td {
+  background: var(--leverans-fyll);
+}
+table.lista tr.sen td:nth-child(2) {
+  color: var(--leverans);
+  font-weight: 700;
+}
+table.lista tr.utford td {
+  color: var(--text-muted);
+}
+table.lista .kvitt {
+  text-align: center;
+  color: var(--text-faint);
+}
+.filterrad {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+.filterrad select {
+  min-width: 120px;
+}
+.listtom {
+  padding: 18px 2px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.uval {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 6px;
+}
+.uval .rubrik2 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: .03em;
+  margin-top: 6px;
+}
+.uval .krysslista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 16px;
+}
+.avropblock {
+  border: 1px solid var(--avrop-kant);
+  background: var(--avrop-fyll);
+  border-radius: 5px;
+  padding: 11px 12px;
+  margin-top: 14px;
+}
+.avropblock .rubrik2 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--avrop);
+  letter-spacing: .02em;
+  margin-bottom: 9px;
+}
+.avropblock .lage button.vald[data-s="material"] {
+  background: var(--leverans);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.avropblock .lage button.vald[data-s="ue"] {
+  background: var(--avrop);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.uval label {
+  font-size: 13.5px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}

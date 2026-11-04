@@ -1,0 +1,279 @@
+/* ======================================================================
+   Plan4 · Utskrifter
+   ====================================================================== */
+
+/* ==== Utskrift ======================================================== */
+
+#utskrift, #utskriftsfot {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  body > * {
+    display: none !important;
+  }
+  body > #utskrift, body > #utskriftsfot {
+    display: block !important;
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color: #15191d;
+  }
+  #utskrift {
+    font-size: 9pt;
+    line-height: 1.35;
+  }
+  #utskriftsfot {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 7.5pt;
+    color: #5a636b;
+    border-top: .5pt solid #b0b6bb;
+    padding-top: 2mm;
+  }
+  .uhuvud {
+    display: flex;
+    align-items: flex-start;
+    gap: 6mm;
+    border-bottom: 1pt solid #15191d;
+    padding-bottom: 2.5mm;
+    margin-bottom: 4mm;
+  }
+  .uhuvud .ulogga {
+    max-height: 14mm;
+    max-width: 45mm;
+    object-fit: contain;
+    flex: none;
+  }
+  .uhuvud .utext {
+    flex: 1;
+    min-width: 0;
+  }
+  .uhuvud .utitel {
+    font-size: 15pt;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    line-height: 1.15;
+  }
+  .uhuvud .umeta {
+    font-size: 9pt;
+    color: #5a636b;
+    margin-top: .8mm;
+  }
+  .ublock {
+    margin-top: 6mm;
+    break-inside: avoid;
+  }
+  .ublock h3 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    margin: 0 0 2mm;
+    padding-bottom: 1mm;
+    border-bottom: .5pt solid #b0b6bb;
+  }
+  table.kal, table.lista {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.kal th, table.kal td, table.lista th, table.lista td {
+    border: .5pt solid #b0b6bb;
+  }
+  th {
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #3c454c;
+    background: #f0f2f4;
+    text-align: left;
+    padding: 1.5mm 2mm;
+  }
+  td {
+    font-size: 9pt;
+    padding: 1.5mm 2mm;
+    vertical-align: top;
+  }
+  table.kal {
+    table-layout: fixed;
+  }
+  table.kal td.vk {
+    width: 20mm;
+    background: #f6f7f8;
+  }
+  table.kal td.vk b {
+    font-size: 10pt;
+  }
+  table.kal tr {
+    break-inside: avoid;
+  }
+  .ddat {
+    font-size: 7.5pt;
+    color: #7b838a;
+    text-align: right;
+  }
+  .ukort {
+    font-size: 9pt;
+    line-height: 1.3;
+    margin-bottom: 1mm;
+    padding: 0.4mm 0 0.4mm 1.5mm;
+    border-left: 2.6pt solid #b0b6bb;
+    border-radius: 0 1mm 1mm 0;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ukort.klar {
+    color: #7b838a;
+    text-decoration: line-through;
+  }
+  .ukort .umeta2 {
+    display: block;
+    font-size: 7.5pt;
+    color: #5a636b;
+  }
+  .ukort.t-mote {
+    border-left-color: var(--mote);
+    background: var(--mote-fyll);
+  }
+  .ukort.t-produktion {
+    border-left-color: var(--produktion);
+    background: var(--produktion-fyll);
+  }
+  .ukort.t-avrop {
+    border-left-color: var(--avrop);
+    background: var(--avrop-fyll);
+  }
+  .ukort.t-leverans {
+    border-left-color: var(--leverans);
+    background: var(--leverans-fyll);
+  }
+  .ukort.t-ovrigt {
+    border-left-color: var(--ovrigt);
+    background: var(--ovrigt-fyll);
+  }
+  .ukort.t-franvaro {
+    border-left-color: var(--franvaro);
+    background: var(--franvaro-fyll);
+  }
+  table.lista tr {
+    break-inside: avoid;
+  }
+  table.lista td.dat {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  table.lista tr.veckorad td {
+    background: #e7eaec;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 1.2mm 2mm;
+  }
+  table.lista tr.sen td {
+    background: #fbeceb;
+  }
+  table.lista tr.sen td:nth-child(2) {
+    font-weight: 600;
+  }
+  table.lista tr.utford td {
+    color: #5a636b;
+  }
+  table.lista .kvitt {
+    width: 8mm;
+    text-align: center;
+  }
+  .restabell td {
+    font-size: 8pt;
+    min-width: 0;
+  }
+  .rescell b {
+    font-size: 8pt;
+  }
+  .rescell span {
+    font-size: 7pt;
+    color: #5a636b;
+  }
+  .restabell td.reskonf {
+    background: #fbf3e3;
+  }
+  .restabell td.resover {
+    background: #fbeceb;
+    font-weight: 600;
+  }
+  .restabell td.resfranvaro {
+    background: #f5efe7;
+  }
+  .restabell td.reskrock {
+    background: #fbeceb;
+  }
+  .frmark, .grpfr {
+    font-size: 7pt;
+  }
+  .resskroll {
+    overflow: visible;
+  }
+  .utom {
+    font-size: 9pt;
+    color: #5a636b;
+    padding: 4mm 0;
+  }
+  .ufriskrivning {
+    font-size: 8pt;
+    color: #5a636b;
+    margin: -2mm 0 3mm;
+    font-style: italic;
+  }
+  .hjalp {
+    font-size: 8pt;
+    color: #5a636b;
+  }
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--brod);
+  font-size: 14.5px;
+  line-height: 1.45;
+  height: auto;
+  min-height: 100%;
+}
+::selection {
+  background: rgba(56,189,248,.25);
+}
+:focus-visible {
+  outline: 2px solid var(--accent-pop);
+  outline-offset: 2px;
+}
+kbd {
+  font-family: var(--brod);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  box-shadow: 0 1px 0 var(--border-color);
+}
+.p4-hoppa {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 100;
+  background: var(--accent-main);
+  color: var(--btn-text);
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.p4-hoppa:focus {
+  left: 12px;
+}

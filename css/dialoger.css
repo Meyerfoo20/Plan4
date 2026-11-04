@@ -1,0 +1,1342 @@
+/* ======================================================================
+   Plan4 · Innehåll i dialoger: chips, förutsättningar, guide och avstämning
+   ====================================================================== */
+
+/* ==== Chips, orsaker och veckans utfall =============================== */
+
+.vychip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--varning-fyll);
+  border: 1px solid var(--varning-kant);
+  color: var(--varning);
+}
+.vychip button {
+  border: 0;
+  background: transparent;
+  color: var(--varning);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 0;
+}
+.orsaker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.orsaker button {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  padding: 11px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+.hinder li.lost {
+  opacity: .58;
+}
+.hinder li.lost .h-txt {
+  text-decoration: line-through;
+  font-weight: 500;
+}
+.hinder .h-los.angra {
+  color: var(--text-muted);
+}
+.visalosta {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  background: var(--bg-main);
+  border-top-color: var(--border-light);
+  padding: 10px 16px;
+}
+.visalosta:hover {
+  color: var(--text-main);
+  background: var(--bg-alt);
+}
+.utfall {
+  margin: 0 0 16px;
+}
+.utfall .rubrikrad {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.utfall .stor {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.utfall .stor.bra {
+  color: var(--produktion);
+}
+.utfall .stor.svag {
+  color: var(--leverans);
+}
+.utfall .under {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.talrad {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.talrad:last-child {
+  border-bottom: 0;
+}
+.talrad b {
+  font-variant-numeric: tabular-nums;
+}
+.talrad .underrad {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding-left: 14px;
+}
+.utfallblock {
+  margin-top: 18px;
+}
+.utfallblock h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  letter-spacing: .02em;
+}
+.orsakstapel {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+  padding: 4px 0;
+}
+.orsakstapel .stapel {
+  height: 9px;
+  background: var(--leverans);
+  border-radius: 2px;
+  min-width: 3px;
+}
+.orsakstapel.upprepad span:first-child {
+  color: var(--leverans);
+  font-weight: 600;
+}
+.ejlista {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.ejlista li {
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--border-light);
+  display: flex;
+  gap: 9px;
+}
+.ejlista li:last-child {
+  border-bottom: 0;
+}
+.ejlista .nar {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 98px;
+}
+.snabbtyp {
+  display: flex;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  border-radius: 12px;
+  border-color: var(--border-color);
+  background: var(--bg-main);
+  padding: 3px;
+  gap: 3px;
+}
+.snabbtyp button:last-child {
+  border-right: 0;
+}
+.snabbtyp button.vald {
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.snabbtyp button.vald[data-t="produktion"] {
+  background: var(--produktion);
+}
+.snabbtyp button.vald[data-t="mote"] {
+  background: var(--mote);
+}
+.snabbtyp button.vald[data-t="avrop"] {
+  background: var(--avrop);
+}
+.snabbtyp button.vald[data-t="leverans"] {
+  background: var(--leverans);
+}
+.snabbtyp button.vald[data-t="ovrigt"] {
+  background: var(--ovrigt);
+}
+.snabbtyp button.vald[data-t="franvaro"] {
+  background: var(--franvaro);
+}
+
+/* ==== Förutsättningar och material ==================================== */
+
+.abblock {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  background: var(--bg-main);
+}
+.abrad {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+.abrad span {
+  font-size: 14px;
+  font-weight: 600;
+}
+.abrad + .abrad {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 10px;
+}
+.abhjalp {
+  margin-top: 9px;
+  font-size: 12.5px;
+  color: var(--leverans);
+  line-height: 1.4;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.chips button {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border-radius: 15px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.chips button:hover {
+  border-color: var(--produktion);
+  color: var(--produktion);
+}
+.chips button.vald {
+  background: var(--produktion);
+  border-color: var(--produktion);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.chips button.annat {
+  border-style: dashed;
+}
+.frad {
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+.frad.osakrad {
+  border-color: var(--leverans-kant);
+  background: var(--leverans-fyll);
+}
+.fhuvud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.fhuvud .fnamn {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+input.fnamn {
+  font-weight: 600;
+}
+.fbort {
+  border: 0;
+  background: transparent;
+  color: #b6bec5;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+}
+.fbort:hover {
+  color: var(--leverans);
+}
+.fdetalj {
+  display: none;
+  padding: 0 10px 10px;
+  gap: 7px;
+  flex-direction: column;
+}
+.frad.osakrad .fdetalj {
+  display: flex;
+}
+.tva2 {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  gap: 7px;
+}
+.abmark {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.abmark.saknas {
+  background: var(--leverans);
+  color: var(--btn-text);
+}
+.abmark.planerad {
+  background: #f6e2c0;
+  color: var(--varning);
+}
+.abmark.utford {
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+}
+.flista {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 13.5px;
+}
+.flista li {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--border-light);
+}
+.flista li:last-child {
+  border-bottom: 0;
+}
+.flista .fstatus {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.flista .fstatus.sakrad {
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+}
+.flista .fstatus.saknas {
+  background: var(--leverans-fyll);
+  color: var(--leverans);
+}
+.flista .sakraknapp {
+  margin-left: auto;
+  border: 1px solid var(--produktion-kant);
+  background: var(--bg-card);
+  color: var(--produktion);
+  border-radius: 3px;
+  padding: 2px 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.flista .sakraknapp:hover {
+  background: var(--produktion-fyll);
+}
+.synkchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--leverans-fyll);
+  border: 1px solid var(--leverans-kant);
+  color: var(--leverans);
+  cursor: pointer;
+}
+.veckoval {
+  display: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg-main);
+  padding: 3px;
+  gap: 2px;
+}
+body.visning .veckoval {
+  display: inline-flex;
+}
+.veckoval button:last-child {
+  border-right: 0;
+}
+.varningsremsa {
+  display: none;
+}
+body.visning .varningsremsa.har {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--leverans);
+  color: var(--btn-text);
+  border-radius: 4px;
+  padding: 7px 14px;
+  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* ==== Produktionskontroll, guide och dialoginnehåll =================== */
+
+.grad.nej {
+  border-color: var(--leverans-kant);
+  background: var(--leverans-fyll);
+}
+.gfraga {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 9px;
+}
+.lage.gsvar {
+  display: inline-flex;
+}
+.gsvar button.vald[data-v="ja"] {
+  background: var(--produktion);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.gsvar button.vald[data-v="nej"] {
+  background: var(--leverans);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.gsvar button.vald[data-v="ejrelevant"] {
+  background: #6b7681;
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.gfoljd {
+  display: none;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 11px;
+}
+.grad.nej .gfoljd {
+  display: flex;
+}
+.chips.sma {
+  margin-bottom: 2px;
+  gap: 5px;
+}
+.chips.sma button {
+  padding: 4px 10px;
+  font-size: 12.5px;
+}
+.chips.sma button.vald {
+  background: var(--leverans);
+  border-color: var(--leverans);
+}
+.mrad {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 10px 11px;
+  margin-bottom: 8px;
+  background: var(--bg-main);
+}
+.mtopp {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.mslag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mslag .lage button.vald[data-s="material"] {
+  background: var(--leverans);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.mslag .lage button.vald[data-s="ue"] {
+  background: var(--avrop);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.mlagg {
+  display: flex;
+  gap: 8px;
+}
+.mlagg .egetknapp {
+  width: auto;
+  flex: 1;
+}
+.gkontext {
+  background: var(--avrop-fyll);
+  border-left: 3px solid var(--avrop);
+  color: #4a3470;
+  border-radius: 0 3px 3px 0;
+  padding: 6px 9px;
+  margin: -3px 0 9px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.mlista .mslagmark {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--leverans-fyll);
+  color: var(--leverans);
+}
+.mlista .mslagmark.ue {
+  background: var(--avrop-fyll);
+  color: var(--avrop);
+}
+.mbotten {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.mbotten label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mled {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+  align-items: center;
+}
+.mled em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.mlista {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 13.5px;
+}
+.mlista li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--border-light);
+}
+.mlista li:last-child {
+  border-bottom: 0;
+}
+.mlista .mlev {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.mlista .mstat {
+  margin-left: auto;
+  font-size: 11.5px;
+  background: var(--bg-main);
+  color: var(--text-muted);
+  border-radius: 3px;
+  padding: 1px 7px;
+  font-variant-numeric: tabular-nums;
+}
+.mlista .mstat.klar {
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+  font-weight: 600;
+}
+.vrad {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 13px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+}
+.vrad:last-child {
+  border-bottom: 0;
+}
+.vrad .vnamn {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+}
+.helgvarning {
+  background: var(--leverans-fyll);
+  border-bottom: 1px solid var(--leverans-kant);
+  padding: 10px 16px 6px;
+}
+.helgvarning b {
+  display: block;
+  color: var(--leverans);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.helgvarning .vrad {
+  border-bottom: 0;
+  padding: 3px 0;
+}
+.helgvarning .vnamn {
+  color: var(--leverans);
+}
+.vinst {
+  display: grid;
+  grid-template-columns: auto 1fr 78px 52px;
+  gap: 9px;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+.vinst .vvarde {
+  padding: 5px 7px;
+}
+.vinst .venhet {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.krad {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 9px 11px;
+  margin-bottom: 7px;
+  background: var(--bg-card);
+}
+.krad.klar {
+  background: var(--bg-main);
+  border-style: dashed;
+}
+.krad.flyttas {
+  border-color: var(--produktion-kant);
+  background: var(--produktion-fyll);
+}
+.krad.obekraftad {
+  border-color: var(--leverans-kant);
+  background: var(--leverans-fyll);
+}
+.ktopp {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.ktopp .knamn {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ktopp .knar {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.krad.klar .ktopp .knamn {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.kbock {
+  color: var(--produktion);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.radlista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.radlista li {
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--border-light);
+  overflow-wrap: anywhere;
+}
+.radlista li:last-child {
+  border-bottom: 0;
+}
+.seriernaval {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.kort.attgora {
+  border-style: dashed;
+  background: var(--bg-card);
+}
+.pagaende {
+  margin-top: 4px;
+  padding: 4px 6px 3px;
+  border-top: 1px dashed var(--border-color);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.pagaende .prub {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+.pagaende .prad {
+  cursor: pointer;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pagaende .prad:hover {
+  color: var(--produktion);
+}
+.pagaende.dv {
+  font-size: 14px;
+  border-top: 1px dashed var(--border-color);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.pagaende.dv .prub {
+  font-size: 11px;
+}
+.kedjechip {
+  border: 1px solid var(--produktion);
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+  cursor: pointer;
+}
+.kedjechip.dold {
+  display: none;
+}
+.dvlista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dvrad {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef1f4;
+  font-size: 15px;
+}
+.dvrad .dvtid {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.dvrad .dvtext span {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.dvrad.t-mote b {
+  color: var(--mote);
+}
+.dvrad.t-produktion b {
+  color: var(--produktion);
+}
+.dvrad.t-avrop b {
+  color: var(--avrop);
+}
+.dvrad.t-leverans b {
+  color: var(--leverans);
+}
+.dvrad.t-franvaro b {
+  color: var(--franvaro);
+}
+.dvrad.t-ovrigt b {
+  color: var(--ovrigt);
+}
+.dvrad.klar b {
+  opacity: .6;
+}
+.overlay.dagsvy .modal {
+  max-width: 640px;
+}
+body.visning .pagaende {
+  font-size: 12px;
+}
+body.visning.v1 .pagaende {
+  font-size: 15px;
+}
+body.visning.v1 .pagaende .prub {
+  font-size: 11px;
+}
+body.visning.v4 .ruta {
+  padding: 18px 3px 3px;
+  min-height: 0;
+}
+body.visning.v4 .dagnr {
+  font-size: 10.5px;
+  top: 3px;
+}
+body.visning.v4 .kort {
+  padding: 2px 5px;
+  margin-bottom: 2px;
+  border-radius: 3px;
+}
+body.visning.v4 .kort .txt {
+  font-size: 11.5px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+body.visning.v4 .kort .tidrad {
+  display: inline;
+  font-size: 11px;
+  margin-right: 4px;
+}
+body.visning.v4 .kort .meta,
+body.visning.v4 .kort .platsrad,
+body.visning.v4 .kort .momentref,
+body.visning.v4 .kort .bemrad2,
+body.visning.v4 .kort .notprick,
+body.visning.v4 .kort .flyttmark {
+  display: none;
+}
+body.visning.v4 .kort .franvarounder, body.visning.v4 .kort .franvarorad {
+  font-size: 9.5px;
+}
+body.visning.v4 .kort .bock {
+  width: 12px;
+  height: 12px;
+  font-size: 9px;
+  line-height: 11px;
+}
+body.visning.v4 .pagaende {
+  font-size: 10px;
+  padding: 2px 3px;
+}
+body.visning.v4 .pagaende .prub {
+  font-size: 8.5px;
+}
+body.visning.v4 .vader {
+  font-size: 10px;
+}
+body.visning.v4 .vhuvud .vnr {
+  font-size: 18px;
+}
+body.visning.v2 .kort .txt {
+  font-size: 14px;
+}
+.kryssrad {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-weight: 600;
+}
+.ordrad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--bg-main);
+  border-radius: 5px;
+}
+.ordrad .hjalp {
+  flex: 1;
+}
+.ordrad .mknapp:disabled {
+  opacity: .4;
+  cursor: default;
+}
+.kort .bemrad2 {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+body.visning .kort .bemrad2 {
+  font-size: 13px;
+}
+body.visning.v1 .kort .bemrad2 {
+  font-size: 15px;
+}
+.bemrad {
+  display: grid;
+  grid-template-columns: 1fr 80px auto;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.bempers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(190px,1fr));
+  gap: 10px;
+}
+.bemgrupp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+}
+.bemgrupp b {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: .03em;
+}
+.bemgrupp label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.inaktiv {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-faint);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.saknasbem {
+  color: var(--varning);
+  font-weight: 600;
+}
+.bemdetaljer {
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  margin-top: 12px;
+}
+.bemdetaljer > summary {
+  padding: 9px 12px;
+}
+.bemdetaljer #bemRuta {
+  padding: 0 12px 12px;
+}
+.katlista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ftgvaljare {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  flex: 1;
+}
+.ftgny {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ftgman.dold {
+  display: none;
+}
+.ftgny input {
+  flex: 1;
+  min-width: 120px;
+}
+.mftg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  margin-top: 4px;
+}
+.mftg .ftgvaljare {
+  max-width: 280px;
+}
+.ejkopp {
+  font-size: 11.5px;
+  color: var(--varning);
+  background: var(--varning-fyll);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.ftgtabell td {
+  vertical-align: middle;
+}
+.ftgtabell input.f {
+  padding: 4px 6px;
+  font-size: 12.5px;
+  min-width: 90px;
+}
+.ftgtabell .rollval label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.ftgnyrad {
+  grid-template-columns: 1fr auto auto auto;
+  margin-top: 10px;
+}
+.ftgnyrad label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.resskroll {
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+.restabell th {
+  white-space: nowrap;
+}
+.restabell td {
+  min-width: 120px;
+  font-size: 12.5px;
+}
+.restabell td.resnamn {
+  min-width: 150px;
+  position: sticky;
+  left: 0;
+  background: var(--bg-card);
+}
+.restabell td.resnamn span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.rescell {
+  margin-bottom: 3px;
+}
+.rescell b {
+  display: block;
+  font-size: 12.5px;
+}
+.rescell span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.restabell td.reskonf {
+  background: var(--varning-fyll);
+}
+.konfmark {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--varning);
+}
+.restabell td.resover {
+  background: var(--leverans-fyll);
+  color: var(--leverans);
+  font-weight: 700;
+}
+.restabell td.resnoll {
+  color: var(--text-faint);
+}
+.restabell td.resfranvaro {
+  background: var(--franvaro-fyll);
+}
+.restabell td.reskrock {
+  background: var(--leverans-fyll);
+  box-shadow: inset 0 0 0 1px var(--leverans-kant);
+}
+.frmark {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--franvaro);
+}
+.reskrock .frmark {
+  color: var(--leverans);
+}
+.grpfr {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--franvaro);
+}
+.resblock {
+  cursor: pointer;
+}
+.resblock:hover {
+  border-color: var(--produktion);
+}
+.katchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 3px 7px;
+}
+.katchip input {
+  width: 140px;
+  padding: 3px 6px;
+}
+.katchip em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.seriernaval .mknapp {
+  text-align: left;
+  padding: 11px 12px;
+}
+.kort.ordna {
+  box-shadow: 0 -3px 0 0 var(--produktion);
+}
+.khist {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.kval button {
+  font-size: 13px;
+}
+.kval button.vald[data-f="0"] {
+  background: #6b7681;
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.kval button.vald[data-f="1"] {
+  background: var(--produktion);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.kbekraft {
+  display: none;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border-light);
+}
+.krad.flyttas .kbekraft {
+  display: block;
+}
+.kbsvar button.vald[data-b="ja"] {
+  background: var(--produktion);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.kbsvar button.vald[data-b="nej"] {
+  background: var(--leverans);
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.kbfalt {
+  display: none;
+  grid-template-columns: 1fr 130px;
+  gap: 7px;
+  margin-top: 8px;
+}
+.krad.obekraftad .kbfalt {
+  display: grid;
+}
+.angrarad {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  font-size: 13.5px;
+  background: var(--accent-main);
+  color: var(--btn-text);
+  border-radius: 999px;
+  padding: 10px 12px 10px 20px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.25);
+  bottom: 24px;
+  gap: 14px;
+}
+
+/* ==== Dagens avstämning =============================================== */
+
+.dagvanster {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.lagemark {
+  pointer-events: auto;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 4px;
+  color: var(--text-faint);
+  opacity: .55;
+  border-radius: 10px;
+}
+.lagemark:hover {
+  opacity: 1;
+  background: var(--bg-alt);
+  border-color: var(--border-strong);
+}
+.lagemark.satt {
+  opacity: 1;
+  font-size: 13px;
+  font-weight: 700;
+  border-width: 1px;
+  padding: 1px 6px;
+}
+.lagemark.satt.gron {
+  background: var(--produktion-fyll);
+  border-color: var(--produktion);
+  color: var(--produktion);
+}
+.lagemark.satt.gul {
+  background: var(--varning-fyll);
+  border-color: var(--varning-stark);
+  color: var(--varning);
+}
+.lagemark.satt.rod {
+  background: var(--leverans-fyll);
+  border-color: var(--leverans);
+  color: var(--leverans);
+}
+body.visning .lagemark.satt {
+  font-size: 16px;
+  padding: 2px 9px;
+  border-width: 2px;
+}
+.lageval {
+  display: grid;
+  gap: 8px;
+}
+.lageval button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  padding: 11px 13px;
+  font-size: 14.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.lageval button.vald {
+  font-weight: 600;
+}
+.lageval .ikon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* ==== Dialoger ======================================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 60;
+  overflow: auto;
+  background: rgba(17,19,21,.42);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  padding: 48px 16px;
+  animation: p4in .16s ease-out;
+}
+.modal {
+  background: var(--bg-card);
+  width: 100%;
+  border-radius: 22px;
+  max-width: 660px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.22), 0 4px 12px rgba(0,0,0,.06);
+  animation: p4upp .2s ease-out;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+.modal footer .mhoger {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.falt {
+  margin-bottom: 14px;
+}
+.hjalp {
+  font-size: 12.5px;
+  margin: -2px 0 8px;
+  line-height: 1.4;
+}
+.tva {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+.steg {
+  display: flex;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.fraga {
+  margin: 0 0 9px;
+  font-family: var(--rubrik);
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+}
+.notis.rod {
+  background: var(--leverans-fyll);
+  border-left-color: var(--leverans);
+}
+.notis.gron {
+  background: var(--produktion-fyll);
+  border-left-color: var(--produktion);
+}
+.sammanst {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.sammanst li {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px dotted var(--border-light);
+}
+.sammanst li:last-child {
+  border-bottom: 0;
+}
+.sammanst .nar {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 108px;
+}
