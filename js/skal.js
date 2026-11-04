@@ -31,6 +31,7 @@
         }
     });
     function stangSidor() {
+        document.body.classList.remove("p4-kontovy");
         try {
             if (startOppen())
                 stangStart();
@@ -46,7 +47,12 @@
         b.addEventListener("click", function () {
             var vy = b.getAttribute("data-nav");
             stangMeny();
-            if (vy === "tavla") {
+            document.body.classList.remove("p4-kontovy");
+            if (vy === "konto") {
+                if (window.p4OppnaKonto)
+                    window.p4OppnaKonto();
+            }
+            else if (vy === "tavla") {
                 stangSidor();
                 window.scrollTo({ top: 0 });
             }
@@ -70,6 +76,8 @@
         $(id).addEventListener("click", function () { stangMeny(); }, true);
     });
     function aktuellVy() {
+        if (document.body.classList.contains("p4-kontovy"))
+            return "konto";
         try {
             if (startOppen())
                 return "start";
@@ -90,6 +98,7 @@
         });
         document.body.classList.toggle("p4-dashvy", vy !== "tavla");
     }
+    window.p4MarkeraNav = markeraNav;
     if (window.MutationObserver) {
         var obs = new MutationObserver(markeraNav);
         obs.observe($("dash"), { attributes: true, attributeFilter: ["class"] });
@@ -168,8 +177,14 @@
     function uppdateraBackup() {
         var ruta = $("p4Backup"), text = $("p4BackupText");
         var t = lasLokalt(EXPORTNYCKEL);
+        var molnet = window.p4Moln;
         ruta.classList.remove("ok", "varn", "fara");
-        if (!t) {
+        if (molnet && molnet.aktiv) {
+            // inloggad: kontot i molnet är säkerhetskopian
+            ruta.classList.add(molnet.lage === "synkad" ? "ok" : "varn");
+            text.textContent = molnet.text + ".";
+        }
+        else if (!t) {
             ruta.classList.add("fara");
             text.textContent = "Aldrig exporterad. Datan finns bara i den här webbläsaren.";
         }
@@ -181,12 +196,14 @@
         }
         var lag = $("p4Lagring");
         try {
-            lag.textContent = lagringslage === "lokal" ? "Lagring: lokalt på denna dator"
+            lag.textContent = molnet && molnet.aktiv ? "Lagring: ditt konto + kopia på den här datorn"
+                : lagringslage === "lokal" ? "Lagring: lokalt på denna dator"
                 : lagringslage === "ingen" ? "Lagring: ingen automatisk lagring — exportera filen"
                     : lagringslage === "storage" ? "Lagring: värdens lagring" : "";
         }
         catch (e) { }
     }
+    window.p4UppdateraBackup = uppdateraBackup;
     var ursLaddaNer = laddaNer;
     laddaNer = function (namn, data) {
         ursLaddaNer(namn, data);
@@ -219,6 +236,8 @@
     $("p4Genvagar").addEventListener("click", function () { stangMeny(); visaGenvagar(); });
     document.addEventListener("keydown", function (e) {
         if (e.ctrlKey || e.metaKey || e.altKey)
+            return;
+        if (document.body.classList.contains("p4-utloggad") || document.body.classList.contains("p4-laddar"))
             return;
         if (skriver(document.activeElement) || $("overlay"))
             return;
