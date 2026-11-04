@@ -623,3 +623,89 @@ a.mknapp {
   background: var(--accent-light);
   color: var(--accent-main);
 }
+
+/* ---------- väntar på godkännande ---------- */
+.p4-vantesida {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+body.p4-vantar .p4-vantesida {
+  display: flex;
+}
+body.p4-vantar > :not(.p4-vantesida):not(#utskrift):not(#utskriftsfot) {
+  display: none !important;
+}
+.p4-vantar-kort {
+  width: min(480px, 100%);
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow-elevated);
+  padding: 36px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.p4-vantar-kort .p4-ord {
+  display: inline;
+  font-size: 20px;
+}
+.p4-vantar-kort h1 {
+  margin: 0;
+  font-family: var(--rubrik);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.p4-vantar-kort p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.p4-vantar-ikon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--varning-fyll);
+  border: 1px solid var(--varning-kant);
+  position: relative;
+}
+.p4-vantar-ikon::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  background: var(--varning);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.p4-vantesida.nekad .p4-vantar-ikon {
+  background: var(--leverans-fyll);
+  border-color: var(--leverans-kant);
+}
+.p4-vantesida.nekad .p4-vantar-ikon::before {
+  background: var(--leverans);
+}
+
+/* ---------- admin ---------- */
+.p4-ks-tagg.admin {
+  background: var(--accent-main);
+  color: var(--btn-text);
+}
+.p4-ks-atgarder {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.p4-ks-rubrikrad .lage button {
+  font-size: 13px;
+}
+.p4-konto.admin-vantar .p4-konto-avatar::after {
+  background: var(--leverans);
+}

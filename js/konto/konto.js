@@ -377,6 +377,8 @@
     function visaVy(vy, text) {
         document.body.classList.toggle("p4-laddar", vy === "laddar");
         document.body.classList.toggle("p4-utloggad", vy === "inloggning");
+        document.body.classList.toggle("p4-vantar", vy === "vantar");
+        if (vy === "vantar") ritaVantesida();
         if (vy === "laddar") $("p4LaddningText").textContent = text || "Startar Plan4…";
         if (vy === "inloggning") { visaFel(text || ""); setTimeout(() => $("kkEpost").focus(), 0); }
         if (vy === "app") rita();
@@ -505,6 +507,7 @@
         try {
             sida.innerHTML = anvandare ? kontosidaHtml() : utanKontoHtml();
             ritaSynkkort();
+            ritaAdmin();
         } catch (e) {
             console.error("Plan4 kontosidan:", e);
             sida.innerHTML = '<div class="p4-ks-kort"><h2>Kontosidan kunde inte visas</h2>' +
@@ -529,7 +532,8 @@
                 '<div class="p4-eyebrow"><span class="p4-pop"></span>Mitt konto</div>' +
                 "<h1>" + esc(namn || anvandare.email || "Mitt konto") + "</h1>" +
                 "<p>" + esc(anvandare.email || "") + " · inloggad med " + esc(satt) +
-                  " · konto skapat " + esc(datumText(anvandare.metadata && anvandare.metadata.creationTime)) + "</p>" +
+                  " · konto skapat " + esc(datumText(anvandare.metadata && anvandare.metadata.creationTime)) +
+                  (arAdmin() ? ' · <span class="p4-ks-tagg admin">Admin</span>' : "") + "</p>" +
               "</div>" +
               '<button type="button" class="navknapp" data-ks="tillbaka">← Till tavlan</button>' +
             "</div>" +
@@ -537,6 +541,7 @@
             '<div class="p4-ks-siffror" id="ksSiffror"></div>' +
 
             '<section class="p4-ks-kort p4-ks-projekt" id="ksSynk"></section>' +
+            '<section class="p4-ks-kort p4-ks-projekt dold" id="ksAdmin"></section>' +
 
             '<div class="p4-ks-rutnat">' +
 
@@ -713,6 +718,8 @@
             synkKlar = false;
             clearTimeout(pushTimer);
             if (lyssnare) { lyssnare(); lyssnare = null; }
+            if (anvLyssnare) { anvLyssnare(); anvLyssnare = null; }
+            stoppaAdmin();
             sparaNu = async () => true;
             clearTimeout(sparaTimer);
             const snap = await fb.fs.getDocs(projektSamling());
@@ -766,11 +773,13 @@
             }
         }
         if (lyssnare) { lyssnare(); lyssnare = null; }
+        if (anvLyssnare) { anvLyssnare(); anvLyssnare = null; }
+        stoppaAdmin();
         clearTimeout(pushTimer);
         synkKlar = false;
         sparaNu = async () => true;          // ingen ny lokal skrivning mellan utloggning och omladdning
         clearTimeout(sparaTimer);
-        try { localStorage.removeItem(NYCKEL); localStorage.removeItem(MOLNNYCKEL); } catch (e) { }
+        try { localStorage.removeItem(NYCKEL); localStorage.removeItem(MOLNNYCKEL); localStorage.removeItem(BEHNYCKEL); } catch (e) { }
         try { await fb.auth.signOut(fb.authInst); } catch (e) { }
         location.reload();
     }
@@ -814,6 +823,10 @@
         }
         if (typeof window.p4UppdateraBackup === "function") window.p4UppdateraBackup();
         if (kontoOppen()) ritaSynkkort();
+        const vantar = arAdmin() ? vantandeAnvandare().length : 0;
+        const badge = $("p4KontoBadge");
+        if (badge) { badge.textContent = String(vantar); badge.classList.toggle("dold", !vantar); badge.title = vantar + " konton väntar på godkännande"; }
+        if (knapp) knapp.classList.toggle("admin-vantar", !!vantar);
     }
 
     // ---------- koppling till appen ----------
@@ -838,49 +851,218 @@
         }
     });
 
+    // ---------- roller och godkännande ----------
+    // Varje konto har ett användardokument: anvandare/{uid} med roll ("user" | "admin")
+    // och status ("vantar" | "godkand" | "nekad"). Bara godkända konton kommer åt Plan4.
+    // Ett nytt konto skapas alltid som user med status vantar. Säkerhetsreglerna i
+    // firestore.rules hindrar att någon godkänner sig själv eller gör sig till admin.
+    const BEHNYCKEL = "plan4_behorighet";     // senast kända status, så att appen kan starta offline
+    let behorighet = { roll: "user", status: "vantar" };
+    let appStartad = false;
+    let anvLyssnare = null;      // användarens eget dokument
+    let adminLyssnare = null;    // alla användare (bara för admin)
+    let allaAnvandare = [];
+    let adminFilter = "vantar";
+    const arAdmin = () => behorighet.roll === "admin" && behorighet.status === "godkand";
+    const tidAv = (v) => v && typeof v.toDate === "function" ? v.toDate()
+        : typeof v === "string" && !isNaN(Date.parse(v)) ? new Date(v) : null;
+
+    async function sakerstallAnvandardok() {
+        const ref = anvDoc(), snap = await fb.fs.getDoc(ref);
+        if (!snap.exists()) {
+            await fb.fs.setDoc(ref, { epost: anvandare.email || "", namn: anvandare.displayName || "",
+                roll: "user", status: "vantar", skapad: fb.fs.serverTimestamp() });
+        } else if (!snap.data().status) {
+            // konto från tiden före godkännandet: läggs i kön
+            await fb.fs.setDoc(ref, { roll: "user", status: "vantar" }, { merge: true });
+        }
+    }
+
+    function hanteraBehorighet(d) {
+        behorighet = { roll: (d && d.roll) || "user", status: (d && d.status) || "vantar" };
+        skrivJson(BEHNYCKEL, { uid: anvandare.uid, roll: behorighet.roll, status: behorighet.status });
+        if (behorighet.status === "godkand") {
+            if (!appStartad) startaApp();
+        } else {
+            stoppaApp();
+            visaVy("vantar");
+        }
+        if (arAdmin()) startaAdmin(); else stoppaAdmin();
+        uppdateraUI();
+    }
+
+    function startaApp() {
+        appStartad = true;
+        // Samma konto som senast: visa den lokala kopian direkt och synka i bakgrunden.
+        // Annars visas ingenting förrän kontots projekt är hämtade.
+        const kand = moln.uid === anvandare.uid;
+        visaVy(kand ? "app" : "laddar", "Hämtar dina projekt…");
+        forstaSynk().then(() => { if (!kand) visaVy("app"); }).catch((e) => {
+            console.warn("Plan4 första synk:", e);
+            lage = "offline"; uppdateraUI();
+            if (!kand) visaVy("laddar", "Kunde inte hämta dina projekt. Kontrollera nätverket — försöker igen…");
+            forsokIgen();
+        });
+    }
+    function stoppaApp() {
+        appStartad = false;
+        synkKlar = false;
+        clearTimeout(pushTimer);
+        if (lyssnare) { lyssnare(); lyssnare = null; }
+        document.body.classList.remove("p4-kontovy");
+    }
+    function forsokIgen() {
+        setTimeout(() => {
+            if (!anvandare || synkKlar || !appStartad) return;
+            forstaSynk().then(() => visaVy("app")).catch(forsokIgen);
+        }, 15000);
+    }
+
+    // Väntesidan: visas för konton som inte är godkända (än).
+    function ritaVantesida() {
+        const nekad = behorighet.status === "nekad";
+        $("p4VantarRubrik").textContent = nekad ? "Ditt konto har inte godkänts" : "Ditt konto väntar på godkännande";
+        $("p4VantarText").textContent = nekad
+            ? "En administratör har inte gett " + (anvandare.email || "kontot") + " tillgång till Plan4. Kontakta administratören om du tror att det är fel."
+            : "En administratör behöver godkänna " + (anvandare.email || "ditt konto") + " innan du kommer åt Plan4. Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
+        $("p4Vantar").classList.toggle("nekad", nekad);
+    }
+
+    // ---------- admin: alla användare ----------
+    function startaAdmin() {
+        if (adminLyssnare) return;
+        adminLyssnare = fb.fs.onSnapshot(fb.fs.collection(fb.db, "anvandare"), (snap) => {
+            allaAnvandare = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
+            uppdateraUI();
+            if (kontoOppen()) ritaAdmin();
+        }, (e) => console.warn("Plan4 användarlista:", e));
+    }
+    function stoppaAdmin() {
+        if (adminLyssnare) { adminLyssnare(); adminLyssnare = null; }
+        allaAnvandare = [];
+    }
+    const vantandeAnvandare = () => allaAnvandare.filter((a) => (a.status || "vantar") === "vantar");
+
+    const STATUSNAMN = { vantar: "Väntar", godkand: "Godkänd", nekad: "Nekad" };
+    function ritaAdmin() {
+        const kort = $("ksAdmin");
+        if (!kort) return;
+        if (!arAdmin()) { kort.classList.add("dold"); return; }
+        kort.classList.remove("dold");
+        const vantar = vantandeAnvandare();
+        const lista = (adminFilter === "vantar" ? vantar : allaAnvandare.slice())
+            .sort((a, b) => ((tidAv(b.skapad) || 0) - (tidAv(a.skapad) || 0)));
+        const knapp = (vad, uid, txt, typ) => '<button type="button" class="mknapp' + (typ ? " " + typ : "") +
+            '" data-admin="' + vad + '" data-uid="' + esc(uid) + '">' + txt + "</button>";
+        const rader = lista.map((a) => {
+            const jag = a.uid === anvandare.uid, st = a.status || "vantar", roll = a.roll || "user";
+            const skapad = tidAv(a.skapad);
+            let atgard = "";
+            if (!jag) {
+                if (st !== "godkand") atgard += knapp("godkann", a.uid, "Godkänn", "primar");
+                if (st !== "nekad") atgard += knapp("neka", a.uid, st === "godkand" ? "Spärra" : "Neka", "fara");
+                if (st === "godkand") atgard += roll === "admin" ? knapp("user", a.uid, "Ta bort admin") : knapp("admin", a.uid, "Gör till admin");
+            }
+            return "<tr><td><b>" + esc(a.namn || a.epost || a.uid) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">du</span>' : "") +
+                (a.namn ? "<br><small>" + esc(a.epost || "") + "</small>" : "") + "</td>" +
+                "<td>" + esc(skapad ? skapad.toLocaleDateString("sv-SE") : "—") + "</td>" +
+                "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Admin</span>' : "Användare") + "</td>" +
+                '<td><span class="p4-ks-status ' + (st === "godkand" ? "ok" : st === "nekad" ? "konflikt" : "vantar") + '">' + STATUSNAMN[st] + "</span></td>" +
+                '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' + atgard + "</span></td></tr>";
+        }).join("");
+        kort.innerHTML =
+            '<div class="p4-ks-rubrikrad"><h2>Användare</h2>' +
+              (vantar.length ? '<span class="p4-ks-status vantar">' + vantar.length + (vantar.length === 1 ? " väntar" : " väntar") + " på godkännande</span>" : "") +
+              '<span class="p4-ks-hoger-knappar lage" role="tablist">' +
+                '<button type="button" data-adminfilter="vantar"' + (adminFilter === "vantar" ? ' class="vald"' : "") + ">Väntar (" + vantar.length + ")</button>" +
+                '<button type="button" data-adminfilter="alla"' + (adminFilter === "alla" ? ' class="vald"' : "") + ">Alla (" + allaAnvandare.length + ")</button>" +
+              "</span></div>" +
+            '<p class="hjalp">Nya konton får inte tillgång till Plan4 förrän du godkänner dem. Godkända användare har var sina projekt — ' +
+              "du ser inte deras projekt, bara kontot.</p>" +
+            (lista.length
+              ? '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Användare</th><th>Skapad</th><th>Roll</th><th>Status</th><th></th></tr></thead><tbody>' +
+                rader + "</tbody></table></div>"
+              : '<p class="listtom">' + (adminFilter === "vantar" ? "Inga konton väntar på godkännande." : "Inga användare ännu.") + "</p>");
+    }
+
+    async function adminAndra(uid, vad) {
+        const a = allaAnvandare.find((x) => x.uid === uid);
+        if (!a || uid === anvandare.uid) return;
+        const andring = vad === "godkann" ? { status: "godkand" } : vad === "neka" ? { status: "nekad" }
+            : vad === "admin" ? { roll: "admin" } : { roll: "user" };
+        const gor = async () => {
+            try {
+                await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", uid),
+                    Object.assign(andring, { behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }), { merge: true });
+                status((a.namn || a.epost) + ": " + ({ godkann: "godkänd", neka: "nekad", admin: "är nu admin", user: "är inte längre admin" })[vad]);
+            } catch (e) { status("Kunde inte ändra användaren: " + (e.code || e.message), true); }
+        };
+        if (vad === "admin" || (vad === "neka" && a.status === "godkand")) {
+            const txt = vad === "admin"
+                ? (a.namn || a.epost) + " får samma behörighet som du: godkänna och spärra konton och dela ut adminrollen."
+                : (a.namn || a.epost) + " stängs ute från Plan4 direkt. Projekten finns kvar i kontot och blir tillgängliga igen om du godkänner kontot på nytt.";
+            return fraga(vad === "admin" ? "Gör till admin?" : "Spärra kontot?", txt,
+                [{ txt: "Avbryt", fn: stangModal },
+                 { txt: vad === "admin" ? "Gör till admin" : "Spärra", primar: vad === "admin", fara: vad !== "admin", fn: () => { stangModal(); gor(); } }], false);
+        }
+        gor();
+    }
+
+    document.addEventListener("click", (e) => {
+        const a = e.target.closest("#ksAdmin [data-admin]");
+        if (a) adminAndra(a.dataset.uid, a.dataset.admin);
+        const f = e.target.closest("#ksAdmin [data-adminfilter]");
+        if (f) { adminFilter = f.dataset.adminfilter; ritaAdmin(); }
+        if (e.target.closest("#p4VantarLoggaUt")) {
+            // inget har synkats för ett väntande konto, så den lokala datan lämnas orörd
+            fb.auth.signOut(fb.authInst).then(() => location.reload());
+        }
+    });
+
     // ---------- start ----------
     kopplaFormular();
     uppdateraUI();
     if (!aktiverat) { visaVy("app"); return; }        // utan Firebase-konfiguration: lokalt läge som förut
     visaVy("laddar");
 
-    function forsokIgen() {
-        setTimeout(() => {
-            if (!anvandare || synkKlar) return;
-            forstaSynk().then(() => visaVy("app")).catch(forsokIgen);
-        }, 15000);
-    }
-
     laddaFirebase().then(() => {
-        fb.auth.onAuthStateChanged(fb.authInst, async (u) => {
+        fb.auth.onAuthStateChanged(fb.authInst, (u) => {
+            if (anvLyssnare) { anvLyssnare(); anvLyssnare = null; }
+            stoppaAdmin();
+            stoppaApp();
             anvandare = u;
-            synkKlar = false;
             konflikter.clear(); vantande.clear();
             if (!u) {
-                if (lyssnare) { lyssnare(); lyssnare = null; }
                 lage = "utloggad"; uppdateraUI();
                 return visaVy("inloggning");
             }
-            // Samma konto som senast: visa den lokala kopian direkt och synka i bakgrunden.
-            // Annars visas ingenting förrän kontots projekt är hämtade.
-            const kand = moln.uid === u.uid;
-            visaVy(kand ? "app" : "laddar", "Hämtar dina projekt…");
-            try {
-                await forstaSynk();
-                if (!kand) visaVy("app");
-            } catch (e) {
-                console.warn("Plan4 första synk:", e);
-                lage = "offline"; uppdateraUI();
-                if (!kand) visaVy("laddar", "Kunde inte hämta dina projekt. Kontrollera nätverket — försöker igen…");
-                forsokIgen();
+            // Var kontot godkänt senast? Då startar appen direkt (även offline) och
+            // behörigheten kontrolleras i bakgrunden. Annars väntar vi på svaret.
+            const cache = lasJson(BEHNYCKEL, null);
+            if (cache && cache.uid === u.uid && cache.status === "godkand") {
+                behorighet = { roll: cache.roll || "user", status: "godkand" };
+                startaApp();
+            } else {
+                visaVy("laddar", "Kontrollerar ditt konto…");
             }
+            const lyssnaPaKontot = () => sakerstallAnvandardok().then(() => {
+                if (anvandare !== u) return;
+                anvLyssnare = fb.fs.onSnapshot(anvDoc(), (snap) => hanteraBehorighet(snap.exists() ? snap.data() : null),
+                    (e) => console.warn("Plan4 behörighet:", e));
+            }).catch((e) => {
+                console.warn("Plan4 behörighet:", e);
+                if (!appStartad) visaVy("laddar", "Kunde inte kontrollera ditt konto. Kontrollera nätverket — försöker igen…");
+                setTimeout(() => { if (anvandare === u) lyssnaPaKontot(); }, 15000);
+            });
+            lyssnaPaKontot();
         });
     }).catch((e) => {
         console.warn("Plan4: kunde inte ladda Firebase", e);
         lage = "offline"; uppdateraUI();
-        // Utan kontakt med inloggningstjänsten får den som senast var inloggad på datorn
-        // arbeta vidare i den lokala kopian. Ändringarna synkas vid nästa start med nät.
-        if (moln.uid) visaVy("app");
+        // Utan kontakt med inloggningstjänsten får den som senast var inloggad och godkänd
+        // på datorn arbeta vidare i den lokala kopian. Ändringarna synkas vid nästa start med nät.
+        const cache = lasJson(BEHNYCKEL, null);
+        if (moln.uid && cache && cache.uid === moln.uid && cache.status === "godkand") visaVy("app");
         else visaVy("inloggning", "Ingen kontakt med inloggningstjänsten. Kontrollera nätverket och ladda om sidan.");
     });
 })();

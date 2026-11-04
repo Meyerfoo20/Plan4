@@ -237,7 +237,7 @@
     document.addEventListener("keydown", function (e) {
         if (e.ctrlKey || e.metaKey || e.altKey)
             return;
-        if (document.body.classList.contains("p4-utloggad") || document.body.classList.contains("p4-laddar"))
+        if (["p4-utloggad", "p4-laddar", "p4-vantar"].some(function (k) { return document.body.classList.contains(k); }))
             return;
         if (skriver(document.activeElement) || $("overlay"))
             return;
