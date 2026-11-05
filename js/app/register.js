@@ -288,7 +288,7 @@ function bemanningRedigerare(p, b, period, egetId) {
         if (!ic.length)
             return "";
         return '<div class="bemgrupp"><b>' + esc(c.namn) + '</b>' + ic.map(x => '<label><input type="checkbox" class="bemP" value="' + x.id + '"' + ((b.personer || []).indexOf(x.id) >= 0 ? " checked" : "") + '> ' +
-            esc(x.namn) + (x.aktiv ? "" : ' <em class="inaktiv">inaktiv</em>') + '</label>').join("") + '</div>';
+            esc(x.namn) + (x.aktiv ? "" : ' <em class="inaktiv">Inaktiv</em>') + '</label>').join("") + '</div>';
     }).join("") + '</div>' +
         '<div id="bemVarn"></div>';
 }
@@ -393,7 +393,7 @@ function resursPersonTabell(p, u) {
         u.dagar.map(d => '<th>' + dagRubrik(d) + '</th>').join("") + '</tr></thead><tbody>' +
         sorterade.map(x => {
             const k = resKat(p, x.kategoriId);
-            return '<tr><td class="resnamn"><b>' + esc(x.namn) + '</b>' + (x.aktiv ? "" : ' <em class="inaktiv">inaktiv</em>') +
+            return '<tr><td class="resnamn"><b>' + esc(x.namn) + '</b>' + (x.aktiv ? "" : ' <em class="inaktiv">Inaktiv</em>') +
                 '<span>' + esc(k ? k.namn : "") + '</span></td>' +
                 u.dagar.map(d => {
                     const lista = (u.karta[x.id] || {})[d] || [];

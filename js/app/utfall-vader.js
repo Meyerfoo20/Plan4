@@ -82,35 +82,90 @@ function ritaVader() {
     });
 }
 
-async function hamtaVader() {
-    const plats = state.plats;
-    if (!plats || !plats.lat || vaderHamtas)
+// Prognosen gäller projektets ort, eller Malmö när ingen ort är vald.
+const VADERORT_STD = { namn: "Malmö", lat: 55.605, lon: 13.0038 };
+function vaderPlats() { return state.plats && state.plats.lat ? state.plats : VADERORT_STD; }
+
+async function hamtaVader(tvinga) {
+    const plats = vaderPlats();
+    if (vaderHamtas)
         return;
-    const first = dagar()[0];
-    if (VADER["_plats"] === plats.lat + "," + plats.lon && VADER["_start"] === first)
+    const nyckel = plats.lat + "," + plats.lon;
+    // samma ort och dag: hämta igen tidigast efter en timme
+    if (!tvinga && VADER._plats === nyckel && VADER._idag === IDAG && Date.now() - (VADER._tid || 0) < 3600000)
         return;
     vaderHamtas = true;
     try {
         const url = "https://api.open-meteo.com/v1/forecast?latitude=" + plats.lat + "&longitude=" + plats.lon +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum," +
+            "precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max" +
             "&wind_speed_unit=ms&timezone=Europe%2FStockholm&forecast_days=16";
         const r = await fetch(url);
+        if (!r.ok)
+            throw new Error("HTTP " + r.status);
         const d = await r.json();
-        VADER = { _plats: plats.lat + "," + plats.lon, _start: first };
-        (d.daily.time || []).forEach((dag, i) => {
-            VADER[dag] = { symbol: vaderSymbol(d.daily.weather_code[i]), temp: d.daily.temperature_2m_max[i],
-                tempMin: d.daily.temperature_2m_min ? d.daily.temperature_2m_min[i] : null,
-                nederbord: d.daily.precipitation_sum[i] || 0, vind: d.daily.wind_speed_10m_max[i] || 0,
-                byvind: d.daily.wind_gusts_10m_max ? d.daily.wind_gusts_10m_max[i] || 0 : null };
+        const dd = d.daily || {};
+        const tal = (lista, i) => lista && lista[i] != null ? lista[i] : null;
+        VADER = { _plats: nyckel, _idag: IDAG, _tid: Date.now(), _namn: plats.namn };
+        (dd.time || []).forEach((dag, i) => {
+            VADER[dag] = { kod: tal(dd.weather_code, i), symbol: vaderSymbol(dd.weather_code[i]),
+                temp: tal(dd.temperature_2m_max, i), tempMin: tal(dd.temperature_2m_min, i),
+                nederbord: tal(dd.precipitation_sum, i) || 0, sno: tal(dd.snowfall_sum, i) || 0,
+                regnrisk: tal(dd.precipitation_probability_max, i),
+                vind: tal(dd.wind_speed_10m_max, i) || 0, byvind: tal(dd.wind_gusts_10m_max, i) };
         });
         vaderFel = "";
-        ritaVader();
-        ritaVarningar();
     }
     catch (e) {
         vaderFel = "Väderprognosen kunde inte hämtas — kontrollera att datorn har internet.";
     }
     vaderHamtas = false;
+    ritaVader();
+    ritaVarningar();
+}
+
+// Hämta en färsk prognos varje timme medan sidan är öppen.
+setInterval(() => { try { hamtaVader(); } catch (e) { } }, 3600000);
+
+/* ---------- bedömning av dagens väder ----------
+   Nivåer för byggarbetsplatsen: gul = tänk på det, röd = kan stoppa arbeten
+   (kranlyft, tak- och ställningsarbete, gjutning, målning). */
+const VBED = { vindGul: 10, vindRod: 14, byGul: 15, byRod: 21, regnGul: 5, regnRod: 15, snoGul: 1, snoRod: 5,
+    kallaGul: -5, kallaRod: -10, varmeGul: 28 };
+
+function vaderBedomning(v) {
+    const ut = [];
+    const by = v.byvind || 0;
+    if (v.kod >= 95)
+        ut.push({ niva: "rod", txt: "Risk för åska" });
+    if (v.vind >= VBED.vindRod || by >= VBED.byRod)
+        ut.push({ niva: "rod", txt: "Hård vind " + Math.round(v.vind) + " m/s" + (by ? ", byar " + Math.round(by) : "") });
+    else if (v.vind >= VBED.vindGul || by >= VBED.byGul)
+        ut.push({ niva: "gul", txt: "Blåsigt " + Math.round(v.vind) + " m/s" + (by ? ", byar " + Math.round(by) : "") });
+    const mm = (x) => (x >= 10 ? Math.round(x) : x.toFixed(1).replace(".", ","));
+    if (v.sno >= VBED.snoRod)
+        ut.push({ niva: "rod", txt: "Mycket snö " + Math.round(v.sno) + " cm" });
+    else if (v.sno >= VBED.snoGul)
+        ut.push({ niva: "gul", txt: "Snö " + Math.round(v.sno) + " cm" });
+    else if (v.nederbord >= VBED.regnRod)
+        ut.push({ niva: "rod", txt: "Mycket regn " + mm(v.nederbord) + " mm" });
+    else if (v.nederbord >= VBED.regnGul)
+        ut.push({ niva: "gul", txt: "Regnigt " + mm(v.nederbord) + " mm" });
+    if (v.tempMin !== null && v.tempMin <= VBED.kallaRod)
+        ut.push({ niva: "rod", txt: "Sträng kyla " + Math.round(v.tempMin) + "°" });
+    else if (v.tempMin !== null && v.tempMin <= 0 && (v.nederbord >= 0.5 || v.sno > 0))
+        ut.push({ niva: "gul", txt: "Risk för halka" });
+    else if (v.tempMin !== null && v.tempMin <= VBED.kallaGul)
+        ut.push({ niva: "gul", mild: true, txt: "Kallt, lägst " + Math.round(v.tempMin) + "°" });
+    if (v.temp !== null && v.temp >= VBED.varmeGul)
+        ut.push({ niva: "gul", mild: true, txt: "Värme " + Math.round(v.temp) + "°" });
+    const roda = ut.filter(x => x.niva === "rod").length;
+    const bra = v.kod !== null && v.kod <= 3 && v.nederbord < 1;
+    // en samlad status per dag; orsakerna finns kvar i rader (visas som verktygstips)
+    // kyla eller värme ensamt gör dagen hyfsad, inte dålig
+    const niva = roda ? "rod" : ut.some(x => !x.mild) ? "gul" : bra && !ut.length ? "gron" : "hyfsat";
+    const status = { gron: "Bra väder", hyfsat: "Hyfsat väder", gul: "Dåligt väder", rod: "Mycket dåligt väder" }[niva];
+    return { niva: niva, status: status, rader: ut };
 }
 
 async function slaUppOrt(namn) {

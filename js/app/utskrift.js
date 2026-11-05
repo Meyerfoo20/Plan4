@@ -314,7 +314,7 @@ function avropUrval() {
     const ftg = avropFilter.foretag === "__utan" ? "Utan angivet företag"
         : avropFilter.foretag ? foretagNamn(avropFilter.foretag, tavlor, state) : "";
     return { rader: rader, per: per, flera: tavlor.length > 1, foretag: ftg,
-        urval: (avropFilter.tavla === "alla" ? "Båda delområdena" : T().namn) + " · " + typtext +
+        urval: (avropFilter.tavla === "alla" ? "Alla delområden" : T().namn) + " · " + typtext +
             (ftg ? " · " + ftg : "") + " · " + per.text,
         tomtext: "Inga avrop" + (ftg ? " för " + ftg : "") + " under " + per.text.toLowerCase() + "." };
 }
@@ -326,7 +326,7 @@ function avropFilterHtml() {
         [["alla", "Alla"], ["material", "Material"], ["ue", "UE / extern resurs"]].map(x => '<option value="' + x[0] + '"' + (v.typ === x[0] ? " selected" : "") + '>' + x[1] + '</option>').join("") + '</select></label>' +
         '<label>Tavla<select class="f" id="afTavla">' +
         '<option value="denna"' + (v.tavla === "denna" ? " selected" : "") + '>Aktuell tavla</option>' +
-        '<option value="alla"' + (v.tavla === "alla" ? " selected" : "") + '>Båda delområdena</option></select></label>' +
+        '<option value="alla"' + (v.tavla === "alla" ? " selected" : "") + '>Alla delområden</option></select></label>' +
         '<label>Företag<select class="f" id="afForetag">' + foretagOptioner() + '</select></label>' +
         '<label>Period<select class="f" id="afPeriod">' +
         [["denna", "Denna vecka"], ["2v", "2 veckor"], ["4v", "4 veckor"], ["valj", "Välj veckor"], ["alla", "Alla framtida"]].map(x => '<option value="' + x[0] + '"' + (v.period === x[0] ? " selected" : "") + '>' + x[1] + '</option>').join("") + '</select></label>' +
@@ -429,7 +429,7 @@ function utskriftDialog() {
         '<div id="uAvrop" class="dold">' + avropFilterHtml() + '</div>' +
         '<div id="uHinderval" class="dold"><div class="krysslista">' +
         '<label>Tavla<select class="f" id="uhTavla" style="margin-left:7px">' +
-        '<option value="denna">Aktuell tavla</option><option value="alla">Båda delområdena</option></select></label>' +
+        '<option value="denna">Aktuell tavla</option><option value="alla">Alla delområden</option></select></label>' +
         '<label><input type="checkbox" id="uhLosta"> Ta med lösta hinder</label></div></div>' +
         '<div id="uVaderval" class="dold"><p class="hjalp" style="margin:0">Vädervarningarna är gemensamma för projektet och skrivs ut för hela perioden, helger inkluderade.</p></div>' +
         '<div id="uFranvaro" class="dold"><div class="filterrad">' +
@@ -484,7 +484,7 @@ function utskriftDialog() {
             const tavlor = alla ? state.tavlor : [T()];
             const losta = document.getElementById("uhLosta").checked;
             const tab = utskriftHinder(tavlor, losta);
-            const urval = (alla ? "Båda delområdena" : T().namn) + (losta ? " · öppna och lösta" : " · öppna hinder");
+            const urval = (alla ? "Alla delområden" : T().namn) + (losta ? " · öppna och lösta" : " · öppna hinder");
             stangModal();
             return skrivUt(utskriftHuvud("Hinderlista", urval) +
                 (tab || '<p class="utom">Inga hinder finns för valt urval.</p>'), false);
@@ -566,36 +566,77 @@ function vaderVarningarPeriod(start, antalDagar) {
     return ut;
 }
 
+function vaderDagNamn(iso) {
+    return iso === IDAG ? "Idag" : iso === plus(IDAG, 1) ? "Imorgon" : dagNamnKort(iso).split(" ")[0];
+}
+
+function vaderDagRad(iso) {
+    const v = VADER[iso];
+    if (!v)
+        return "";
+    const b = vaderBedomning(v);
+    const egna = vaderTraffar(iso);
+    const temp = (v.temp !== null ? Math.round(v.temp) + "°" : "–") + (v.tempMin !== null ? '<small>' + Math.round(v.tempMin) + "°</small>" : "");
+    const del = (t) => '<span class="vp-del">' + t + "</span>";
+    const detalj = del("💨 " + Math.round(v.vind) + " m/s" + (v.byvind ? " (" + Math.round(v.byvind) + ")" : "")) +
+        " · " + del("💧 " + (v.nederbord >= 10 ? Math.round(v.nederbord) : v.nederbord.toFixed(1).replace(".", ",")) + " mm") +
+        (v.regnrisk !== null && v.regnrisk !== undefined ? " · " + del(v.regnrisk + " % risk") : "");
+    return '<div class="vp-dag niva-' + b.niva + (iso === IDAG ? " idag" : "") + '">' +
+        '<span class="vp-namn"><b>' + vaderDagNamn(iso) + "</b><small>" + kortDatum(iso) + "</small></span>" +
+        '<span class="vp-sym" aria-hidden="true">' + v.symbol + "</span>" +
+        '<span class="vp-temp">' + temp + "</span>" +
+        '<span class="vp-bed"><span class="vp-tagg ' + b.niva + '"' +
+        (b.rader.length || egna.length ? ' title="' + esc(b.rader.map(x => x.txt).concat(egna.length ? ["Över projektets gräns: " + egna.join(", ")] : []).join(" · ")) + '"' : "") +
+        ">" + esc(b.status) + "</span>" +
+        '<span class="vp-detalj">' + detalj + "</span></span></div>";
+}
+
 function ritaVarningar() {
     const box = document.getElementById("varningsinnehall");
     if (!box)
         return;
-    const aktiva = aktivaGranser(state), lista = vaderVarningar();
-    const helg = helgDagar(IDAG);
-    const iHelg = helg ? lista.filter(x => helg.indexOf(x.dag) >= 0) : [];
-    const ovriga = lista.filter(x => iHelg.indexOf(x) < 0);
+    const plats = vaderPlats();
+    const harData = VADER._idag && VADER[IDAG];
     let html = "";
-    if (!aktiva.length) {
-        html = '<div class="tomrad">Inga gränsvärden valda. Ställ in projektets nivåer under Tavla ⋯.</div>';
-    }
-    else if (!lista.length) {
-        html = '<div class="tomrad">Inga överskridna gränsvärden i prognosen.</div>';
+    if (!harData) {
+        html = '<div class="tomrad">' + esc(vaderFel || "Hämtar väderprognosen för " + plats.namn + "…") + "</div>";
     }
     else {
-        if (iHelg.length) {
-            html += '<div class="helgvarning"><b>⚠ Inför helgen</b>' +
-                iHelg.map(x => '<div class="vrad"><span class="vnamn">' + dagNamnKort(x.dag) + '</span><span class="vtext">' +
-                    x.traffar.map(esc).join(" · ") + '</span></div>').join("") + '</div>';
-        }
-        html += ovriga.map(x => '<div class="vrad"><span class="vnamn">' + dagNamnKort(x.dag) + '</span><span class="vtext">' +
-            x.traffar.map(esc).join(" · ") + '</span></div>').join("");
+        const vecka1 = [], vecka2 = [];
+        for (let i = 0; i < 14; i++)
+            (i < 7 ? vecka1 : vecka2).push(plus(IDAG, i));
+        const grupp = (rubrik, under, lista) => {
+            const rader = lista.map(vaderDagRad).join("");
+            if (!rader)
+                return "";
+            const roda = lista.filter(d => VADER[d] && vaderBedomning(VADER[d]).niva === "rod").length;
+            const gula = lista.filter(d => VADER[d] && vaderBedomning(VADER[d]).niva === "gul").length;
+            const sammanfattning = roda ? roda + (roda === 1 ? " dag med varning" : " dagar med varning")
+                : gula ? gula + (gula === 1 ? " dag att tänka på" : " dagar att tänka på") : "Inget besvärligt väder";
+            return '<div class="vp-grupp"><div class="vp-grupprubrik"><b>' + rubrik + "</b>" +
+                (under ? "<small>" + under + "</small>" : "") +
+                '<span class="vp-summa ' + (roda ? "rod" : gula ? "gul" : "gron") + '">' + sammanfattning + "</span></div>" + rader + "</div>";
+        };
+        html = '<div class="vp-plats">📍 ' + esc(VADER._namn || plats.namn) + " · 14 dagar framåt</div>" +
+            grupp("Kommande 7 dagar", kortDatum(vecka1[0]) + "–" + kortDatum(vecka1[6]), vecka1) +
+            grupp("Följande 7 dagar", kortDatum(vecka2[0]) + "–" + kortDatum(vecka2[6]) + " · mer osäker prognos", vecka2) +
+            '<p class="vp-kalla">Prognos från Open-Meteo · hämtad ' +
+            new Date(VADER._tid).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }) +
+            (state.plats && state.plats.lat ? "" : " · byt ort under Projektinställningar") + "</p>";
     }
     box.innerHTML = html;
+    // remsan överst på tavlan: varningar de närmaste fyra dagarna
     const remsa = document.getElementById("varningsremsa");
-    const naraDagar = lista.filter(x => x.dag >= IDAG).slice(0, 4);
+    const egna = vaderVarningar();
+    const naraDagar = [0, 1, 2, 3].map(i => plus(IDAG, i)).map(dag => {
+        const v = VADER[dag];
+        const roda = v && vaderBedomning(v).niva === "rod" ? ["Mycket dåligt väder"] : [];
+        const e = (egna.find(x => x.dag === dag) || { traffar: [] }).traffar;
+        return { dag: dag, txt: roda.concat(e) };
+    }).filter(x => x.txt.length);
     remsa.classList.toggle("har", naraDagar.length > 0);
     remsa.innerHTML = naraDagar.length
-        ? '<span>⚠ Vädervarning</span>' + naraDagar.map(x => '<span class="vdag">' + dagNamnKort(x.dag) + " " +
-            esc(x.traffar.join(" · ")) + '</span>').join("")
+        ? '<span>⚠ Vädervarning</span>' + naraDagar.map(x => '<span class="vdag">' + vaderDagNamn(x.dag) + " " +
+            esc(x.txt.join(" · ")) + '</span>').join("")
         : "";
 }

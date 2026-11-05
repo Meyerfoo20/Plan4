@@ -180,7 +180,7 @@ function kraverAtgard(p, tavlor, idag, vader) {
         avropRader({ tavlor: [t], typ: "alla" }, p).forEach(r => {
             if (!forsenatAvrop(r, idag))
                 return;
-            rad("avrop_forsenat", "rod", t, "Avrop · " + (r.foretag || r.vad), (r.vad && r.foretag ? r.vad + " · " : "") + "skulle gjorts " + kortDatum(r.dag), { typ: "avrop", tavla: t.id, dag: r.dag });
+            rad("avrop_forsenat", "rod", t, "Avrop · " + (r.foretag || r.vad), (r.vad && r.foretag ? r.vad + " · " : "") + "skulle ha gjorts " + kortDatum(r.dag), { typ: "avrop", tavla: t.id, dag: r.dag });
         });
         t.kort.forEach(k => {
             (k.forutsattningar || []).forEach(f => {

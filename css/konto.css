@@ -758,3 +758,63 @@ body.p4-vantar > :not(.p4-vantesida):not(#utskrift):not(#utskriftsfot) {
 .p4-vantesida.inga .p4-vantar-ikon::before {
   background: var(--accent-main);
 }
+
+/* ---------- läsbehörighet ---------- */
+.p4-ks-valista li.p4-ks-medbeh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p4-ks-valista li.p4-ks-medbeh label {
+  flex: 1;
+  min-width: 0;
+}
+.p4-ks-valista .p4-ks-beh {
+  width: auto;
+  margin-right: 12px;
+  flex: none;
+}
+.p4-ks-valista .p4-ks-beh:disabled {
+  opacity: .5;
+}
+.p4-laschip {
+  display: none;
+}
+body.p4-las .p4-laschip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-main);
+  background: var(--accent-light);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+body.p4-las #planeraKnapp,
+body.p4-las #snabbPostKnapp,
+body.p4-las #rullaFram,
+body.p4-las #nyTavlaKnapp,
+body.p4-las .rutnat .plus,
+body.p4-las .flik.plus,
+body.p4-las .hinderform,
+body.p4-las .p4-tom-knappar,
+body.p4-las .p4-tips {
+  display: none !important;
+}
+body.p4-las .kort .bock,
+body.p4-las .h-los,
+body.p4-las .kedjebock {
+  pointer-events: none;
+  opacity: .55;
+}
+body.p4-las .kort {
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .p4-ks-valista li.p4-ks-medbeh {
+    flex-wrap: wrap;
+  }
+  .p4-ks-valista .p4-ks-beh {
+    margin: 0 14px 10px 42px;
+  }
+}

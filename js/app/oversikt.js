@@ -68,8 +68,8 @@ function ritaStart(markera) {
         (l.forfallna ? ' · <span class="rodtal">' + l.forfallna + " förfallna</span>" : "") + '</div>';
     html += '<div class="dashblock"><h3>Att göra' +
         '<span class="antal">Sortera <select class="f dashval" id="psSort">' +
-        '<option value="deadline"' + (startSort === "deadline" ? " selected" : "") + '>efter deadline</option>' +
-        '<option value="kategori"' + (startSort === "kategori" ? " selected" : "") + '>efter kategori</option></select></span></h3>' +
+        '<option value="deadline"' + (startSort === "deadline" ? " selected" : "") + '>Efter deadline</option>' +
+        '<option value="kategori"' + (startSort === "kategori" ? " selected" : "") + '>Efter kategori</option></select></span></h3>' +
         (fore.length ? '<table class="lista fatabell"><thead><tr><th>Status</th><th>Att göra</th><th>Kategori</th>' +
             '<th>Ansvarig</th><th>Deadline</th></tr></thead><tbody>' + fore.map(a => aktivitetRad(p, a, markera)).join("") + '</tbody></table>'
             : '<p class="hjalp">Inget att göra ännu. Exempel: Beställ etableringsskylt, Boka mobilkran, Få besked om kulör, ' +

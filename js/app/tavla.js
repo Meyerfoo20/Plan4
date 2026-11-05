@@ -64,10 +64,6 @@ function rita() {
             vanster.className = "dagvanster";
             if (iso <= IDAG)
                 vanster.appendChild(lageKnapp(iso));
-            const vad = document.createElement("span");
-            vad.className = "vader";
-            vad.dataset.dag = iso;
-            vanster.appendChild(vad);
             nr.appendChild(vanster);
             const dnr = document.createElement("span");
             dnr.textContent = kortDatum(iso);
@@ -93,7 +89,7 @@ function rita() {
             const p = document.createElement("button");
             p.className = "plus";
             p.type = "button";
-            p.textContent = "+ post";
+            p.textContent = "+ Post";
             p.title = "Ny post " + dagEtikett(iso);
             p.addEventListener("click", () => snabbPost(iso));
             ruta.appendChild(p);

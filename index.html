@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261105a">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261105a">
-  <link rel="stylesheet" href="css/vyer.css?v=20261105a">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261105a">
-  <link rel="stylesheet" href="css/skal.css?v=20261105a">
-  <link rel="stylesheet" href="css/konto.css?v=20261105a">
+  <link rel="stylesheet" href="css/bas.css?v=20261105e">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261105e">
+  <link rel="stylesheet" href="css/vyer.css?v=20261105e">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261105e">
+  <link rel="stylesheet" href="css/skal.css?v=20261105e">
+  <link rel="stylesheet" href="css/konto.css?v=20261105e">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -140,6 +140,7 @@
             <input class="tavlanamn" id="tavlanamn" aria-label="Tavlans namn" title="Klicka för att byta namn på tavlan">
             <div class="p4-hero-meta">
               <span class="spann" id="spann"></span>
+              <span class="p4-laschip" title="Du kan se allt i projektet men inte ändra något. Be en admin om du behöver redigera.">Bara läsbehörighet</span>
               <span class="vychip dold" id="vychip">Du tittar utanför planen <button id="tillPlanen">Till planen</button></span>
               <span class="synkchip dold" id="synkchip" title="Klicka för att synka via Ny vecka +">Tavlorna ligger på olika perioder</span>
               <button class="kedjechip dold" id="kedjechip" title="Dölj den markerade kedjan">Kedja visas · Dölj ×</button>
@@ -188,12 +189,12 @@
             <button type="button" class="p4-btn p4-btn-ljus" data-klick="snabbPostKnapp">+ Snabb post</button>
           </div>
         </div>
-        <p class="p4-tips">Klicka på en post för att öppna den · dra för att flytta · dubbelklicka för att redigera · <b>+ post</b> i varje dag</p>
+        <p class="p4-tips">Klicka på en post för att öppna den · dra för att flytta · dubbelklicka för att redigera · <b>+ Post</b> i varje dag</p>
       </section>
 
       <aside class="p4-aside" aria-label="Sidopaneler">
         <div class="panel" id="varningspanel">
-          <h2><span class="p4-ik ik-vader"></span>Vädervarningar</h2>
+          <h2><span class="p4-ik ik-vader"></span>Vädervarningar<button type="button" class="p4-fallknapp" id="vaderFall" aria-expanded="false" aria-controls="varningsinnehall" title="Visa vädret"><span class="p4-caret" aria-hidden="true"></span></button></h2>
           <div id="varningsinnehall"></div>
         </div>
 
@@ -278,33 +279,33 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261105a"></script>
-  <script src="js/core/datum.js?v=20261105a"></script>
-  <script src="js/core/kort.js?v=20261105a"></script>
-  <script src="js/core/operationer.js?v=20261105a"></script>
-  <script src="js/core/avrop.js?v=20261105a"></script>
-  <script src="js/core/resurser.js?v=20261105a"></script>
-  <script src="js/core/franvaro.js?v=20261105a"></script>
-  <script src="js/core/foretag.js?v=20261105a"></script>
-  <script src="js/core/projekt.js?v=20261105a"></script>
+  <script src="js/core/konstanter.js?v=20261105e"></script>
+  <script src="js/core/datum.js?v=20261105e"></script>
+  <script src="js/core/kort.js?v=20261105e"></script>
+  <script src="js/core/operationer.js?v=20261105e"></script>
+  <script src="js/core/avrop.js?v=20261105e"></script>
+  <script src="js/core/resurser.js?v=20261105e"></script>
+  <script src="js/core/franvaro.js?v=20261105e"></script>
+  <script src="js/core/foretag.js?v=20261105e"></script>
+  <script src="js/core/projekt.js?v=20261105e"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261105a"></script>
-  <script src="js/app/tavla.js?v=20261105a"></script>
-  <script src="js/app/flytt.js?v=20261105a"></script>
-  <script src="js/app/guide.js?v=20261105a"></script>
-  <script src="js/app/redigera.js?v=20261105a"></script>
-  <script src="js/app/utfall-vader.js?v=20261105a"></script>
-  <script src="js/app/utskrift.js?v=20261105a"></script>
-  <script src="js/app/register.js?v=20261105a"></script>
-  <script src="js/app/oversikt.js?v=20261105a"></script>
-  <script src="js/app/projekt.js?v=20261105a"></script>
+  <script src="js/app/grund.js?v=20261105e"></script>
+  <script src="js/app/tavla.js?v=20261105e"></script>
+  <script src="js/app/flytt.js?v=20261105e"></script>
+  <script src="js/app/guide.js?v=20261105e"></script>
+  <script src="js/app/redigera.js?v=20261105e"></script>
+  <script src="js/app/utfall-vader.js?v=20261105e"></script>
+  <script src="js/app/utskrift.js?v=20261105e"></script>
+  <script src="js/app/register.js?v=20261105e"></script>
+  <script src="js/app/oversikt.js?v=20261105e"></script>
+  <script src="js/app/projekt.js?v=20261105e"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261105a"></script>
+  <script src="js/skal.js?v=20261105e"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261105a"></script>
-  <script src="js/konto/konto.js?v=20261105a"></script>
+  <script src="js/konto/firebase-config.js?v=20261105e"></script>
+  <script src="js/konto/konto.js?v=20261105e"></script>
 </body>
 </html>

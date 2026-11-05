@@ -11,8 +11,10 @@
 
    Datamodell i Firestore:
      anvandare/{uid}                 { epost, aktivtProjekt, uppdaterad }
-     anvandare/{uid}/projekt/{id}    { namn, arkiverad, data, rev, uppdaterad, enhet }
+     projekt/{id}                    { namn, arkiverad, data, rev, uppdaterad, enhet, medlemmar, lasare }
    där data är hela projektet som JSON-text och rev ökar med ett per sparning.
+   medlemmar är alla som har tillgång (uid). lasare är de medlemmar som bara
+   får läsa: de ser projektet men deras ändringar sparas aldrig.
 
    Skriptet är ett vanligt skript som laddar Firebase med dynamisk import, så
    att det fungerar även när index.html öppnas direkt från disken.
@@ -63,7 +65,17 @@
         return (h >>> 0).toString(36) + ":" + txt.length;
     }
     const projektJson = (p) => JSON.stringify(p);
-    const arAndrad = (p) => moln.hash[p.id] !== hash(projektJson(p));
+    // Läsbehöriga har aldrig något eget att ladda upp.
+    const arAndrad = (p) => !arLas(p.id) && moln.hash[p.id] !== hash(projektJson(p));
+
+    // ---------- läsbehörighet ----------
+    // Projekt där den inloggade bara får läsa (uid finns i projektets lasare).
+    const LASNYCKEL = "plan4_las";            // { uid, ids: [projekt-id] }, så att läget gäller även offline
+    let lasIds = new Set();
+    const arLas = (id) => !!anvandare && !arAdmin() && lasIds.has(id);
+    // Projektets innehåll utan vald tavla: att byta tavla räknas inte som en ändring.
+    const innehall = (p) => JSON.stringify(Object.assign({}, p, { aktiv: undefined }));
+    const lasBasis = new Map();               // id → innehållet senast det synkades med molnet
 
     // ---------- Firebase ----------
     async function laddaFirebase() {
@@ -85,7 +97,7 @@
     const projektMeta = new Map();   // id → { namn, arkiverad, medlemmar } (admin)
     function lasMeta(docs) {
         projektMeta.clear();
-        docs.forEach((d) => { const x = d.data(); projektMeta.set(d.id, { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [] }); });
+        docs.forEach((d) => { const x = d.data(); projektMeta.set(d.id, { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [], lasare: x.lasare || [] }); });
     }
 
     // ---------- hjälp mot appen ----------
@@ -97,7 +109,59 @@
     }
     function dialogOppen() { return !!$("overlay"); }
     function lasProjekt(data) { const p = JSON.parse(data); rustaProjekt(p, IDAG); return p; }
-    function markeraSynkad(p, rev) { moln.rev[p.id] = rev; moln.hash[p.id] = hash(projektJson(p)); }
+    function markeraSynkad(p, rev) { moln.rev[p.id] = rev; moln.hash[p.id] = hash(projektJson(p)); lasBasis.set(p.id, innehall(p)); }
+
+    // Läser vilka projekt den inloggade bara får läsa, ur projektdokumenten.
+    function uppdateraLas(dokument) {
+        if (!anvandare) return;
+        const ny = new Set(dokument.filter((d) => (d.lasare || []).includes(anvandare.uid)).map((d) => d.id));
+        const andrat = ny.size !== lasIds.size || [...ny].some((id) => !lasIds.has(id));
+        lasIds = ny;
+        skrivJson(LASNYCKEL, { uid: anvandare.uid, ids: [...ny] });
+        if (andrat) { markeraLasvy(); if (kontoOppen()) ritaSynkkort(); }
+    }
+    // Innehållet ett läsbehörigt projekt ska ha: senaste synk, annars den sparade kopian på datorn.
+    function basFor(p) {
+        if (lasBasis.has(p.id)) return lasBasis.get(p.id);
+        try {
+            const d = JSON.parse(localStorage.getItem(NYCKEL));
+            const x = d && Array.isArray(d.projekt) && d.projekt.find((q) => q.id === p.id);
+            if (x) { const b = innehall(lasProjekt(JSON.stringify(x))); lasBasis.set(p.id, b); return b; }
+        } catch (e) { }
+        return null;
+    }
+    function lasMeddelande() {
+        status("Du har bara läsbehörighet i " + (state.projekt || "projektet") + " — ändringen sparades inte");
+    }
+    // Ändringar i ett läsbehörigt projekt rullas tillbaka direkt och sparas aldrig.
+    let aterstallTimer = null;
+    function lasAndrat() {
+        return plan4.projekt.some((p) => { if (!arLas(p.id)) return false; const b = basFor(p); return b !== null && b !== innehall(p); });
+    }
+    function aterstallLas() {
+        aterstallTimer = null;
+        let n = 0;
+        plan4.projekt.forEach((p, i) => {
+            if (!arLas(p.id)) return;
+            const b = basFor(p);
+            if (b === null || b === innehall(p)) return;
+            const ny = lasProjekt(b);
+            if (p.aktiv && ny.tavlor.some((t) => t.id === p.aktiv)) ny.aktiv = p.aktiv;
+            plan4.projekt[i] = ny;
+            if (state === p) { angraForeAvbryt(); state = ny; valdKedja = null; }
+            n++;
+        });
+        if (!n) return;
+        if (dialogOppen()) stangModal();
+        rita();
+        lasMeddelande();
+    }
+    function markeraLasvy() {
+        const las = !!(state && state.id && arLas(state.id));
+        document.body.classList.toggle("p4-las", las);
+        const namn = $("tavlanamn");
+        if (namn) namn.readOnly = las;
+    }
 
     // Läser in molnets projekt som hela Plan4 (ersätter det lokala).
     function anvandMolnet(dokument, aktivt) {
@@ -177,7 +241,8 @@
                         if (molnRev !== vantad) return { konflikt: true, snap };
                         tx.set(ref, { namn: p.projekt, arkiverad: !!p.arkiverad, data: json, rev: molnRev + 1,
                             uppdaterad: fb.fs.serverTimestamp(), enhet: ENHET,
-                            medlemmar: snap.exists() ? snap.data().medlemmar || [] : [anvandare.uid] });
+                            medlemmar: snap.exists() ? snap.data().medlemmar || [] : [anvandare.uid],
+                            lasare: snap.exists() ? snap.data().lasare || [] : [] });
                         return { rev: molnRev + 1 };
                     });
                 } catch (e) {
@@ -190,6 +255,7 @@
                 } else {
                     moln.rev[p.id] = utfall.rev;
                     moln.hash[p.id] = hash(json);
+                    lasBasis.set(p.id, innehall(JSON.parse(json)));
                     sparaMoln();
                 }
             }
@@ -244,6 +310,7 @@
         if (lyssnare) lyssnare();
         lyssnare = fb.fs.onSnapshot(projektFraga(), (snap) => {
             if (arAdmin()) { lasMeta(snap.docs); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } }
+            else uppdateraLas(snap.docs.map((d) => Object.assign({ id: d.id }, d.data())));
             snap.docChanges().forEach((c) => {
                 const id = c.doc.id, d = c.doc.data();
                 if (c.type === "removed") {
@@ -289,6 +356,7 @@
         const [snap, anvSnap] = await Promise.all([fb.fs.getDocs(projektFraga()), fb.fs.getDoc(anvDoc())]);
         if (arAdmin()) lasMeta(snap.docs);
         const dokument = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+        if (!arAdmin()) uppdateraLas(dokument); else { lasIds = new Set(); markeraLasvy(); }
         const aktivt = anvSnap.exists() ? anvSnap.data().aktivtProjekt : null;
         const agare = moln.uid;
 
@@ -541,7 +609,7 @@
     window.p4OppnaKonto = oppnaKontosida;
     // När projekten ändras (nytt projekt, synk från annan enhet) hålls siffror och lista aktuella.
     const ursRitaKonto = rita;
-    rita = function () { const r = ursRitaKonto.apply(this, arguments); if (kontoOppen()) ritaSynkkort(); return r; };
+    rita = function () { markeraLasvy(); const r = ursRitaKonto.apply(this, arguments); if (kontoOppen()) ritaSynkkort(); return r; };
     // Översikten och Att göra stänger kontosidan, oavsett varifrån de öppnas.
     const ursOppnaDash = oppnaDash, ursOppnaStart = oppnaStart;
     oppnaDash = function () { document.body.classList.remove("p4-kontovy"); return ursOppnaDash.apply(this, arguments); };
@@ -675,9 +743,9 @@
 
     function medlemsText(id) {
         const m = projektMeta.get(id);
-        if (!m) return '<span class="p4-ks-dampad">sparas…</span>';
+        if (!m) return '<span class="p4-ks-dampad">Sparas…</span>';
         const andra = m.medlemmar.filter((u) => { const a = allaAnvandare.find((x) => x.uid === u); return !(a && a.roll === "admin"); });
-        return andra.length ? andra.length + (andra.length === 1 ? " person" : " personer") : '<span class="p4-ks-dampad">bara admin</span>';
+        return andra.length ? andra.length + (andra.length === 1 ? " person" : " personer") : '<span class="p4-ks-dampad">Bara admin</span>';
     }
 
     function ritaSiffror() {
@@ -704,11 +772,12 @@
             const poster = p.tavlor.reduce((n, t) => n + t.kort.length, 0);
             const andrad = senastAndrad(p);
             const lageTxt = k ? (k.borttagen ? "Borttaget på en annan enhet" : "Ändrat på två ställen")
-                : !synkKlar ? "Väntar" : arAndrad(p) ? "Sparas…" : "Sparat";
+                : !synkKlar ? "Väntar" : arLas(p.id) ? "Läsbehörig" : arAndrad(p) ? "Sparas…" : "Sparat";
             const klass = k ? "konflikt" : arAndrad(p) || !synkKlar ? "vantar" : "ok";
             return "<tr><td><b>" + esc(p.projekt) + "</b>" +
-                (p.id === state.id ? ' <span class="p4-ks-tagg oppet">öppet</span>' : "") +
-                (p.arkiverad ? ' <span class="p4-ks-tagg">arkiverat</span>' : "") + "</td>" +
+                (p.id === state.id ? ' <span class="p4-ks-tagg oppet">Öppet</span>' : "") +
+                (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
+                (arLas(p.id) ? ' <span class="p4-ks-tagg">Bara läsa</span>' : "") + "</td>" +
                 "<td>" + p.tavlor.length + "</td><td>" + poster + "</td>" +
                 (arAdmin() ? "<td>" + medlemsText(p.id) + "</td>" : "") +
                 "<td>" + esc(andrad ? new Date(andrad).toLocaleDateString("sv-SE") : "—") + "</td>" +
@@ -863,7 +932,7 @@
         synkKlar = false;
         sparaNu = async () => true;          // ingen ny lokal skrivning mellan utloggning och omladdning
         clearTimeout(sparaTimer);
-        try { localStorage.removeItem(NYCKEL); localStorage.removeItem(MOLNNYCKEL); localStorage.removeItem(BEHNYCKEL); } catch (e) { }
+        try { localStorage.removeItem(NYCKEL); localStorage.removeItem(MOLNNYCKEL); localStorage.removeItem(BEHNYCKEL); localStorage.removeItem(LASNYCKEL); } catch (e) { }
         try { await fb.auth.signOut(fb.authInst); } catch (e) { }
         location.reload();
     }
@@ -914,6 +983,29 @@
     }
 
     // ---------- koppling till appen ----------
+    // I ett läsbehörigt projekt sparas ingenting: ändringen rullas tillbaka i stället.
+    const ursSpara = spara;
+    spara = function () {
+        if (lasIds.size && lasAndrat()) {
+            if (!aterstallTimer) aterstallTimer = setTimeout(aterstallLas, 0);
+            return;
+        }
+        return ursSpara.apply(this, arguments);
+    };
+    // Knappar och handgrepp som ändrar tavlan stängs av för läsbehöriga.
+    const LAS_SPARR = "#snabbPostKnapp, #planeraKnapp, #rullaFram, #nyTavlaKnapp, #hLagg, .rutnat .plus, .flik.plus, " +
+        ".kort .bock, .h-los, .kedjebock, [data-klick='planeraKnapp'], [data-klick='snabbPostKnapp']";
+    const lasLage = () => document.body.classList.contains("p4-las");
+    document.addEventListener("click", (e) => {
+        if (!lasLage() || !e.target.closest || !e.target.closest(LAS_SPARR)) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        status("Du har bara läsbehörighet i " + (state.projekt || "projektet"));
+    }, true);
+    document.addEventListener("dragstart", (e) => { if (lasLage()) e.preventDefault(); }, true);
+    document.addEventListener("dblclick", (e) => {
+        if (lasLage() && e.target.closest && e.target.closest(".kort")) e.stopImmediatePropagation();
+    }, true);
+
     // Varje lokal sparning följs av en uppladdning (med kort fördröjning).
     const ursSparaNu = sparaNu;
     sparaNu = async function () {
@@ -1066,7 +1158,7 @@
                 if (st !== "nekad") atgard += knapp("neka", a.uid, st === "godkand" ? "Spärra" : "Neka", "fara");
                 if (st === "godkand") atgard += roll === "admin" ? knapp("user", a.uid, "Ta bort admin") : knapp("admin", a.uid, "Gör till admin");
             }
-            return "<tr><td><b>" + esc(a.namn || a.epost || a.uid) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">du</span>' : "") +
+            return "<tr><td><b>" + esc(a.namn || a.epost || a.uid) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">Du</span>' : "") +
                 (a.namn ? "<br><small>" + esc(a.epost || "") + "</small>" : "") + "</td>" +
                 "<td>" + esc(skapad ? skapad.toLocaleDateString("sv-SE") : "—") + "</td>" +
                 "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Admin</span>' : "Användare") + "</td>" +
@@ -1082,7 +1174,7 @@
                 '<button type="button" data-adminfilter="alla"' + (filter === "alla" ? ' class="vald"' : "") + ">Alla (" + allaAnvandare.length + ")</button>" +
               "</span></div>" +
             '<p class="hjalp">Nya konton kommer inte åt Plan4 förrän du godkänner dem och ger dem minst ett projekt. ' +
-              "Användare ser bara projekten de är medlemmar i. Admin har tillgång till alla projekt.</p>" +
+              "Användare ser bara projekten de är medlemmar i, och du väljer om de får redigera eller bara läsa. Admin har tillgång till alla projekt.</p>" +
             (lista.length
               ? '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Användare</th><th>Skapad</th><th>Roll</th><th>Projekt</th><th>Status</th><th></th></tr></thead><tbody>' +
                 rader + "</tbody></table></div>"
@@ -1128,7 +1220,8 @@
     // ---------- medlemmar i projekt (admin) ----------
     function projektFor(a) {
         if ((a.roll || "user") === "admin") return '<span class="p4-ks-dampad">Alla projekt</span>';
-        const namn = [...projektMeta].filter(([, m]) => m.medlemmar.includes(a.uid)).map(([, m]) => esc(m.namn));
+        const namn = [...projektMeta].filter(([, m]) => m.medlemmar.includes(a.uid))
+            .map(([, m]) => esc(m.namn) + (m.lasare.includes(a.uid) ? ' <span class="p4-ks-tagg">Bara läsa</span>' : ""));
         return namn.length ? namn.join(", ") : '<span class="p4-ks-dampad">Inga</span>';
     }
     const valbaraProjekt = () => [...projektMeta].map(([id, m]) => Object.assign({ id }, m))
@@ -1145,19 +1238,23 @@
             '<p class="hjalp" style="margin-top:0">' + (godkann
                 ? "Välj vilka projekt " + esc(a.namn || a.epost) + " ska få tillgång till. Minst ett projekt krävs."
                 : "Bocka i projekten " + esc(a.namn || a.epost) + " ska vara med i. Utan projekt kommer personen inte åt något.") + "</p>" +
-            '<ul class="p4-ks-valista">' + lista.map((p) =>
-                '<li><label><input type="checkbox" data-pval="' + esc(p.id) + '"' + (p.medlemmar.includes(a.uid) ? " checked" : "") + "> " +
-                "<span><b>" + esc(p.namn) + "</b>" + (p.arkiverad ? ' <span class="p4-ks-tagg">arkiverat</span>' : "") +
-                "<small>" + (p.medlemmar.filter((u) => u !== a.uid).length) + " andra medlemmar</small></span></label></li>").join("") + "</ul>" +
+            '<ul class="p4-ks-valista">' + lista.map((p) => {
+                const med = p.medlemmar.includes(a.uid);
+                return '<li class="p4-ks-medbeh"><label><input type="checkbox" data-pval="' + esc(p.id) + '"' + (med ? " checked" : "") + "> " +
+                    "<span><b>" + esc(p.namn) + "</b>" + (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
+                    "<small>" + (p.medlemmar.filter((u) => u !== a.uid).length) + " andra medlemmar</small></span></label>" +
+                    behorighetsval("data-pbeh", p.id, med && p.lasare.includes(a.uid), !med) + "</li>";
+            }).join("") + "</ul>" +
             '<div class="notis rod dold" id="pvFel"></div>';
         modal(godkann ? "Godkänn " + (a.namn || a.epost) : "Projekt för " + (a.namn || a.epost), a.namn ? a.epost : "", kropp, [
             { txt: "Avbryt", fn: stangModal },
             { txt: godkann ? "Godkänn och ge tillgång" : "Spara", primar: true, fn: async () => {
                 const valda = [...document.querySelectorAll("[data-pval]")].filter((x) => x.checked).map((x) => x.dataset.pval);
+                const lasVal = new Set([...document.querySelectorAll("[data-pbeh]")].filter((x) => x.value === "las").map((x) => x.dataset.pbeh));
                 if (godkann && !valda.length) { const f = $("pvFel"); f.textContent = "Välj minst ett projekt."; f.classList.remove("dold"); return; }
                 stangModal();
                 try {
-                    await sattProjektFor(a.uid, valda);
+                    await sattProjektFor(a.uid, valda, lasVal);
                     if (godkann) {
                         await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", a.uid),
                             { status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }, { merge: true });
@@ -1168,14 +1265,32 @@
         ]);
     }
 
-    // Lägger till och tar bort en användare ur projekt så att hen är med i exakt de valda.
-    async function sattProjektFor(uid, valda) {
+    // Väljare för behörighet i ett projekt: redigera eller bara läsa.
+    function behorighetsval(attr, id, las, av) {
+        return '<select class="f p4-ks-beh" ' + attr + '="' + esc(id) + '"' + (av ? " disabled" : "") + ' aria-label="Behörighet">' +
+            '<option value="red"' + (las ? "" : " selected") + ">Kan redigera</option>" +
+            '<option value="las"' + (las ? " selected" : "") + ">Bara läsa</option></select>";
+    }
+    // Väljaren gäller bara när personen är med i projektet.
+    document.addEventListener("change", (e) => {
+        const box = e.target.closest && e.target.closest(".p4-ks-medbeh input[type=checkbox]");
+        if (!box) return;
+        const val = box.closest("li").querySelector(".p4-ks-beh");
+        if (val) val.disabled = !box.checked || box.disabled;
+    });
+
+    // Lägger till och tar bort en användare ur projekt så att hen är med i exakt de valda,
+    // med läsbehörighet i de projekt som finns i lasVal.
+    async function sattProjektFor(uid, valda, lasVal) {
+        lasVal = lasVal || new Set();
         for (const [id, m] of projektMeta) {
             const med = m.medlemmar.includes(uid), ska = valda.includes(id);
-            if (med === ska) continue;
-            const ny = ska ? m.medlemmar.concat(uid) : m.medlemmar.filter((u) => u !== uid);
-            await fb.fs.setDoc(projektDoc(id), { medlemmar: ny }, { merge: true });
-            m.medlemmar = ny;
+            const arL = m.lasare.includes(uid), skaL = ska && lasVal.has(id);
+            if (med === ska && arL === skaL) continue;
+            const ny = ska ? (med ? m.medlemmar : m.medlemmar.concat(uid)) : m.medlemmar.filter((u) => u !== uid);
+            const nyL = skaL ? (arL ? m.lasare : m.lasare.concat(uid)) : m.lasare.filter((u) => u !== uid);
+            await fb.fs.setDoc(projektDoc(id), { medlemmar: ny, lasare: nyL }, { merge: true });
+            m.medlemmar = ny; m.lasare = nyL;
         }
     }
 
@@ -1186,14 +1301,15 @@
         const anvandareLista = allaAnvandare.filter((a) => a.status === "godkand")
             .sort((x, y) => (x.namn || x.epost || "").localeCompare(y.namn || y.epost || "", "sv"));
         const kropp =
-            '<p class="hjalp" style="margin-top:0">Bocka i vilka som ska ha tillgång till projektet. Admin har alltid tillgång. ' +
+            '<p class="hjalp" style="margin-top:0">Bocka i vilka som ska ha tillgång till projektet och välj om de får redigera eller bara läsa. Admin har alltid tillgång. ' +
               "Konton som väntar på godkännande ger du projekt när du godkänner dem.</p>" +
             (anvandareLista.length ? '<ul class="p4-ks-valista">' + anvandareLista.map((a) => {
-                const admin = a.roll === "admin";
-                return '<li><label><input type="checkbox" data-mval="' + esc(a.uid) + '"' +
-                    (admin || m.medlemmar.includes(a.uid) ? " checked" : "") + (admin ? " disabled" : "") + "> " +
+                const admin = a.roll === "admin", med = m.medlemmar.includes(a.uid);
+                return '<li class="p4-ks-medbeh"><label><input type="checkbox" data-mval="' + esc(a.uid) + '"' +
+                    (admin || med ? " checked" : "") + (admin ? " disabled" : "") + "> " +
                     "<span><b>" + esc(a.namn || a.epost) + "</b>" + (admin ? ' <span class="p4-ks-tagg admin">Admin</span>' : "") +
-                    (a.namn ? "<small>" + esc(a.epost || "") + "</small>" : "") + "</span></label></li>";
+                    (a.namn ? "<small>" + esc(a.epost || "") + "</small>" : "") + "</span></label>" +
+                    (admin ? "" : behorighetsval("data-mbeh", a.uid, med && m.lasare.includes(a.uid), !med)) + "</li>";
             }).join("") + "</ul>" : '<p class="listtom">Inga godkända användare ännu.</p>');
         modal("Medlemmar i " + m.namn, "", kropp, [
             { txt: "Avbryt", fn: stangModal },
@@ -1203,10 +1319,12 @@
                 // andra som inte syns i listan (väntande eller spärrade) ligger kvar som de var
                 const osynliga = m.medlemmar.filter((u) => !anvandareLista.some((a) => a.uid === u));
                 const ny = [...new Set(admins.concat(osynliga, valda))];
+                const lasValda = [...document.querySelectorAll("[data-mbeh]")].filter((x) => x.value === "las" && valda.includes(x.dataset.mbeh)).map((x) => x.dataset.mbeh);
+                const nyL = [...new Set(m.lasare.filter((u) => osynliga.includes(u)).concat(lasValda))];
                 stangModal();
                 try {
-                    await fb.fs.setDoc(projektDoc(pid), { medlemmar: ny }, { merge: true });
-                    m.medlemmar = ny;
+                    await fb.fs.setDoc(projektDoc(pid), { medlemmar: ny, lasare: nyL }, { merge: true });
+                    m.medlemmar = ny; m.lasare = nyL;
                     status("Medlemmarna i " + m.namn + " är sparade");
                     if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); }
                 } catch (e) { status("Kunde inte spara: " + (e.code || e.message), true); }
@@ -1245,6 +1363,9 @@
             stoppaApp();
             anvandare = u;
             konflikter.clear(); vantande.clear();
+            const lasCache = u ? lasJson(LASNYCKEL, null) : null;
+            lasIds = new Set(lasCache && lasCache.uid === u.uid ? lasCache.ids || [] : []);
+            markeraLasvy();
             if (!u) {
                 lage = "utloggad"; uppdateraUI();
                 return visaVy("inloggning");

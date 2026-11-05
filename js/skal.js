@@ -190,7 +190,7 @@
         }
         else {
             var d = new Date(t), dagar = Math.floor((Date.now() - d.getTime()) / 86400000);
-            var nar = dagar <= 0 ? "i dag" : dagar === 1 ? "i går" : dagar + " dagar sedan";
+            var nar = dagar <= 0 ? "idag" : dagar === 1 ? "igår" : dagar + " dagar sedan";
             text.textContent = "Senast exporterad " + nar + " (" + d.toLocaleDateString("sv-SE") + ").";
             ruta.classList.add(dagar >= 7 ? "fara" : dagar >= 3 ? "varn" : "ok");
         }
@@ -229,7 +229,7 @@
         return t === "INPUT" || t === "TEXTAREA" || t === "SELECT" || el.isContentEditable;
     }
     function visaGenvagar() {
-        var rader = [["N", "Snabb post i dag"], ["P", "Planera moment"], ["← / →", "Bläddra en vecka"], ["T", "Denna vecka"],
+        var rader = [["N", "Snabb post idag"], ["P", "Planera moment"], ["← / →", "Bläddra en vecka"], ["T", "Denna vecka"],
             ["O", "Projektöversikt"], ["A", "Att göra"], ["V", "Visningsläge"], ["/", "Sök på tavlan"], ["Esc", "Stäng dialog eller sida"]];
         modal("Kortkommandon", "Fungerar när du inte skriver i ett fält", '<ul class="detalj">' + rader.map(function (r) { return '<li><span class="et"><kbd>' + esc(r[0]) + '</kbd></span><span>' + esc(r[1]) + '</span></li>'; }).join("") + "</ul>", [{ txt: "Stäng", primar: true, fn: stangModal }]);
     }
@@ -288,4 +288,24 @@
             rita();
     }
     catch (e) { }
+})();
+
+/* Vädervarningar: fäll ut och ihop listan. Stängd från början; valet minns i webbläsaren. */
+(function () {
+    var NYCKEL = "plan4_vader_oppen";
+    var knapp = document.getElementById("vaderFall"), panel = document.getElementById("varningspanel");
+    if (!knapp || !panel) return;
+    function satt(oppen) {
+        panel.classList.toggle("stangd", !oppen);
+        knapp.setAttribute("aria-expanded", oppen ? "true" : "false");
+        knapp.title = oppen ? "Dölj vädret" : "Visa vädret";
+    }
+    var sparad = false;
+    try { sparad = localStorage.getItem(NYCKEL) === "1"; } catch (e) { }
+    satt(sparad);
+    knapp.addEventListener("click", function () {
+        var oppen = panel.classList.contains("stangd");
+        satt(oppen);
+        try { localStorage.setItem(NYCKEL, oppen ? "1" : "0"); } catch (e) { }
+    });
 })();

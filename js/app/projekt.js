@@ -25,7 +25,7 @@ function projektRad(p) {
         '<span>Försenade avrop <b' + (sena.length ? ' class="rodtal"' : "") + '>' + sena.length + '</b></span>' +
         '<span>Kräver åtgärd <b>' + (atg.totalt || 0) + '</b></span>' +
         '</div></div>' +
-        (p.id === state.id ? '<span class="pmeta">öppet</span>'
+        (p.id === state.id ? '<span class="pmeta">Öppet</span>'
             : '<button type="button" class="parkiv" data-ark="' + p.id + '">Arkivera</button>') +
         '</div>';
 }
@@ -460,7 +460,7 @@ function projektInstallningar() {
         '<p class="hjalp">' + state.resurser.personer.filter(x => x.aktiv).length + ' aktiva personer i ' +
         state.resurser.kategorier.length + ' yrkesgrupper. <button type="button" class="parkiv" id="piResurser">Hantera resurser</button></p>' +
         '<div class="falt" style="margin-top:18px"><label for="piOrt">Ort för väderprognos</label>' +
-        '<p class="hjalp">Gäller projektets alla tavlor.</p>' +
+        '<p class="hjalp">Gäller projektets alla tavlor. Lämnar du fältet tomt visas vädret för Malmö.</p>' +
         '<input class="f" id="piOrt" value="' + esc(state.plats ? state.plats.namn : "") + '" placeholder="Malmö"></div>' +
         (vaderFel ? '<div class="notis rod">' + vaderFel + '</div>' : "") +
         '<p class="fraga" style="font-size:14px;margin-top:18px">Vädervarningar</p>' +
@@ -484,8 +484,11 @@ function projektInstallningar() {
                 });
                 const ort = document.getElementById("piOrt").value.trim();
                 stangModal();
-                if (!ort)
+                if (!ort) {
                     state.plats = null;
+                    VADER = {};
+                    hamtaVader(true);
+                }
                 else if (!state.plats || state.plats.namn.toLowerCase() !== ort.toLowerCase()) {
                     status("Slår upp " + ort + "…");
                     try {
@@ -493,6 +496,7 @@ function projektInstallningar() {
                         if (träff) {
                             state.plats = träff;
                             VADER = {};
+                            hamtaVader(true);
                             status("Väder för " + träff.namn);
                         }
                         else

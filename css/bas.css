@@ -786,3 +786,146 @@ details[open] > summary::before {
 .agenda li {
   margin: 4px 0;
 }
+
+/* ---------- väderpanelen: 14 dagar framåt ---------- */
+.vp-plats {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+.vp-grupp + .vp-grupp {
+  margin-top: 14px;
+}
+.vp-grupprubrik {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-light);
+}
+.vp-grupprubrik b {
+  font-size: 13px;
+}
+.vp-grupprubrik small {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.vp-summa {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vp-summa.gron { color: var(--produktion); }
+.vp-summa.gul { color: var(--varning); }
+.vp-summa.rod { color: var(--leverans); }
+.vp-dag {
+  display: grid;
+  grid-template-columns: 58px 24px 40px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border-light);
+  border-left: 3px solid transparent;
+}
+.vp-dag.niva-gul { border-left-color: var(--varning-stark); }
+.vp-tagg { cursor: default; }
+.vp-dag.niva-rod { border-left-color: var(--leverans); background: var(--leverans-fyll); }
+.vp-dag.idag .vp-namn b { color: var(--accent-main); text-decoration: underline; text-underline-offset: 3px; }
+.vp-namn {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  font-size: 12px;
+}
+.vp-namn small, .vp-temp small {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.vp-sym {
+  font-size: 17px;
+  line-height: 1.1;
+  text-align: center;
+}
+.vp-temp {
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.vp-bed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+.vp-tagg {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.5;
+}
+.vp-tagg.gron { background: var(--produktion-fyll); color: var(--produktion); }
+.vp-tagg.hyfsat { background: var(--bg-alt); color: var(--text-muted); }
+.vp-tagg.gul { background: var(--varning-fyll); color: var(--varning); }
+.vp-tagg.rod { background: var(--leverans); color: #fff; }
+.vp-tagg.egen { background: var(--avrop-fyll); color: var(--avrop); }
+.vp-detalj {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.vp-kalla {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+#varningsinnehall {
+  padding: 2px 16px 14px;
+}
+#varningsinnehall .tomrad {
+  padding-left: 0;
+  padding-right: 0;
+}
+.vp-del {
+  white-space: nowrap;
+}
+
+/* ---------- utfällbar väderpanel ---------- */
+.p4-fallknapp {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  cursor: pointer;
+  padding: 0;
+}
+.p4-fallknapp:hover {
+  background: var(--bg-main);
+}
+.p4-fallknapp:focus-visible {
+  outline: none;
+  box-shadow: var(--pop-ring);
+}
+.p4-fallknapp .p4-caret {
+  transition: transform .18s ease;
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+.panel.stangd .p4-fallknapp .p4-caret {
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+.panel.stangd > h2 {
+  border-bottom-color: transparent;
+}
+.panel.stangd #varningsinnehall {
+  display: none;
+}
