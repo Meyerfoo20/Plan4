@@ -714,13 +714,13 @@
                   '<li><span class="et">Senast synkad</span><span>' + esc(senastSynkad ? senastSynkad.toLocaleString("sv-SE") : "—") + "</span></li>" +
                   '<li><span class="et">Enhets-id</span><span>' + esc(ENHET) + "</span></li>" +
                 "</ul>" +
-                '<p class="hjalp">Ändringar sparas först här och laddas upp till ditt konto inom någon sekund. Utan nät sparas de här tills nätet är tillbaka.</p>' +
+                '<p class="hjalp">Ändringar sparas först här och laddas upp till molnet inom någon sekund. Utan nät sparas de här tills nätet är tillbaka.</p>' +
                 '<div class="p4-ks-knappar"><button type="button" class="mknapp" data-ks="synka">Synka nu</button></div>' +
               "</section>" +
 
               '<section class="p4-ks-kort">' +
                 "<h2>Säkerhetskopia</h2>" +
-                '<p class="hjalp">Projekten sparas automatiskt i ditt konto. Vill du ha en egen kopia, till exempel inför ett projektavslut, ' +
+                '<p class="hjalp">Projekten sparas automatiskt i molnet. Vill du ha en egen kopia, till exempel inför ett projektavslut, ' +
                   "kan du exportera dem till en fil.</p>" +
                 '<div class="p4-ks-knappar"><button type="button" class="mknapp" data-ks="exportera">Exportera alla projekt</button>' +
                 (arAdmin() ? '<button type="button" class="mknapp" data-ks="importera">Importera från fil</button>' : "") + "</div>" +
@@ -728,7 +728,7 @@
 
               '<section class="p4-ks-kort">' +
                 "<h2>Logga ut</h2>" +
-                '<p class="hjalp">Projekten tas bort från den här datorn när du loggar ut, men finns kvar i ditt konto. ' +
+                '<p class="hjalp">Projekten tas bort från den här datorn när du loggar ut, men finns kvar i molnet. ' +
                   "Logga alltid ut på en delad dator, till exempel i bodan.</p>" +
                 '<div class="p4-ks-knappar"><button type="button" class="mknapp" data-ks="loggaut">Logga ut</button></div>' +
               "</section>" +
@@ -1015,7 +1015,7 @@
     };
     // Statusraden och footern säger var datan finns.
     const ursLagringstext = lagringstext;
-    lagringstext = function () { return anvandare && synkKlar ? " · i ditt konto" : ursLagringstext.apply(this, arguments); };
+    lagringstext = function () { return anvandare && synkKlar ? " · i molnet" : ursLagringstext.apply(this, arguments); };
     window.addEventListener("online", () => { if (anvandare) { lage = "synkar"; uppdateraUI(); schemalaggPush(0); } });
 
     document.addEventListener("click", (e) => {

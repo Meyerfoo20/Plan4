@@ -11,12 +11,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261105e">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261105e">
-  <link rel="stylesheet" href="css/vyer.css?v=20261105e">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261105e">
-  <link rel="stylesheet" href="css/skal.css?v=20261105e">
-  <link rel="stylesheet" href="css/konto.css?v=20261105e">
+  <link rel="stylesheet" href="css/bas.css?v=20261105g">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261105g">
+  <link rel="stylesheet" href="css/vyer.css?v=20261105g">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261105g">
+  <link rel="stylesheet" href="css/skal.css?v=20261105g">
+  <link rel="stylesheet" href="css/konto.css?v=20261105g">
+  <link rel="stylesheet" href="css/datumval.css?v=20261105g">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -46,7 +47,7 @@
       <ul>
         <li>Planera moment med material, avrop och förutsättningar</li>
         <li>Följ upp hinder, bemanning och veckans utfall</li>
-        <li>Projekten sparas i ditt konto och når du från alla dina datorer</li>
+        <li>Projekten sparas i molnet och du når dem från alla dina datorer</li>
       </ul>
     </section>
     <section class="p4-in-kort" aria-labelledby="kkRubrik">
@@ -264,11 +265,11 @@
       </div>
       <div class="p4-footer-kol">
         <h4>Din data</h4>
-        <p>Projekten sparas automatiskt i ditt konto, med en kopia i webbläsaren så att Plan4 fungerar även utan nät. Bara du kommer åt dina projekt.</p>
+        <p>Projekten sparas automatiskt i molnet, med en kopia i webbläsaren så att Plan4 fungerar även utan nät. Bara projektets medlemmar och admin kommer åt ett projekt.</p>
         <p class="p4-footer-lagring" id="p4Lagring"></p>
       </div>
     </div>
-    <div class="p4-footer-botten"><span>Plan4 · version <span id="p4Version"></span></span><span>Sparas i ditt konto · synkas mellan dina datorer · fungerar offline</span></div>
+    <div class="p4-footer-botten"><span>Plan4 · version <span id="p4Version"></span></span><span>Sparas i molnet · synkas mellan datorer · fungerar offline</span></div>
   </footer>
 
   <div class="angrarad dold" id="angrarad">
@@ -279,33 +280,36 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261105e"></script>
-  <script src="js/core/datum.js?v=20261105e"></script>
-  <script src="js/core/kort.js?v=20261105e"></script>
-  <script src="js/core/operationer.js?v=20261105e"></script>
-  <script src="js/core/avrop.js?v=20261105e"></script>
-  <script src="js/core/resurser.js?v=20261105e"></script>
-  <script src="js/core/franvaro.js?v=20261105e"></script>
-  <script src="js/core/foretag.js?v=20261105e"></script>
-  <script src="js/core/projekt.js?v=20261105e"></script>
+  <script src="js/core/konstanter.js?v=20261105g"></script>
+  <script src="js/core/datum.js?v=20261105g"></script>
+  <script src="js/core/kort.js?v=20261105g"></script>
+  <script src="js/core/operationer.js?v=20261105g"></script>
+  <script src="js/core/avrop.js?v=20261105g"></script>
+  <script src="js/core/resurser.js?v=20261105g"></script>
+  <script src="js/core/franvaro.js?v=20261105g"></script>
+  <script src="js/core/foretag.js?v=20261105g"></script>
+  <script src="js/core/projekt.js?v=20261105g"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261105e"></script>
-  <script src="js/app/tavla.js?v=20261105e"></script>
-  <script src="js/app/flytt.js?v=20261105e"></script>
-  <script src="js/app/guide.js?v=20261105e"></script>
-  <script src="js/app/redigera.js?v=20261105e"></script>
-  <script src="js/app/utfall-vader.js?v=20261105e"></script>
-  <script src="js/app/utskrift.js?v=20261105e"></script>
-  <script src="js/app/register.js?v=20261105e"></script>
-  <script src="js/app/oversikt.js?v=20261105e"></script>
-  <script src="js/app/projekt.js?v=20261105e"></script>
+  <script src="js/app/grund.js?v=20261105g"></script>
+  <script src="js/app/tavla.js?v=20261105g"></script>
+  <script src="js/app/flytt.js?v=20261105g"></script>
+  <script src="js/app/guide.js?v=20261105g"></script>
+  <script src="js/app/redigera.js?v=20261105g"></script>
+  <script src="js/app/utfall-vader.js?v=20261105g"></script>
+  <script src="js/app/utskrift.js?v=20261105g"></script>
+  <script src="js/app/register.js?v=20261105g"></script>
+  <script src="js/app/oversikt.js?v=20261105g"></script>
+  <script src="js/app/projekt.js?v=20261105g"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261105e"></script>
+  <script src="js/skal.js?v=20261105g"></script>
+
+  <!-- Egen datumväljare för alla datumfält -->
+  <script src="js/app/datumval.js?v=20261105g"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261105e"></script>
-  <script src="js/konto/konto.js?v=20261105e"></script>
+  <script src="js/konto/firebase-config.js?v=20261105g"></script>
+  <script src="js/konto/konto.js?v=20261105g"></script>
 </body>
 </html>

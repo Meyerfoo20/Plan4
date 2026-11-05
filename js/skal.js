@@ -196,7 +196,7 @@
         }
         var lag = $("p4Lagring");
         try {
-            lag.textContent = molnet && molnet.aktiv ? "Lagring: ditt konto + kopia på den här datorn"
+            lag.textContent = molnet && molnet.aktiv ? "Lagring: molnet + kopia på den här datorn"
                 : lagringslage === "lokal" ? "Lagring: lokalt på denna dator"
                 : lagringslage === "ingen" ? "Lagring: ingen automatisk lagring — exportera filen"
                     : lagringslage === "storage" ? "Lagring: värdens lagring" : "";
