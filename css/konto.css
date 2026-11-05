@@ -709,3 +709,52 @@ body.p4-vantar > :not(.p4-vantesida):not(#utskrift):not(#utskriftsfot) {
 .p4-konto.admin-vantar .p4-konto-avatar::after {
   background: var(--leverans);
 }
+
+/* ---------- projektval och medlemmar ---------- */
+.p4-ks-valista {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-m);
+  max-height: 340px;
+  overflow-y: auto;
+}
+.p4-ks-valista li + li {
+  border-top: 1px solid var(--border-light);
+}
+.p4-ks-valista label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+.p4-ks-valista label:hover {
+  background: var(--bg-main);
+}
+.p4-ks-valista input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-main);
+}
+.p4-ks-valista span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.p4-ks-valista small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.p4-ks-dampad {
+  color: var(--text-faint);
+}
+.p4-vantesida.inga .p4-vantar-ikon {
+  background: var(--accent-light);
+  border-color: var(--border-color);
+}
+.p4-vantesida.inga .p4-vantar-ikon::before {
+  background: var(--accent-main);
+}
