@@ -76,16 +76,6 @@ function forutsattningsTackning(p, tavlor, dagarFram, idag) {
     return { totalt: totalt, utan: utan };
 }
 
-function filnamn(bas) {
-    const d = new Date(), p2 = n => String(n).padStart(2, "0");
-    return "plan4-" + bas + "-" + d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + ".json";
-}
-
-function slug(txt) {
-    return (txt || "projekt").toLowerCase().replace(/[åä]/g, "a").replace(/ö/g, "o")
-        .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "projekt";
-}
-
 function aktivaGranser(p) { return VARNINGSTYPER.filter(t => p.varningar && p.varningar[t.id] && p.varningar[t.id].pa); }
 
 function fAktiviteter(p) { return (p.forberedelse || { aktiviteter: [] }).aktiviteter; }

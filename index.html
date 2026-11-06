@@ -11,13 +11,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261105g">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261105g">
-  <link rel="stylesheet" href="css/vyer.css?v=20261105g">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261105g">
-  <link rel="stylesheet" href="css/skal.css?v=20261105g">
-  <link rel="stylesheet" href="css/konto.css?v=20261105g">
-  <link rel="stylesheet" href="css/datumval.css?v=20261105g">
+  <link rel="stylesheet" href="css/bas.css?v=20261106c">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261106c">
+  <link rel="stylesheet" href="css/vyer.css?v=20261106c">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261106c">
+  <link rel="stylesheet" href="css/skal.css?v=20261106c">
+  <link rel="stylesheet" href="css/konto.css?v=20261106c">
+  <link rel="stylesheet" href="css/datumval.css?v=20261106c">
+  <link rel="stylesheet" href="css/gantt.css?v=20261106c">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -89,8 +90,6 @@
           <kbd>/</kbd>
         </label>
         <button class="p4-konto" id="p4Konto" type="button"><span class="p4-konto-avatar" aria-hidden="true"></span><span class="p4-konto-text">Logga in</span></button>
-        <button class="p4-btn p4-btn-ljus" id="planeraKnapp" title="Femstegsguide för ett produktionsmoment ( P )">Planera moment</button>
-        <button class="p4-btn p4-btn-primar" id="snabbPostKnapp" title="Ny post ( N )">+ Snabb post</button>
       </div>
     </div>
   </header>
@@ -107,6 +106,7 @@
         <button class="p4-nav aktiv" type="button" data-nav="tavla"><span class="p4-ik ik-tavla"></span><span>Tavlan</span></button>
         <button class="p4-nav" type="button" data-nav="dash"><span class="p4-ik ik-dash"></span><span>Projektöversikt</span><span class="p4-badge dold" id="p4AtgBadge" title="Kräver åtgärd"></span></button>
         <button class="p4-nav" type="button" data-nav="start"><span class="p4-ik ik-lista"></span><span>Att göra</span><span class="p4-badge p4-badge-ljus dold" id="p4AgBadge" title="Öppna punkter"></span></button>
+        <button class="p4-nav" type="button" data-nav="gantt"><span class="p4-ik ik-gantt"></span><span>Gantt-schema</span></button>
       </div>
       <div class="p4-navgrupp">
         <div class="p4-navrubrik">Uppföljning</div>
@@ -118,16 +118,12 @@
       <div class="p4-navgrupp">
         <div class="p4-navrubrik">Data</div>
         <button class="p4-nav" id="skrivUt" type="button"><span class="p4-ik ik-skriv"></span><span>Skriv ut</span></button>
-        <button class="p4-nav" id="exportera" type="button"><span class="p4-ik ik-ut"></span><span>Exportera</span></button>
-        <button class="p4-nav" id="importeraKnapp" type="button"><span class="p4-ik ik-in"></span><span>Importera</span></button>
-        <input type="file" id="importfil" accept="application/json" hidden>
         <button class="p4-nav" type="button" data-nav="konto"><span class="p4-ik ik-konto"></span><span>Mitt konto</span><span class="p4-badge dold" id="p4KontoBadge"></span></button>
       </div>
 
       <div class="p4-backup" id="p4Backup">
-        <div class="p4-backup-rad"><span class="p4-prick" id="p4BackupPrick"></span><b>Säkerhetskopia</b></div>
-        <p id="p4BackupText">Datan finns bara i den här webbläsaren.</p>
-        <button type="button" class="p4-btn p4-btn-liten" data-klick="exportera">Exportera nu</button>
+        <div class="p4-backup-rad"><span class="p4-prick" id="p4BackupPrick"></span><b>Molnsynk</b></div>
+        <p id="p4BackupText">Ansluter till molnet…</p>
       </div>
 
       <button class="p4-nav p4-nav-liten" type="button" id="p4Genvagar"><span class="p4-ik ik-tangent"></span><span>Kortkommandon</span><kbd>?</kbd></button>
@@ -148,7 +144,7 @@
             </div>
           </div>
           <div class="p4-hero-knappar">
-            <button class="navknapp" id="visning" title="Storbildsskärm för morgonmötet ( V )">Visningsläge</button>
+            <button class="navknapp" id="visning" title="Avsluta visningsläget ( V )">Avsluta visning</button>
             <button class="navknapp" id="tavlameny" title="Tavlans inställningar">Tavla ⋯</button>
           </div>
         </div>
@@ -186,8 +182,8 @@
           <b>Tavlan är tom — dags att lägga upp planen.</b>
           <span>Börja med denna vecka och nästa från huvudtidplanen. Bryt ner till delar, och backa avrop efter ledtiden.</span>
           <div class="p4-tom-knappar">
-            <button type="button" class="p4-btn p4-btn-primar" data-klick="planeraKnapp">Planera första momentet</button>
-            <button type="button" class="p4-btn p4-btn-ljus" data-klick="snabbPostKnapp">+ Snabb post</button>
+            <button type="button" class="p4-btn p4-btn-primar" id="planeraKnapp" title="Femstegsguide för ett produktionsmoment ( P )">Planera första momentet</button>
+            <button type="button" class="p4-btn p4-btn-ljus" id="snabbPostKnapp" title="Ny post ( N )">+ Snabb post</button>
           </div>
         </div>
         <p class="p4-tips">Klicka på en post för att öppna den · dra för att flytta · dubbelklicka för att redigera · <b>+ Post</b> i varje dag</p>
@@ -246,6 +242,7 @@
       <section class="p4-kontosida" id="p4KontoSida" aria-label="Mitt konto"></section>
       <div id="dash" class="dold"></div>
       <div id="pstart" class="dold"></div>
+      <div id="gantt" class="dold" aria-label="Gantt-schema"></div>
     </main>
   </div>
 
@@ -280,36 +277,37 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261105g"></script>
-  <script src="js/core/datum.js?v=20261105g"></script>
-  <script src="js/core/kort.js?v=20261105g"></script>
-  <script src="js/core/operationer.js?v=20261105g"></script>
-  <script src="js/core/avrop.js?v=20261105g"></script>
-  <script src="js/core/resurser.js?v=20261105g"></script>
-  <script src="js/core/franvaro.js?v=20261105g"></script>
-  <script src="js/core/foretag.js?v=20261105g"></script>
-  <script src="js/core/projekt.js?v=20261105g"></script>
+  <script src="js/core/konstanter.js?v=20261106c"></script>
+  <script src="js/core/datum.js?v=20261106c"></script>
+  <script src="js/core/kort.js?v=20261106c"></script>
+  <script src="js/core/operationer.js?v=20261106c"></script>
+  <script src="js/core/avrop.js?v=20261106c"></script>
+  <script src="js/core/resurser.js?v=20261106c"></script>
+  <script src="js/core/franvaro.js?v=20261106c"></script>
+  <script src="js/core/foretag.js?v=20261106c"></script>
+  <script src="js/core/projekt.js?v=20261106c"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261105g"></script>
-  <script src="js/app/tavla.js?v=20261105g"></script>
-  <script src="js/app/flytt.js?v=20261105g"></script>
-  <script src="js/app/guide.js?v=20261105g"></script>
-  <script src="js/app/redigera.js?v=20261105g"></script>
-  <script src="js/app/utfall-vader.js?v=20261105g"></script>
-  <script src="js/app/utskrift.js?v=20261105g"></script>
-  <script src="js/app/register.js?v=20261105g"></script>
-  <script src="js/app/oversikt.js?v=20261105g"></script>
-  <script src="js/app/projekt.js?v=20261105g"></script>
+  <script src="js/app/grund.js?v=20261106c"></script>
+  <script src="js/app/tavla.js?v=20261106c"></script>
+  <script src="js/app/flytt.js?v=20261106c"></script>
+  <script src="js/app/guide.js?v=20261106c"></script>
+  <script src="js/app/redigera.js?v=20261106c"></script>
+  <script src="js/app/utfall-vader.js?v=20261106c"></script>
+  <script src="js/app/utskrift.js?v=20261106c"></script>
+  <script src="js/app/register.js?v=20261106c"></script>
+  <script src="js/app/oversikt.js?v=20261106c"></script>
+  <script src="js/app/projekt.js?v=20261106c"></script>
+  <script src="js/app/gantt.js?v=20261106c"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261105g"></script>
+  <script src="js/skal.js?v=20261106c"></script>
 
   <!-- Egen datumväljare för alla datumfält -->
-  <script src="js/app/datumval.js?v=20261105g"></script>
+  <script src="js/app/datumval.js?v=20261106c"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261105g"></script>
-  <script src="js/konto/konto.js?v=20261105g"></script>
+  <script src="js/konto/firebase-config.js?v=20261106c"></script>
+  <script src="js/konto/konto.js?v=20261106c"></script>
 </body>
 </html>

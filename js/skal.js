@@ -1,21 +1,10 @@
 /* ======================================================================
-   Det nya skalet: navigering, sök, genvägar och säkerhetskopia
+   Det nya skalet: navigering, sök, genvägar och molnstatus
    ====================================================================== */
 
 (function () {
     "use strict";
     var $ = function (id) { return document.getElementById(id); };
-    var EXPORTNYCKEL = "plan4_senaste_export";
-    function lasLokalt(n) { try {
-        return window.localStorage.getItem(n);
-    }
-    catch (e) {
-        return null;
-    } }
-    function skrivLokalt(n, v) { try {
-        window.localStorage.setItem(n, v);
-    }
-    catch (e) { } }
     try {
         $("p4Version").textContent = VERSION;
     }
@@ -42,6 +31,11 @@
                 stangDash();
         }
         catch (e) { }
+        try {
+            if (ganttOppen())
+                stangGantt();
+        }
+        catch (e) { }
     }
     document.querySelectorAll("[data-nav]").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -64,6 +58,10 @@
                 oppnaStart();
                 window.scrollTo({ top: 0 });
             }
+            else if (vy === "gantt") {
+                oppnaGantt();
+                window.scrollTo({ top: 0 });
+            }
             markeraNav();
         });
     });
@@ -83,6 +81,8 @@
                 return "start";
             if (dashOppen())
                 return "dash";
+            if (ganttOppen())
+                return "gantt";
         }
         catch (e) { }
         return "tavla";
@@ -103,6 +103,7 @@
         var obs = new MutationObserver(markeraNav);
         obs.observe($("dash"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("pstart"), { attributes: true, attributeFilter: ["class"] });
+        obs.observe($("gantt"), { attributes: true, attributeFilter: ["class"] });
     }
     function stangMeny() { document.body.classList.remove("p4-menyoppen"); $("p4Meny").setAttribute("aria-expanded", "false"); }
     $("p4Meny").addEventListener("click", function () {
@@ -176,40 +177,26 @@
     }
     function uppdateraBackup() {
         var ruta = $("p4Backup"), text = $("p4BackupText");
-        var t = lasLokalt(EXPORTNYCKEL);
         var molnet = window.p4Moln;
         ruta.classList.remove("ok", "varn", "fara");
         if (molnet && molnet.aktiv) {
-            // inloggad: kontot i molnet är säkerhetskopian
             ruta.classList.add(molnet.lage === "synkad" ? "ok" : "varn");
             text.textContent = molnet.text + ".";
         }
-        else if (!t) {
-            ruta.classList.add("fara");
-            text.textContent = "Aldrig exporterad. Datan finns bara i den här webbläsaren.";
-        }
         else {
-            var d = new Date(t), dagar = Math.floor((Date.now() - d.getTime()) / 86400000);
-            var nar = dagar <= 0 ? "idag" : dagar === 1 ? "igår" : dagar + " dagar sedan";
-            text.textContent = "Senast exporterad " + nar + " (" + d.toLocaleDateString("sv-SE") + ").";
-            ruta.classList.add(dagar >= 7 ? "fara" : dagar >= 3 ? "varn" : "ok");
+            ruta.classList.add("varn");
+            text.textContent = "Ansluter till molnet…";
         }
         var lag = $("p4Lagring");
         try {
             lag.textContent = molnet && molnet.aktiv ? "Lagring: molnet + kopia på den här datorn"
                 : lagringslage === "lokal" ? "Lagring: lokalt på denna dator"
-                : lagringslage === "ingen" ? "Lagring: ingen automatisk lagring — exportera filen"
+                : lagringslage === "ingen" ? "Lagring: ingen automatisk lagring"
                     : lagringslage === "storage" ? "Lagring: värdens lagring" : "";
         }
         catch (e) { }
     }
     window.p4UppdateraBackup = uppdateraBackup;
-    var ursLaddaNer = laddaNer;
-    laddaNer = function (namn, data) {
-        ursLaddaNer(namn, data);
-        skrivLokalt(EXPORTNYCKEL, new Date().toISOString());
-        uppdateraBackup();
-    };
     var ursRita = rita;
     rita = function () {
         var r = ursRita.apply(this, arguments);
@@ -230,7 +217,7 @@
     }
     function visaGenvagar() {
         var rader = [["N", "Snabb post idag"], ["P", "Planera moment"], ["← / →", "Bläddra en vecka"], ["T", "Denna vecka"],
-            ["O", "Projektöversikt"], ["A", "Att göra"], ["V", "Visningsläge"], ["/", "Sök på tavlan"], ["Esc", "Stäng dialog eller sida"]];
+            ["O", "Projektöversikt"], ["A", "Att göra"], ["G", "Gantt-schema"], ["V", "Visningsläge"], ["/", "Sök på tavlan"], ["Esc", "Stäng dialog eller sida"]];
         modal("Kortkommandon", "Fungerar när du inte skriver i ett fält", '<ul class="detalj">' + rader.map(function (r) { return '<li><span class="et"><kbd>' + esc(r[0]) + '</kbd></span><span>' + esc(r[1]) + '</span></li>'; }).join("") + "</ul>", [{ txt: "Stäng", primar: true, fn: stangModal }]);
     }
     $("p4Genvagar").addEventListener("click", function () { stangMeny(); visaGenvagar(); });
@@ -276,6 +263,10 @@
         }
         else if (l === "a" && !tv) {
             oppnaStart();
+        }
+        else if (l === "g" && !tv) {
+            oppnaGantt();
+            window.scrollTo({ top: 0 });
         }
         else if (l === "v") {
             $("visning").click();

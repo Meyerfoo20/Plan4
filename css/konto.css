@@ -399,9 +399,15 @@ body.p4-kontovy #pstart {
 }
 .p4-ks-rutnat {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: stretch;             /* korten i en rad blir lika höga */
   gap: 16px;
+}
+.p4-ks-rutnat > .p4-ks-kort {
+  grid-column: span 2;              /* tre kort i första raden … */
+}
+.p4-ks-rutnat > .p4-ks-kort:nth-child(n+4) {
+  grid-column: span 3;              /* … och två lika breda i andra */
 }
 .p4-ks-kort {
   display: flex;
@@ -534,6 +540,13 @@ a.mknapp {
   .p4-ks-rutnat {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .p4-ks-rutnat > .p4-ks-kort,
+  .p4-ks-rutnat > .p4-ks-kort:nth-child(n+4) {
+    grid-column: auto;
+  }
+  .p4-ks-rutnat > .p4-ks-kort:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
 }
 @media (max-width: 700px) {
   .p4-ks-namn h1 {
@@ -542,6 +555,10 @@ a.mknapp {
   .p4-ks-rutnat {
     grid-template-columns: 1fr;
     grid-auto-rows: auto;
+  }
+  .p4-ks-rutnat > .p4-ks-kort,
+  .p4-ks-rutnat > .p4-ks-kort:last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 .p4-ks-siffror {

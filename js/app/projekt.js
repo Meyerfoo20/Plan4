@@ -1,5 +1,5 @@
 /* ======================================================================
-   Projekt, tavlor, knappar, export/import och uppstart
+   Projekt, tavlor, knappar och uppstart
    ====================================================================== */
 
 /* ---------- projekt ---------- */
@@ -147,12 +147,10 @@ function raderaProjektDialog(id) {
     const kropp = '<div class="notis rod" style="margin-top:0"><b>Detta går inte att ångra.</b><br>' +
         esc(p.projekt) + " innehåller " + p.tavlor.length + " tavlor, " + kort + " poster och " + hinder +
         ' hinder, inklusive all historik.</div>' +
-        '<p class="hjalp">Exportera projektet först om du kan behöva det igen. ' +
-        'Skriv projektets namn för att bekräfta.</p>' +
+        '<p class="hjalp">Skriv projektets namn för att bekräfta.</p>' +
         '<div class="falt" style="margin-bottom:0"><input class="f" id="rpNamn" placeholder="' + esc(p.projekt) + '"></div>' +
         '<div id="rpFel"></div>';
     modal("Radera projekt permanent", "", kropp, [
-        { txt: "Exportera projektet först", vanster: true, fn: () => { exporteraProjekt(p); } },
         { txt: "Avbryt", primar: true, fn: arkivDialog },
         { txt: "Radera permanent", fara: true, fn: () => {
                 if (document.getElementById("rpNamn").value.trim() !== p.projekt) {
@@ -635,9 +633,8 @@ document.getElementById("tavlameny").addEventListener("click", () => {
         '<p class="hjalp" style="margin-top:14px">' + t.kort.length + ' poster · ' + t.aterkom.length + ' återkommande · ' +
         t.hinder.length + ' hinder · ' + t.historik.length + ' händelser.</p>';
     const varning = lagringslage === "ingen"
-        ? '<div class="notis rod">Ingen automatisk lagring fungerar i den här webbläsaren. Exportera filen för att inte tappa arbetet.</div>'
-        : '<p class="hjalp" style="margin-top:14px">Data sparas' + (lagringslage === "lokal" ? " lokalt på den här datorn" : "") +
-            '. Två datorer synkar inte med varandra — exportera för säkerhetskopia och för att flytta projektet.</p>';
+        ? '<div class="notis rod">Webbläsaren kan inte spara en lokal kopia. Ändringarna sparas i molnet så länge du är uppkopplad.</div>'
+        : '<p class="hjalp" style="margin-top:14px">Data sparas i molnet, med en kopia på den här datorn.</p>';
     modal("Tavlan", state.projekt, kropp + varning, [
         { txt: "Ta bort tavlan", vanster: true, fara: true, fn: () => {
                 if (state.tavlor.length < 2)
@@ -795,144 +792,6 @@ document.getElementById("hLagg").addEventListener("click", () => {
 
 TYPER.forEach(t => document.getElementById("v-" + t).addEventListener("change", filtrera));
 
-function laddaNer(namn, data) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = namn;
-    a.click();
-    URL.revokeObjectURL(a.href);
-}
-
-function exporteraProjekt(p) {
-    laddaNer(filnamn(slug(p.projekt)), { version: VERSION, typ: "projekt", data: p });
-    status("Projektet exporterat");
-}
-
-function exporteraAllt() {
-    laddaNer(filnamn("backup"), { version: VERSION, typ: "plan4", data: rotdata() });
-    status("Hela Plan4 exporterat");
-}
-
-document.getElementById("exportera").addEventListener("click", () => {
-    const kropp = '<p class="hjalp" style="margin-top:0">Exportfilen är både säkerhetskopia och sättet att ' +
-        'flytta data till en annan dator. Importen skriver aldrig över något utan att fråga.</p>' +
-        '<div class="uval"><div class="krysslista">' +
-        '<label><input type="radio" name="uexp" value="projekt" checked> Detta projekt — ' + esc(state.projekt) +
-        ' (' + state.tavlor.length + (state.tavlor.length === 1 ? " tavla" : " tavlor") + ')</label>' +
-        '<label><input type="radio" name="uexp" value="allt"> Hela Plan4 — ' + plan4.projekt.length +
-        (plan4.projekt.length === 1 ? " projekt" : " projekt") + '</label>' +
-        '</div></div>';
-    modal("Exportera", "", kropp, [
-        { txt: "Avbryt", fn: stangModal },
-        { txt: "Exportera", primar: true, fn: () => {
-                const v = document.querySelector('input[name="uexp"]:checked').value;
-                stangModal();
-                if (v === "allt")
-                    exporteraAllt();
-                else
-                    exporteraProjekt(state);
-            } }
-    ]);
-});
-
-document.getElementById("importeraKnapp").addEventListener("click", () => document.getElementById("importfil").click());
-
-document.getElementById("importfil").addEventListener("change", e => {
-    const f = e.target.files[0];
-    if (!f)
-        return;
-    const r = new FileReader();
-    r.onload = () => {
-        let d;
-        try {
-            d = JSON.parse(r.result);
-        }
-        catch (err) {
-            return status("Filen gick inte att läsa");
-        }
-        importDialog(d);
-    };
-    r.readAsText(f);
-    e.target.value = "";
-});
-
-function importDialog(d) {
-    const rot = d && d.data ? d.data : d;
-    let projektIn = null, alla = null;
-    if (d && d.typ === "projekt" && rot && rot.tavlor)
-        projektIn = rot;
-    else if (d && d.typ === "plan4" && rot && Array.isArray(rot.projekt))
-        alla = rot.projekt;
-    else if (rot && Array.isArray(rot.projekt) && !rot.tavlor)
-        alla = rot.projekt;
-    else if (rot && rot.tavlor && rot.tavlor.length)
-        projektIn = rot;
-    else
-        return status("Filen innehåller ingen Plan4-data");
-    if (projektIn) {
-        if (typeof projektIn.projekt !== "string" || !projektIn.projekt)
-            projektIn.projekt = "Importerat projekt";
-        const fanns = projektIn.id ? plan4.projekt.find(p => p.id === projektIn.id) : null;
-        const kort = projektIn.tavlor.reduce((n, t) => n + (t.kort || []).length, 0);
-        const kropp = '<p class="fraga">' + esc(projektIn.projekt) + '</p>' +
-            '<p class="hjalp">' + projektIn.tavlor.length + (projektIn.tavlor.length === 1 ? " tavla · " : " tavlor · ") +
-            kort + ' poster i filen.</p>' +
-            (fanns ? '<div class="notis rod">Ett projekt med samma id finns redan: <b>' + esc(fanns.projekt) +
-                '</b> med ' + fanns.tavlor.reduce((n, t) => n + t.kort.length, 0) +
-                ' poster. Väljer du Ersätt skrivs det över.</div>' : "");
-        const knappar = [{ txt: "Avbryt", fn: stangModal }];
-        if (fanns)
-            knappar.push({ txt: "Ersätt " + fanns.projekt, fara: true, fn: () => {
-                    const i = plan4.projekt.indexOf(fanns);
-                    rustaProjekt(projektIn, IDAG);
-                    plan4.projekt[i] = projektIn;
-                    stangModal();
-                    valjProjekt(projektIn.id);
-                    status("Projektet ersatt");
-                } });
-        knappar.push({ txt: fanns ? "Lägg till som kopia" : "Lägg till projektet", primar: true, fn: () => {
-                if (fanns) {
-                    projektIn.id = uid();
-                    const d2 = new Date();
-                    projektIn.projekt = projektIn.projekt + " (import " + d2.getDate() + "/" + (d2.getMonth() + 1) + ")";
-                }
-                else if (!projektIn.id)
-                    projektIn.id = uid();
-                rustaProjekt(projektIn, IDAG);
-                plan4.projekt.push(projektIn);
-                stangModal();
-                valjProjekt(projektIn.id);
-                status("Projektet importerat");
-            } });
-        return modal("Importera projekt", "", kropp, knappar);
-    }
-    const nya = alla.filter(p => !plan4.projekt.some(x => x.id === p.id));
-    const kropp = '<p class="fraga">Hel säkerhetskopia · ' + alla.length + ' projekt</p>' +
-        '<p class="hjalp">' + alla.map(p => esc(p.projekt || "Projekt")).join(" · ") + '</p>' +
-        '<div class="notis">Lägg till innebär att ' + nya.length + ' projekt som saknas läggs till. ' +
-        'Befintliga projekt rörs inte.</div>' +
-        '<div class="notis rod">Ersätt hela Plan4 skriver över dina ' + plan4.projekt.length +
-        ' nuvarande projekt med filens innehåll.</div>';
-    modal("Importera säkerhetskopia", "", kropp, [
-        { txt: "Ersätt hela Plan4", fara: true, fn: () => {
-                plan4 = { version: VERSION, aktivtProjekt: rot.aktivtProjekt || null, projekt: alla };
-                plan4.projekt.forEach(p => rustaProjekt(p, IDAG));
-                const v = plan4.projekt.find(p => p.id === plan4.aktivtProjekt && !p.arkiverad) || aktivaProjekt()[0] || plan4.projekt[0];
-                stangModal();
-                valjProjekt(v.id);
-                status("Plan4 ersatt från fil");
-            } },
-        { txt: "Avbryt", fn: stangModal },
-        { txt: "Lägg till " + nya.length + " projekt", primar: true, fn: () => {
-                nya.forEach(p => { rustaProjekt(p, IDAG); plan4.projekt.push(p); });
-                stangModal();
-                spara();
-                rita();
-                status(nya.length + " projekt tillagda");
-            } }
-    ]);
-}
 
 /* ---------- start ---------- */
 
@@ -946,7 +805,7 @@ function importDialog(d) {
         rustaProjekt(p, IDAG);
         await sparaNu();
         if (lagringslage === "ingen")
-            status("Ingen automatisk lagring i den här webbläsaren — exportera filen", true);
+            status("Ingen lokal lagring i den här webbläsaren — ändringar sparas bara i molnet", true);
         else if (lagringslage === "lokal")
             status("Sparas lokalt på denna dator");
     }

@@ -229,7 +229,7 @@
                 if (!arAdmin() && !(p.id in moln.rev)) continue;    // bara admin lägger till nya projekt
                 const json = projektJson(p);
                 if (json.length > MAX_PROJEKT_TECKEN) {
-                    status("Projektet " + p.projekt + " är för stort för molnet — exportera det", true);
+                    status("Projektet " + p.projekt + " är för stort för molnet och kan inte sparas där", true);
                     continue;
                 }
                 const ref = projektDoc(p.id), vantad = moln.rev[p.id] || 0;
@@ -388,15 +388,14 @@
         }
         if (!arAdmin()) {
             // Användare: bara projekten man är medlem i. Projekt som redan fanns på datorn
-            // kan inte läggas till (det gör admin), men de kan exporteras först.
+            // kan inte läggas till (det gör admin).
             const fortsatt = () => { stangModal(); if (dokument.length) anvandMolnet(dokument, aktivt); else nollstallLokalt(); klar(); };
             if (tomtStandardprojekt()) return fortsatt();
             return fraga("Projekten på den här datorn läggs inte till i ditt konto",
                 "Du kommer åt de projekt som en admin har gett dig tillgång till. " +
-                "Vill du behålla projekten som finns här (" + plan4.projekt.map((p) => p.projekt).join(", ") + "), " +
-                "exportera dem och skicka filen till din admin.",
-                [{ txt: "Exportera", fn: () => exporteraAllt() },
-                 { txt: "Fortsätt", primar: true, fn: fortsatt }]);
+                "Projekten som finns här (" + plan4.projekt.map((p) => p.projekt).join(", ") + ") tas bort från datorn. " +
+                "Be en admin skapa projektet i molnet om det behövs.",
+                [{ txt: "Fortsätt", primar: true, fn: fortsatt }]);
         }
         if (!dokument.length) {
             // Admin utan projekt i molnet: ladda upp det som finns på den här datorn.
@@ -719,14 +718,6 @@
               "</section>" +
 
               '<section class="p4-ks-kort">' +
-                "<h2>Säkerhetskopia</h2>" +
-                '<p class="hjalp">Projekten sparas automatiskt i molnet. Vill du ha en egen kopia, till exempel inför ett projektavslut, ' +
-                  "kan du exportera dem till en fil.</p>" +
-                '<div class="p4-ks-knappar"><button type="button" class="mknapp" data-ks="exportera">Exportera alla projekt</button>' +
-                (arAdmin() ? '<button type="button" class="mknapp" data-ks="importera">Importera från fil</button>' : "") + "</div>" +
-              "</section>" +
-
-              '<section class="p4-ks-kort">' +
                 "<h2>Logga ut</h2>" +
                 '<p class="hjalp">Projekten tas bort från den här datorn när du loggar ut, men finns kvar i molnet. ' +
                   "Logga alltid ut på en delad dator, till exempel i bodan.</p>" +
@@ -843,14 +834,13 @@
         const kropp =
             '<p class="fraga">Allt i kontot tas bort för gott</p>' +
             '<p class="hjalp">Kontot raderas och projekten tas bort från den här datorn. Projekten finns kvar i molnet för ' +
-              "de andra medlemmarna. Exportera först om du vill ha en egen kopia.</p>" +
+              "de andra medlemmarna.</p>" +
             (harLosenord()
               ? '<div class="falt"><label for="ksRaderaLosen">Bekräfta med ditt lösenord</label><input class="f" id="ksRaderaLosen" type="password" autocomplete="current-password"></div>'
               : '<p class="hjalp">Du får bekräfta med ditt Google-konto.</p>') +
             '<label class="p4-ks-bekrafta"><input type="checkbox" id="ksRaderaOk"> Jag förstår att det inte går att ångra</label>' +
             '<div class="notis rod dold" id="ksRaderaSvar"></div>';
         modal("Radera konto", anvandare.email || "", kropp, [
-            { txt: "Exportera först", vanster: true, fn: () => exporteraAllt() },
             { txt: "Avbryt", fn: stangModal },
             { txt: "Radera kontot", fara: true, fn: raderaKonto },
         ]);
@@ -893,8 +883,6 @@
             else if (vad === "namn") sparaNamn();
             else if (vad === "losen") bytLosenord();
             else if (vad === "aterstall") skickaAterstallning();
-            else if (vad === "exportera") exporteraAllt();
-            else if (vad === "importera") $("importfil").click();
             else if (vad === "loggaut") loggaUt(false);
             else if (vad === "radera") raderaKontoDialog();
             else if (vad === "nyttprojekt") nyttProjektDialog();
@@ -919,9 +907,8 @@
             if (osparade.length) {
                 return fraga("Det finns ändringar som inte är sparade i molnet",
                     osparade.map((p) => p.projekt).join(", ") + "\nLoggar du ut nu försvinner de ändringarna från den här datorn. " +
-                    "Kontrollera nätverket eller exportera projekten först.",
+                    "Kontrollera nätverket och försök igen.",
                     [{ txt: "Logga ut ändå", fara: true, vanster: true, fn: () => loggaUt(true) },
-                     { txt: "Exportera", fn: () => { stangModal(); exporteraAllt(); } },
                      { txt: "Avbryt", primar: true, fn: stangModal }], false);
             }
         }
@@ -1348,7 +1335,6 @@
     }
     nyttProjektDialog = barAdmin(nyttProjektDialog, "skapa projekt");
     raderaProjektDialog = barAdmin(raderaProjektDialog, "radera projekt");
-    importDialog = barAdmin(importDialog, "importera projekt");
 
     // ---------- start ----------
     kopplaFormular();

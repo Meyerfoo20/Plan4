@@ -150,7 +150,7 @@ function spara() {
         if (gick)
             status("Sparat " + new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }) + lagringstext());
         else
-            status("Kunde inte spara — exportera filen", true);
+            status("Kunde inte spara på den här datorn", true);
     }, 400);
 }
 
