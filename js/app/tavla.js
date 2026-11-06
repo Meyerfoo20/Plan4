@@ -19,6 +19,7 @@ function rita() {
     }
     const t = T();
     document.getElementById("projektnamnText").textContent = state.projekt || "Projekt";
+    ritaHindermark();
     document.getElementById("tavlanamn").value = t.namn;
     const vs = ritStart();
     document.getElementById("spann").textContent = "v" + veckonr(vs) + "–v" + veckonr(plus(vs, 21)) + " · " + kortDatum(vs) + "–" + kortDatum(plus(vs, 25));
@@ -835,10 +836,13 @@ function kortEl(k) {
         }
         txt.appendChild(document.createTextNode(kortText(k, T(), projektForTavla(T()))));
     }
-    if (k.plats && k.typ !== "franvaro") {
+    // Plats / del visas på alla kort i momentet (avrop, leverans, start och klart).
+    const plats = k.typ === "franvaro" ? "" : kortPlats(k, T());
+    if (plats) {
         const pl = document.createElement("span");
         pl.className = "platsrad";
-        pl.textContent = k.plats;
+        pl.textContent = plats;
+        pl.title = "Plats / del: " + plats;
         txt.appendChild(pl);
     }
     if (k.typ === "produktion" && !k.virtuell && !tomBemanning(k.bemanning)) {
@@ -1152,4 +1156,33 @@ function ritaHistorik() {
         ? ord.sort((a, b) => rakn[b] - rakn[a]).map(o => '<span class="ord' + (rakn[o] >= 3 ? " larm" : "") + '">' + esc(o) + " " + rakn[o] + '</span>').join("")
             + (ord.some(o => rakn[o] >= 3) ? '<span class="ord larm">Samma ord tre gånger = systemfel</span>' : "")
         : '<span class="ord">Orsaksord räknas här</span>';
+}
+
+// Plats / del för ett kort: kortets egen, annars momentets (startposten i kedjan).
+function kortPlats(k, t) {
+    if (k.plats)
+        return k.plats;
+    if (!k.kedja || !t)
+        return "";
+    const bar = t.kort.find(x => x.kedja === k.kedja && (x.roll === "S" || x.roll === "P"));
+    return bar && bar.plats || "";
+}
+
+// Öppna hinder i hela projektet (alla tavlor).
+function projektetsHinder(p) {
+    const ut = [];
+    (p && p.tavlor || []).forEach(t => oppnaHinder(t).forEach(h => ut.push({ h, t })));
+    return ut;
+}
+
+// Varningstecken bredvid projektnamnet när projektet har öppna hinder.
+function ritaHindermark() {
+    const el = document.getElementById("projektHinder");
+    if (!el)
+        return;
+    const lista = projektetsHinder(state);
+    const sena = lista.filter(x => forfallen(x.h.nar, IDAG)).length;
+    el.classList.toggle("dold", !lista.length);
+    el.classList.toggle("sen", sena > 0);
+    el.title = lista.length + (lista.length === 1 ? " öppet hinder" : " öppna hinder") + (sena ? ", varav " + sena + " försenade" : "");
 }

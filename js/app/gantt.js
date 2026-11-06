@@ -12,6 +12,7 @@ const GANTT_FARGER = ["#0a6f61", "#254e9c", "#6b4a9c", "#b8611a", "#2f7d32", "#b
 const GANTT_PERIODER = { idag: "Idag", vecka: "Vecka", manad: "Månad", ar: "År" };
 const MANADER_LANG = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
 const DAGAR_LANG = ["måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag", "söndag"];
+const GANTT_DAGKORT = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
 
 let gantt = lasGantt();
 let ganttSteg = 0;              // bläddring bakåt/framåt från dagens period
@@ -135,10 +136,8 @@ function ganttPeriod() {
 
 let ganttYta = null;            // uppmätt bredd för tidslinjen (utan etiketter och rullist)
 
-function ritaGantt(andraForsok) {
-    const box = document.getElementById("gantt");
-    const gammal = box.querySelector(".g-skroll");
-    const skrollY = gammal ? gammal.scrollTop : 0;
+// Det som syns i schemat just nu: valda projekt, perioden och filtren.
+function ganttUrval() {
     const valda = ganttValda();
     const per = ganttPeriod(), { fran, till } = per;
     // det som syns i perioden (Idag: bara det som pågår den dagen)
@@ -151,6 +150,14 @@ function ritaGantt(andraForsok) {
         return { p, moment: d.moment.filter(m => (gantt.klara || !m.klar) && iPerioden(m))
             .map(m => Object.assign({}, m, { mil: m.mil.filter(milIPerioden) })), losa: d.losa.filter(milIPerioden) };
     });
+    return { valda, per, data };
+}
+
+function ritaGantt(andraForsok) {
+    const box = document.getElementById("gantt");
+    const gammal = box.querySelector(".g-skroll");
+    const skrollY = gammal ? gammal.scrollTop : 0;
+    const { valda, per, data } = ganttUrval(), { fran, till } = per;
 
     // dagbredden anpassas så att perioden fyller schemats bredd (året får rulla på smala skärmar)
     const dagar = Math.round((iso2d(till) - iso2d(fran)) / 86400000) + 1;
@@ -176,6 +183,13 @@ function ritaGantt(andraForsok) {
         '<div class="g-blad"><button type="button" class="navknapp" data-g="bakat" title="Föregående" aria-label="Föregående">←</button>' +
         '<span class="g-period">' + esc(per.namn) + "</span>" +
         '<button type="button" class="navknapp" data-g="framat" title="Nästa" aria-label="Nästa">→</button></div>' +
+        '<div class="g-exp"><button type="button" class="p4-btn p4-btn-ljus g-expknapp" data-g="exportmeny" aria-haspopup="menu" aria-expanded="false"' +
+        (valda.length ? "" : " disabled") + '>Exportera<span class="p4-caret" aria-hidden="true"></span></button>' +
+        '<div class="g-expmeny dold" role="menu">' +
+        '<button type="button" role="menuitem" data-g="exp-pdf"><b>PDF / Skriv ut</b><small>Schemat som det ser ut, liggande A4</small></button>' +
+        '<button type="button" role="menuitem" data-g="exp-png"><b>Bild (PNG)</b><small>Att klistra in i mejl eller presentationer</small></button>' +
+        '<button type="button" role="menuitem" data-g="exp-csv"><b>Excel (CSV)</b><small>Alla moment i perioden som tabell</small></button>' +
+        "</div></div>" +
         "</div></div>";
 
     html += '<div class="g-layout">' + ganttValHtml() + '<div class="g-schema">';
@@ -243,6 +257,16 @@ function ganttTabell(data, o) {
             : w >= 34 ? "v" + veckonr(iso) : w >= 15 || veckonr(iso) % 2 === 0 ? String(veckonr(iso)) : "";
         veckor += '<div class="g-cell' + (nu ? " idag" : "") + '" style="left:' + (i * dw).toFixed(1) + "px;width:" + w.toFixed(1) + 'px">' + txt + "</div>";
     }
+    // dagrad med Mån, Tis … när dagarna är breda nog (vecka och idag)
+    const medDagar = dw >= 30;
+    if (medDagar)
+        for (let i = 0; i < dagar; i++) {
+            const iso = plus(fran, i), d = iso2d(iso), vd = (d.getDay() + 6) % 7;
+            const namn = GANTT_DAGKORT[vd];
+            veckor += '<div class="g-cell g-dagcell' + (iso === IDAG ? " idag" : "") + (vd > 4 ? " helg" : "") +
+                '" style="left:' + (i * dw).toFixed(1) + "px;width:" + dw.toFixed(1) + 'px" title="' + esc(dagEtikett(iso)) + '">' +
+                (dw >= 64 ? namn + " <small>" + kortDatum(iso) + "</small>" : namn) + "</div>";
+        }
     const tom = !data.some(d => d.moment.length || (gantt.milstolpar && d.losa.length));
     const bakgrund = "--vb:" + (7 * dw).toFixed(2) + "px;--hb:" + (5 * dw).toFixed(2) + "px;--db:" + dw.toFixed(2) + "px";
     const kl = (iso) => iso < fran ? fran : iso > till ? till : iso;     // klipp till perioden
@@ -296,7 +320,7 @@ function ganttTabell(data, o) {
             "<span>" + (o.per.per === "idag" ? "Inga produktionsmoment pågår den här dagen." : "Inga produktionsmoment i perioden.") + "</span></div></div>";
     const markdag = o.per.per === "idag" ? o.per.dag : IDAG;
     const idag = markdag >= fran && markdag <= till ? '<div class="g-idaglinje" style="left:calc(var(--g-et) + ' + (x(markdag) + dw / 2).toFixed(1) + 'px)"></div>' : "";
-    return '<div class="g-skroll"><div class="g-tabell' + (dw < 12 ? " grov" : "") + (7 * dw < 20 ? " tat" : "") + '" style="width:calc(var(--g-et) + ' + bredd + 'px)">' +
+    return '<div class="g-skroll"><div class="g-tabell' + (dw < 12 ? " grov" : "") + (7 * dw < 20 ? " tat" : "") + (medDagar ? " meddagar" : "") + '" style="width:calc(var(--g-et) + ' + bredd + 'px)">' +
         '<div class="g-rad g-huvud"><div class="g-etikett g-horn">Moment</div>' +
         '<div class="g-tid" style="width:' + bredd + 'px">' + veckor + "</div></div>" +
         rader + idag + "</div></div>";
@@ -354,6 +378,16 @@ document.getElementById("gantt").addEventListener("click", (e) => {
         return ritaGantt();
     }
     const g = b.dataset.g;
+    if (g === "exportmeny") {
+        const meny = b.parentNode.querySelector(".g-expmeny"), oppen = meny.classList.contains("dold");
+        meny.classList.toggle("dold", !oppen);
+        b.setAttribute("aria-expanded", String(oppen));
+        return;
+    }
+    if (g === "exp-pdf" || g === "exp-png" || g === "exp-csv") {
+        b.closest(".g-expmeny").classList.add("dold");
+        return g === "exp-csv" ? ganttExportCsv() : g === "exp-png" ? ganttExportBild() : ganttExportPdf();
+    }
     if (g === "bakat" || g === "framat") {
         ganttSteg += g === "bakat" ? -1 : 1;
         return ritaGantt();
@@ -414,3 +448,295 @@ rita = function () {
         ritaGantt();
     return r;
 };
+
+/* ---------- export ---------- */
+
+// Stäng exportmenyn vid klick utanför.
+document.addEventListener("mousedown", (e) => {
+    const meny = document.querySelector("#gantt .g-expmeny:not(.dold)");
+    if (meny && !e.target.closest(".g-exp")) {
+        meny.classList.add("dold");
+        const k = document.querySelector("#gantt .g-expknapp");
+        if (k) k.setAttribute("aria-expanded", "false");
+    }
+});
+
+function ganttFilnamn(andelse) {
+    const { valda, per } = ganttUrval();
+    const namn = valda.length === 1 ? valda[0].projekt : valda.length + " projekt";
+    const period = per.per === "vecka" ? "v" + veckonr(per.fran) + " " + iso2d(per.fran).getFullYear()
+        : per.per === "idag" ? per.dag : per.namn;
+    return ("Gantt " + namn + " " + period).replace(/[^\p{L}\p{N} ._-]+/gu, "").replace(/\s+/g, " ").trim() + "." + andelse;
+}
+
+function ganttLaddaNer(namn, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = namn;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// Excel: semikolon och BOM så att svenska Excel öppnar filen rätt.
+function ganttExportCsv() {
+    const { data, per } = ganttUrval();
+    const cell = (v) => {
+        const t = String(v == null ? "" : v);
+        return /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+    const dagarMellan = (a, b) => Math.round((iso2d(b) - iso2d(a)) / 86400000) + 1;
+    const rader = [["Projekt", "Tavla", "Moment", "Plats / del", "Ansvarig", "Start", "Klart", "Dagar", "Vecka start", "Vecka klart", "Status"]];
+    data.forEach(d => {
+        d.moment.forEach(m => rader.push([d.p.projekt, m.t.namn, m.namn, m.k.plats || "", m.k.vem || "", m.fran, m.till,
+            dagarMellan(m.fran, m.till), veckonr(m.fran), veckonr(m.till), ganttStatus(m).text]));
+        if (gantt.milstolpar) {
+            const mil = d.losa.concat(...d.moment.map(m => m.mil.map(x => Object.assign({ moment: m.namn }, x))));
+            mil.forEach(x => rader.push([d.p.projekt, x.t.namn, (x.typ === "avrop" ? "Avrop: " : "Leverans: ") + x.text +
+                (x.moment ? " (" + x.moment + ")" : ""), "", x.k.vem || "", x.dag, x.dag, 1, veckonr(x.dag), veckonr(x.dag), x.klar ? "Klart" : "Milstolpe"]));
+        }
+    });
+    const text = "﻿" + "Gantt-schema;" + cell(per.namn) + "\r\n\r\n" + rader.map(r => r.map(cell).join(";")).join("\r\n") + "\r\n";
+    ganttLaddaNer(ganttFilnamn("csv"), new Blob([text], { type: "text/csv;charset=utf-8" }));
+    status("Gantt-schemat exporterat som Excel-fil");
+}
+
+function ganttExportBild() {
+    ganttRitaBild().toBlob((blob) => {
+        if (!blob) return status("Bilden kunde inte skapas", true);
+        ganttLaddaNer(ganttFilnamn("png"), blob);
+        status("Gantt-schemat exporterat som bild");
+    }, "image/png");
+}
+
+// PDF: bilden läggs på en egen utskriftssida och webbläsarens utskrift öppnas (välj "Spara som PDF").
+function ganttExportPdf() {
+    const url = ganttRitaBild().toDataURL("image/png");
+    let ruta = document.getElementById("gUtskrift");
+    if (!ruta) {
+        ruta = document.createElement("div");
+        ruta.id = "gUtskrift";
+        document.body.appendChild(ruta);
+    }
+    ruta.innerHTML = '<img alt="Gantt-schema" src="' + url + '">';
+    const bild = ruta.querySelector("img");
+    const skrivUt = () => {
+        document.body.classList.add("g-skrivut");
+        const klar = () => { document.body.classList.remove("g-skrivut"); window.removeEventListener("afterprint", klar); };
+        window.addEventListener("afterprint", klar);
+        window.print();
+        setTimeout(klar, 1500);
+    };
+    if (bild.complete) skrivUt();
+    else bild.onload = skrivUt;
+}
+
+// Ritar schemat på en canvas: samma urval som på skärmen.
+function ganttRitaBild() {
+    const { valda, per, data } = ganttUrval(), { fran, till } = per;
+    const dagar = Math.round((iso2d(till) - iso2d(fran)) / 86400000) + 1;
+    const ET = 300, TID = Math.max(900, Math.min(1500, dagar * 48)), dw = TID / dagar;
+    const medDagar = dw >= 30, RAD = 34, PROJRAD = 40, TOPP = 96, HUVUD = medDagar ? 56 : 34, KANT = 24;
+    // rader
+    const rader = [];
+    data.forEach(d => {
+        rader.push({ typ: "proj", d });
+        if (gantt.ihop.includes(d.p.id)) return;
+        d.moment.forEach(m => rader.push({ typ: "mom", d, m }));
+        if (gantt.milstolpar && d.losa.length) rader.push({ typ: "mil", d });
+    });
+    const hojd = TOPP + HUVUD + rader.reduce((h, r) => h + (r.typ === "proj" ? PROJRAD : RAD), 0) + 56;
+    const bredd = KANT * 2 + ET + TID;
+    const SK = 2, c = document.createElement("canvas");
+    c.width = bredd * SK;
+    c.height = hojd * SK;
+    const g = c.getContext("2d");
+    g.scale(SK, SK);
+    const css = getComputedStyle(document.documentElement);
+    const v = (n, alt) => (css.getPropertyValue(n) || "").trim() || alt;
+    const F = { text: v("--text-main", "#1d2125"), mutad: v("--text-muted", "#5b636b"), svag: v("--text-faint", "#8b939b"),
+        linje: v("--border-light", "#ece7de"), kant: v("--border-color", "#ddd6ca"), bg: "#ffffff", alt: v("--bg-main", "#f6f3ee"),
+        rod: v("--leverans", "#b32d22"), rodfyll: v("--leverans-fyll", "#fbe9e7"), avrop: v("--avrop", "#6b4a9c"), lev: v("--leverans", "#b32d22") };
+    const font = (vikt, storlek) => vikt + " " + storlek + "px Inter, system-ui, sans-serif";
+    const blanda = (hex, andel) => {        // hex blandad med vitt
+        const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
+        const m = (x) => Math.round(x * andel + 255 * (1 - andel));
+        return "rgb(" + m(r) + "," + m(gg) + "," + m(b) + ")";
+    };
+    const klipp = (txt, max) => {
+        if (g.measureText(txt).width <= max) return txt;
+        while (txt.length > 1 && g.measureText(txt + "…").width > max) txt = txt.slice(0, -1);
+        return txt + "…";
+    };
+    const x = (iso) => KANT + ET + Math.round((iso2d(iso) - iso2d(fran)) / 86400000) * dw;
+    const kl = (iso) => iso < fran ? fran : iso > till ? till : iso;
+    const rundad = (x0, y0, w, h, r) => { g.beginPath(); g.roundRect ? g.roundRect(x0, y0, w, h, r) : g.rect(x0, y0, w, h); };
+
+    g.fillStyle = F.bg;
+    g.fillRect(0, 0, bredd, hojd);
+    // rubrik
+    g.fillStyle = F.text;
+    g.font = font(800, 24);
+    g.fillText("Gantt-schema · " + per.namn, KANT, 40);
+    g.font = font(500, 13);
+    g.fillStyle = F.mutad;
+    const antal = data.reduce((n, d) => n + d.moment.length, 0);
+    g.fillText(valda.map(p => p.projekt).join(", ") + " · " + antal + " moment · utskrivet " + kortDatum(IDAG) + " " + new Date().getFullYear(), KANT, 64);
+
+    // tidshuvud
+    const y0 = TOPP;
+    g.fillStyle = F.alt;
+    g.fillRect(KANT, y0, ET + TID, HUVUD);
+    g.font = font(700, 11);
+    g.fillStyle = F.svag;
+    g.fillText("MOMENT", KANT + 14, y0 + HUVUD - 12);
+    for (let i = 0; i < dagar; i += 7) {
+        const iso = plus(fran, i), xx = KANT + ET + i * dw, w = 7 * dw;
+        g.strokeStyle = F.kant;
+        g.beginPath(); g.moveTo(xx + .5, y0); g.lineTo(xx + .5, y0 + HUVUD); g.stroke();
+        const nu = iso <= IDAG && IDAG <= plus(iso, 6);
+        g.fillStyle = nu ? "#0369a1" : F.text;
+        g.font = font(nu ? 800 : 700, 12);
+        const txt = w >= 130 ? "Vecka " + veckonr(iso) + "  " + kortDatum(iso) + "–" + kortDatum(plus(iso, 6)) : w >= 34 ? "v" + veckonr(iso) : w >= 16 ? String(veckonr(iso)) : "";
+        g.textAlign = "center";
+        g.fillText(txt, xx + w / 2, y0 + (medDagar ? 20 : 22));
+        g.textAlign = "left";
+    }
+    if (medDagar)
+        for (let i = 0; i < dagar; i++) {
+            const iso = plus(fran, i), vd = (iso2d(iso).getDay() + 6) % 7, xx = KANT + ET + i * dw;
+            if (iso === IDAG) { g.fillStyle = "rgba(56,189,248,.16)"; g.fillRect(xx, y0 + 28, dw, HUVUD - 28); }
+            g.fillStyle = iso === IDAG ? "#0369a1" : vd > 4 ? F.svag : F.mutad;
+            g.font = font(iso === IDAG ? 800 : 600, 11.5);
+            g.textAlign = "center";
+            g.fillText(GANTT_DAGKORT[vd] + (dw >= 64 ? " " + kortDatum(iso) : ""), xx + dw / 2, y0 + 46);
+            g.textAlign = "left";
+        }
+
+    // rader
+    let y = y0 + HUVUD;
+    const raderTopp = y;
+    rader.forEach(rad => {
+        const h = rad.typ === "proj" ? PROJRAD : RAD, farg = ganttFarg(rad.d.p);
+        // helger
+        for (let i = 0; i < dagar; i++) {
+            const vd = (iso2d(plus(fran, i)).getDay() + 6) % 7;
+            if (vd > 4 && dw >= 3) { g.fillStyle = "rgba(0,0,0,.025)"; g.fillRect(KANT + ET + i * dw, y, dw, h); }
+        }
+        if (rad.typ === "proj") {
+            g.fillStyle = blanda(farg, .08);
+            g.fillRect(KANT, y, ET + TID, h);
+            g.fillStyle = farg;
+            g.fillRect(KANT, y, 4, h);
+            g.fillStyle = F.text;
+            g.font = font(800, 14);
+            g.fillText(klipp(rad.d.p.projekt, ET - 30), KANT + 16, y + 18);
+            g.font = font(500, 11.5);
+            g.fillStyle = F.mutad;
+            const kl2 = rad.d.moment.filter(m => m.klar).length;
+            g.fillText(rad.d.moment.length ? rad.d.moment.length + " moment · " + kl2 + " klara" : "Inget i perioden", KANT + 16, y + 33);
+            const mom = rad.d.moment;
+            if (mom.length) {
+                const a = kl(mom.reduce((s, m) => m.fran < s ? m.fran : s, mom[0].fran)), b = kl(mom.reduce((s, m) => m.till > s ? m.till : s, mom[0].till));
+                g.fillStyle = farg;
+                rundad(x(a), y + h / 2 - 4, x(b) - x(a) + dw, 8, 4);
+                g.fill();
+            }
+        }
+        else if (rad.typ === "mom") {
+            const m = rad.m, st = ganttStatus(m);
+            g.fillStyle = F.text;
+            g.font = font(700, 12.5);
+            g.fillText(klipp(m.namn, ET - 28), KANT + 16, y + 15);
+            g.font = font(500, 11);
+            g.fillStyle = F.svag;
+            const under = (m.fran === m.till ? kortDatum(m.fran) : kortDatum(m.fran) + "–" + kortDatum(m.till)) +
+                (rad.d.p.tavlor.length > 1 ? " · " + m.t.namn : "") + (m.k.plats ? " · " + m.k.plats : "") + (st.klass ? " · " + st.text : "");
+            g.fillText(klipp(under, ET - 28), KANT + 16, y + 28);
+            const xa = x(kl(m.fran)), w = Math.max(6, x(kl(m.till)) - xa + dw), yb = y + 7, hb = h - 14;
+            if (st.klass === "klar") {
+                g.fillStyle = F.alt; rundad(xa, yb, w, hb, 4); g.fill();
+                g.strokeStyle = F.kant; g.lineWidth = 1; rundad(xa + .5, yb + .5, w - 1, hb - 1, 4); g.stroke();
+            }
+            else if (st.klass === "sen") {
+                g.fillStyle = F.rodfyll; rundad(xa, yb, w, hb, 4); g.fill();
+                g.strokeStyle = F.rod; g.lineWidth = 1.5; rundad(xa + .75, yb + .75, w - 1.5, hb - 1.5, 4); g.stroke();
+            }
+            else {
+                g.fillStyle = blanda(farg, st.klass === "pagar" ? .55 : .22); rundad(xa, yb, w, hb, 4); g.fill();
+                g.fillStyle = farg; g.fillRect(xa, yb, 3, hb);
+            }
+            g.font = font(600, 11.5);
+            const tw = g.measureText(m.namn).width;
+            g.fillStyle = st.klass === "sen" ? F.rod : st.klass === "klar" ? F.mutad : F.text;
+            if (tw + 16 <= w) g.fillText(m.namn, xa + 8, y + h / 2 + 4);
+            else if (xa + w + 8 + tw < KANT + ET + TID) { g.fillStyle = F.mutad; g.fillText(m.namn, xa + w + 6, y + h / 2 + 4); }
+            if (gantt.milstolpar) m.mil.forEach(ml => diamant(ml, y + h / 2));
+        }
+        else {
+            g.fillStyle = F.mutad;
+            g.font = font(700, 12);
+            g.fillText("Avrop och leveranser", KANT + 16, y + 15);
+            g.font = font(500, 11);
+            g.fillStyle = F.svag;
+            g.fillText(rad.d.losa.length + " utan kopplat moment", KANT + 16, y + 28);
+            rad.d.losa.forEach(ml => diamant(ml, y + h / 2));
+        }
+        g.strokeStyle = F.linje;
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(KANT, y + h + .5); g.lineTo(KANT + ET + TID, y + h + .5); g.stroke();
+        y += h;
+    });
+    function diamant(ml, cy) {
+        const cx = x(ml.dag) + dw / 2, r = 6;
+        g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r, cy); g.closePath();
+        g.fillStyle = ml.klar ? "#ffffff" : ml.typ === "avrop" ? F.avrop : F.lev;
+        g.fill();
+        g.strokeStyle = ml.typ === "avrop" ? F.avrop : F.lev;
+        g.lineWidth = 1.5;
+        g.stroke();
+    }
+    if (!rader.length) {
+        g.fillStyle = F.svag;
+        g.font = font(500, 13);
+        g.fillText("Inga produktionsmoment i perioden.", KANT + ET + 16, y + 24);
+        y += 40;
+    }
+    // veckolinjer, etikettkant och idaglinje
+    g.strokeStyle = F.linje;
+    for (let i = 0; i <= dagar; i += 7) {
+        const xx = KANT + ET + i * dw;
+        g.beginPath(); g.moveTo(xx + .5, raderTopp); g.lineTo(xx + .5, y); g.stroke();
+    }
+    g.strokeStyle = F.kant;
+    g.beginPath(); g.moveTo(KANT + ET + .5, y0); g.lineTo(KANT + ET + .5, y); g.stroke();
+    g.strokeRect(KANT + .5, y0 + .5, ET + TID - 1, y - y0 - 1);
+    const markdag = per.per === "idag" ? per.dag : IDAG;
+    if (markdag >= fran && markdag <= till) {
+        const xx = x(markdag) + dw / 2;
+        g.strokeStyle = "#0284c7";
+        g.lineWidth = 2;
+        g.beginPath(); g.moveTo(xx, y0 + HUVUD); g.lineTo(xx, y); g.stroke();
+        g.lineWidth = 1;
+    }
+    // teckenförklaring
+    let lx = KANT, ly = y + 30;
+    const fk = (namn, ritaFn) => { ritaFn(lx, ly - 9); g.fillStyle = F.mutad; g.font = font(500, 11.5); g.fillText(namn, lx + 26, ly); lx += 26 + g.measureText(namn).width + 22; };
+    const gf = "#5b636b";
+    fk("Planerat", (a, b) => { g.fillStyle = blanda(gf, .22); g.fillRect(a, b, 20, 10); g.fillStyle = gf; g.fillRect(a, b, 3, 10); });
+    fk("Pågår", (a, b) => { g.fillStyle = blanda(gf, .55); g.fillRect(a, b, 20, 10); g.fillStyle = gf; g.fillRect(a, b, 3, 10); });
+    fk("Försenat", (a, b) => { g.fillStyle = F.rodfyll; g.fillRect(a, b, 20, 10); g.strokeStyle = F.rod; g.strokeRect(a + .5, b + .5, 19, 9); });
+    fk("Klart", (a, b) => { g.fillStyle = F.alt; g.fillRect(a, b, 20, 10); g.strokeStyle = F.kant; g.strokeRect(a + .5, b + .5, 19, 9); });
+    if (gantt.milstolpar) {
+        const dia = (farg) => (a, b) => {
+            const cx = a + 10, cy = b + 5, r = 6;
+            g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r, cy); g.closePath();
+            g.fillStyle = farg; g.fill();
+        };
+        fk("Avrop", dia(F.avrop));
+        fk("Leverans", dia(F.lev));
+    }
+    return c;
+}

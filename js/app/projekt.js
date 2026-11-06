@@ -14,7 +14,10 @@ function projektRad(p) {
     }).join(" ");
     return '<div class="projektrad' + (p.id === state.id ? " aktiv" : "") + '" data-p="' + p.id + '">' +
         '<div style="flex:1;min-width:0">' +
-        '<div class="pnamn">' + esc(p.projekt) + ' <span class="pfaces">' + faces + '</span></div>' +
+        '<div class="pnamn">' + esc(p.projekt) +
+        (h.oppna.length ? ' <span class="p4-hindermark' + (h.forfallna.length ? " sen" : "") + '" title="' + h.oppna.length +
+            (h.oppna.length === 1 ? " öppet hinder" : " öppna hinder") + '">⚠</span>' : "") +
+        ' <span class="pfaces">' + faces + '</span></div>' +
         '<div class="pmeta">' + p.tavlor.length + (p.tavlor.length === 1 ? " tavla · " : " tavlor · ") +
         p.tavlor.map(t => '<button type="button" class="ptavla" data-t="' + p.id + '|' + t.id + '">' + esc(t.namn) + '</button>').join(" · ") +
         '</div>' +

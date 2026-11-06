@@ -652,3 +652,95 @@ button.g-etikett:hover {
     pointer-events: auto;
   }
 }
+
+/* ---------- dagrad i veckovyn ---------- */
+.g-tabell.meddagar .g-tid {
+  height: 62px;
+}
+.g-tabell.meddagar .g-cell:not(.g-dagcell) {
+  bottom: auto;
+  height: 32px;
+}
+.g-cell.g-dagcell {
+  top: 32px;
+  bottom: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+}
+.g-cell.g-dagcell small {
+  margin-left: 3px;
+}
+.g-cell.g-dagcell.helg {
+  color: var(--text-faint);
+  background: rgba(0, 0, 0, .02);
+}
+.g-cell.g-dagcell.idag {
+  color: #0369a1;
+  background: rgba(56, 189, 248, .14);
+  font-weight: 800;
+}
+.g-tabell.meddagar .g-idaglinje {
+  top: 62px;
+}
+
+/* ---------- export ---------- */
+.g-exp {
+  position: relative;
+}
+.g-expknapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.g-expknapp .p4-caret {
+  margin-left: 2px;
+}
+.g-expmeny {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: 270px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-m);
+  box-shadow: 0 18px 44px rgba(17, 19, 21, .16), 0 3px 10px rgba(17, 19, 21, .06);
+  padding: 6px;
+}
+.g-expmeny button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-s);
+  padding: 9px 12px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text-main);
+}
+.g-expmeny button:hover,
+.g-expmeny button:focus-visible {
+  background: var(--bg-main);
+  outline: 0;
+}
+.g-expmeny b {
+  font-size: 13.5px;
+}
+.g-expmeny small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+#gUtskrift {
+  display: none;
+}
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body.g-skrivut > *:not(#gUtskrift) { display: none !important; }
+  body.g-skrivut #gUtskrift { display: block !important; }
+  body.g-skrivut #gUtskrift img { width: 100%; height: auto; display: block; }
+}
