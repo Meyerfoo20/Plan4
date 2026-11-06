@@ -65,17 +65,51 @@
         return (h >>> 0).toString(36) + ":" + txt.length;
     }
     const projektJson = (p) => JSON.stringify(p);
-    // Läsbehöriga har aldrig något eget att ladda upp.
-    const arAndrad = (p) => !arLas(p.id) && moln.hash[p.id] !== hash(projektJson(p));
+    // Den som inte får ändra något har aldrig något eget att ladda upp.
+    const arAndrad = (p) => kanSkriva(p) && moln.hash[p.id] !== hash(projektJson(p));
 
-    // ---------- läsbehörighet ----------
-    // Projekt där den inloggade bara får läsa (uid finns i projektets lasare).
-    const LASNYCKEL = "plan4_las";            // { uid, ids: [projekt-id] }, så att läget gäller även offline
-    let lasIds = new Set();
-    const arLas = (id) => !!anvandare && !arAdmin() && lasIds.has(id);
+    // ---------- behörigheter ----------
+    // Huvudadmin (roll "admin" på kontot) har full åtkomst till allt. Övriga har en roll per projekt:
+    //   projektAdmin  – allt i projektet, och väljer vilka som är med och vad de får göra
+    //   (vanlig)      – kan redigera
+    //   lasare        – bara läsa
+    // och kan dessutom ha en egen behörighet per tavla i tavlaBeh[uid][tavlaId]:
+    //   "admin" | "red" | "las" | "ingen" (ingen åtkomst: tavlan syns inte alls).
+    const LASNYCKEL = "plan4_las";            // { uid, beh: { projektId: { roll, tavlor } } }, gäller även offline
+    let behCache = {};
+    const TAVLARATT = ["admin", "red", "las", "ingen"];
+    // Min roll i ett projekt: "huvud" | "admin" | "red" | "las".
+    function minBeh(pid) {
+        if (!anvandare) return { roll: "red", tavlor: {} };
+        if (arAdmin()) return { roll: "huvud", tavlor: {} };
+        const m = projektMeta.get(pid);
+        if (m) return { roll: m.projektAdmin.includes(anvandare.uid) ? "admin" : m.lasare.includes(anvandare.uid) ? "las" : "red",
+            tavlor: (m.tavlaBeh && m.tavlaBeh[anvandare.uid]) || {} };
+        return behCache[pid] || { roll: "red", tavlor: {} };
+    }
+    const minRoll = (pid) => minBeh(pid).roll;
+    const arProjektAdmin = (pid) => { const r = minRoll(pid); return r === "huvud" || r === "admin"; };
+    // Min rätt på en tavla: "admin" | "red" | "las" | "ingen". Projektadmin styrs inte per tavla.
+    function tavlaRatt(pid, tid) {
+        const b = minBeh(pid);
+        if (b.roll === "huvud" || b.roll === "admin") return "admin";
+        const o = b.tavlor[tid];
+        return TAVLARATT.includes(o) ? o : b.roll;
+    }
+    const harTavlaAdmin = (pid) => Object.values(minBeh(pid).tavlor).includes("admin");
+    // Får jag ändra något alls i projektet?
+    function kanSkriva(p) {
+        if (minRoll(p.id) !== "las") return true;
+        return p.tavlor.some((t) => { const r = tavlaRatt(p.id, t.id); return r === "red" || r === "admin"; });
+    }
+    // Bara läsa i projektet som helhet (projektets inställningar, register, tavellistan).
+    const arLas = (id) => !!anvandare && minRoll(id) === "las";
+    const tavlaLas = (pid, tid) => !!anvandare && tavlaRatt(pid, tid) === "las";
     // Projektets innehåll utan vald tavla: att byta tavla räknas inte som en ändring.
     const innehall = (p) => JSON.stringify(Object.assign({}, p, { aktiv: undefined }));
     const lasBasis = new Map();               // id → innehållet senast det synkades med molnet
+    // Tavlor man saknar åtkomst till tas bort ur den lokala kopian och läggs tillbaka orörda vid uppladdning.
+    const doldaTavlor = new Map();            // projektId → { ordning: [tavlaId], dolda: [tavla] } ur senaste molnversionen
 
     // ---------- Firebase ----------
     async function laddaFirebase() {
@@ -94,10 +128,16 @@
         : fb.fs.query(projektSamling(), fb.fs.where("medlemmar", "array-contains", anvandare.uid));
     const projektDoc = (id) => fb.fs.doc(fb.db, "projekt", id);
     const gamlaProjekt = () => fb.fs.collection(fb.db, "anvandare", anvandare.uid, "projekt");   // före medlemskap
-    const projektMeta = new Map();   // id → { namn, arkiverad, medlemmar } (admin)
+    const projektMeta = new Map();   // id → { namn, arkiverad, medlemmar, lasare, projektAdmin, tavlaBeh, tavlor }
+    function metaFran(x) {
+        let tavlor = [];
+        try { tavlor = (JSON.parse(x.data || "{}").tavlor || []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" })); } catch (e) { }
+        return { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [], lasare: x.lasare || [],
+            projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, tavlor: tavlor };
+    }
     function lasMeta(docs) {
         projektMeta.clear();
-        docs.forEach((d) => { const x = d.data(); projektMeta.set(d.id, { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [], lasare: x.lasare || [] }); });
+        docs.forEach((d) => projektMeta.set(d.id, metaFran(d.data())));
     }
 
     // ---------- hjälp mot appen ----------
@@ -108,17 +148,70 @@
         return !poster && !fAktiviteter(p).length && !p.resurser.personer.length && !p.resurser.kategorier.length && !p.foretag.length;
     }
     function dialogOppen() { return !!$("overlay"); }
-    function lasProjekt(data) { const p = JSON.parse(data); rustaProjekt(p, IDAG); return p; }
+    function lasProjekt(data, lokal) {
+        const p = JSON.parse(data);
+        rustaProjekt(p, IDAG);
+        if (lokal) return p;
+        // tavlor utan åtkomst plockas bort (men minst en tavla blir kvar, som bara går att läsa)
+        const ordning = p.tavlor.map((t) => t.id);
+        let dolda = p.tavlor.filter((t) => tavlaRatt(p.id, t.id) === "ingen");
+        if (dolda.length === p.tavlor.length) dolda = dolda.slice(1);
+        doldaTavlor.set(p.id, { ordning: ordning, dolda: JSON.parse(JSON.stringify(dolda)) });
+        if (dolda.length) {
+            const bort = new Set(dolda.map((t) => t.id));
+            p.tavlor = p.tavlor.filter((t) => !bort.has(t.id));
+            if (!p.tavlor.some((t) => t.id === p.aktiv)) p.aktiv = p.tavlor[0].id;
+        }
+        return p;
+    }
+    // Det som laddas upp: den lokala kopian med de dolda tavlorna tillbaka på sina platser.
+    function uppladdningsJson(p, json) {
+        const d = doldaTavlor.get(p.id);
+        if (!d || !d.dolda.length) return json;
+        const q = JSON.parse(json), egna = new Map(q.tavlor.map((t) => [t.id, t])), dolda = new Map(d.dolda.map((t) => [t.id, t]));
+        const ut = [];
+        d.ordning.forEach((id) => { if (egna.has(id)) { ut.push(egna.get(id)); egna.delete(id); } else if (dolda.has(id)) ut.push(dolda.get(id)); });
+        egna.forEach((t) => ut.push(t));
+        q.tavlor = ut;
+        return JSON.stringify(q);
+    }
+    // Saknar vi en dold tavla som borde finnas med? Då väntar uppladdningen tills molnet är inläst.
+    function saknarDolda(p) {
+        const b = minBeh(p.id);
+        if (b.roll === "huvud" || b.roll === "admin") return false;
+        return Object.values(b.tavlor).includes("ingen") && !doldaTavlor.has(p.id);
+    }
     function markeraSynkad(p, rev) { moln.rev[p.id] = rev; moln.hash[p.id] = hash(projektJson(p)); lasBasis.set(p.id, innehall(p)); }
 
-    // Läser vilka projekt den inloggade bara får läsa, ur projektdokumenten.
-    function uppdateraLas(dokument) {
+    // Läser behörigheterna ur projektdokumenten. Ändras vilka tavlor som syns läses projektet om.
+    function uppdateraBeh(dokument) {
         if (!anvandare) return;
-        const ny = new Set(dokument.filter((d) => (d.lasare || []).includes(anvandare.uid)).map((d) => d.id));
-        const andrat = ny.size !== lasIds.size || [...ny].some((id) => !lasIds.has(id));
-        lasIds = ny;
-        skrivJson(LASNYCKEL, { uid: anvandare.uid, ids: [...ny] });
-        if (andrat) { markeraLasvy(); if (kontoOppen()) ritaSynkkort(); }
+        const fore = {};
+        dokument.forEach((d) => { fore[d.id] = JSON.stringify(minBeh(d.id)); });
+        projektMeta.clear();
+        dokument.forEach((d) => projektMeta.set(d.id, metaFran(d)));
+        const nyCache = {};
+        let andrat = false;
+        dokument.forEach((d) => {
+            const b = minBeh(d.id);
+            nyCache[d.id] = b;
+            if (fore[d.id] !== JSON.stringify(b)) andrat = true;
+        });
+        behCache = nyCache;
+        skrivJson(LASNYCKEL, { uid: anvandare.uid, beh: nyCache });
+        // tavlor som blivit dolda eller synliga: läs om projektet från molnet (om inget lokalt väntar)
+        dokument.forEach((d) => {
+            const p = plan4.projekt.find((x) => x.id === d.id);
+            if (!p || !d.data) return;
+            let moln0;
+            try { moln0 = JSON.parse(d.data).tavlor || []; } catch (e) { return; }
+            const ska = new Set(moln0.filter((t) => tavlaRatt(d.id, t.id) !== "ingen").map((t) => t.id));
+            if (!ska.size && moln0.length) ska.add(moln0[0].id);
+            const har = new Set(p.tavlor.map((t) => t.id));
+            const fel = [...har].some((id) => moln0.some((t) => t.id === id) && !ska.has(id)) || [...ska].some((id) => !har.has(id));
+            if (fel && (d.rev || 0) === (moln.rev[d.id] || 0) && !arAndrad(p)) vantande.set(d.id, { data: d.data, rev: d.rev });
+        });
+        if (andrat) { markeraLasvy(); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } startaAnvandarlista(); }
     }
     // Innehållet ett läsbehörigt projekt ska ha: senaste synk, annars den sparade kopian på datorn.
     function basFor(p) {
@@ -126,27 +219,62 @@
         try {
             const d = JSON.parse(localStorage.getItem(NYCKEL));
             const x = d && Array.isArray(d.projekt) && d.projekt.find((q) => q.id === p.id);
-            if (x) { const b = innehall(lasProjekt(JSON.stringify(x))); lasBasis.set(p.id, b); return b; }
+            if (x) { const b = innehall(lasProjekt(JSON.stringify(x), true)); lasBasis.set(p.id, b); return b; }
         } catch (e) { }
         return null;
     }
     function lasMeddelande() {
-        status("Du har bara läsbehörighet i " + (state.projekt || "projektet") + " — ändringen sparades inte");
+        status("Du har bara läsbehörighet här — ändringen sparades inte");
     }
-    // Ändringar i ett läsbehörigt projekt rullas tillbaka direkt och sparas aldrig.
+    // Ändringar i det man bara får läsa rullas tillbaka direkt och sparas aldrig:
+    // projektets egna delar (inställningar, register, tavellistan) och enskilda tavlor.
     let aterstallTimer = null;
-    function lasAndrat() {
-        return plan4.projekt.some((p) => { if (!arLas(p.id)) return false; const b = basFor(p); return b !== null && b !== innehall(p); });
+    const utanTavlor = (p) => JSON.stringify(Object.assign({}, p, { aktiv: undefined, tavlor: p.tavlor.map((t) => t.id) }));
+    const tavlaJson = (p, id) => { const t = p.tavlor.find((x) => x.id === id); return t ? JSON.stringify(t) : null; };
+    const basObj = new Map();
+    function basForObj(p) {
+        const b = basFor(p);
+        if (b === null) return null;
+        const c = basObj.get(p.id);
+        if (c && c.txt === b) return c.obj;
+        const obj = JSON.parse(b);
+        basObj.set(p.id, { txt: b, obj: obj });
+        return obj;
     }
+    function skyddat(p) {
+        if (!anvandare || arAdmin()) return null;
+        const proj = arLas(p.id), tavlor = p.tavlor.filter((t) => tavlaLas(p.id, t.id)).map((t) => t.id);
+        return proj || tavlor.length ? { proj: proj, tavlor: tavlor } : null;
+    }
+    function brott(p) {
+        const s = skyddat(p);
+        if (!s) return false;
+        const b = basForObj(p);
+        if (!b) return false;
+        if (s.proj && utanTavlor(p) !== utanTavlor(b)) return true;
+        return s.tavlor.some((id) => tavlaJson(p, id) !== tavlaJson(b, id));
+    }
+    function lasAndrat() { return plan4.projekt.some(brott); }
     function aterstallLas() {
         aterstallTimer = null;
         let n = 0;
         plan4.projekt.forEach((p, i) => {
-            if (!arLas(p.id)) return;
-            const b = basFor(p);
-            if (b === null || b === innehall(p)) return;
-            const ny = lasProjekt(b);
-            if (p.aktiv && ny.tavlor.some((t) => t.id === p.aktiv)) ny.aktiv = p.aktiv;
+            if (!brott(p)) return;
+            const s = skyddat(p), b = JSON.parse(JSON.stringify(basForObj(p)));
+            let ny;
+            if (s.proj) {
+                // projektets delar från senaste synk; tavlor man får ändra behåller sina ändringar
+                ny = b;
+                ny.tavlor = b.tavlor.map((bt) => {
+                    const egen = p.tavlor.find((t) => t.id === bt.id);
+                    return egen && !s.tavlor.includes(bt.id) ? egen : bt;
+                });
+            } else {
+                ny = p;
+                ny.tavlor = p.tavlor.map((t) => s.tavlor.includes(t.id) ? (b.tavlor.find((bt) => bt.id === t.id) || t) : t);
+            }
+            ny.aktiv = p.aktiv && ny.tavlor.some((t) => t.id === p.aktiv) ? p.aktiv : ny.tavlor[0].id;
+            rustaProjekt(ny, IDAG);
             plan4.projekt[i] = ny;
             if (state === p) { angraForeAvbryt(); state = ny; valdKedja = null; }
             n++;
@@ -155,12 +283,34 @@
         if (dialogOppen()) stangModal();
         rita();
         lasMeddelande();
+        if (kanSkriva(state)) ursSpara();
     }
     function markeraLasvy() {
-        const las = !!(state && state.id && arLas(state.id));
+        const las = !!(state && state.id && state.tavlor && tavlaLas(state.id, (T() || {}).id));
+        document.body.classList.toggle("p4-projlas", !!(state && state.id && anvandare && !arAdmin() && arLas(state.id)));
         document.body.classList.toggle("p4-las", las);
         const namn = $("tavlanamn");
         if (namn) namn.readOnly = las;
+    }
+
+    // Molnets version av de tavlor jag inte ser (läggs tillbaka orörda vid uppladdning).
+    function uppdateraDolda(pid, data) {
+        if (!data || !anvandare || arAdmin()) return;
+        try {
+            const p = JSON.parse(data), tav = p.tavlor || [];
+            let dolda = tav.filter((t) => tavlaRatt(pid, t.id) === "ingen");
+            if (dolda.length === tav.length) dolda = dolda.slice(1);
+            doldaTavlor.set(pid, { ordning: tav.map((t) => t.id), dolda: dolda });
+        } catch (e) { }
+    }
+    const harNagonAdminroll = () => arAdmin() || [...projektMeta.keys()].some((id) => arProjektAdmin(id));
+    function rollTagg(pid) {
+        const b = minBeh(pid);
+        if (b.roll === "huvud") return "";
+        const t = Object.values(b.tavlor);
+        return (b.roll === "admin" ? ' <span class="p4-ks-tagg admin">Projektadmin</span>' : b.roll === "las" ? ' <span class="p4-ks-tagg">Bara läsa</span>' : "") +
+            (b.roll !== "admin" && t.includes("admin") ? ' <span class="p4-ks-tagg admin">Tavleadmin</span>' : "") +
+            (b.roll !== "admin" && t.includes("ingen") ? ' <span class="p4-ks-tagg">Vissa tavlor dolda</span>' : "");
     }
 
     // Läser in molnets projekt som hela Plan4 (ersätter det lokala).
@@ -227,8 +377,9 @@
                 lokala.add(p.id);
                 if (konflikter.has(p.id) || !arAndrad(p)) continue;
                 if (!arAdmin() && !(p.id in moln.rev)) continue;    // bara admin lägger till nya projekt
-                const json = projektJson(p);
-                if (json.length > MAX_PROJEKT_TECKEN) {
+                if (saknarDolda(p)) continue;                          // väntar på molnets version av de dolda tavlorna
+                const json = projektJson(p), upp = uppladdningsJson(p, json);
+                if (upp.length > MAX_PROJEKT_TECKEN) {
                     status("Projektet " + p.projekt + " är för stort för molnet och kan inte sparas där", true);
                     continue;
                 }
@@ -239,10 +390,11 @@
                         const snap = await tx.get(ref);
                         const molnRev = snap.exists() ? snap.data().rev || 0 : 0;
                         if (molnRev !== vantad) return { konflikt: true, snap };
-                        tx.set(ref, { namn: p.projekt, arkiverad: !!p.arkiverad, data: json, rev: molnRev + 1,
+                        const x = snap.exists() ? snap.data() : {};
+                        tx.set(ref, { namn: p.projekt, arkiverad: !!p.arkiverad, data: upp, rev: molnRev + 1,
                             uppdaterad: fb.fs.serverTimestamp(), enhet: ENHET,
-                            medlemmar: snap.exists() ? snap.data().medlemmar || [] : [anvandare.uid],
-                            lasare: snap.exists() ? snap.data().lasare || [] : [] });
+                            medlemmar: snap.exists() ? x.medlemmar || [] : [anvandare.uid],
+                            lasare: x.lasare || [], projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {} });
                         return { rev: molnRev + 1 };
                     });
                 } catch (e) {
@@ -310,7 +462,9 @@
         if (lyssnare) lyssnare();
         lyssnare = fb.fs.onSnapshot(projektFraga(), (snap) => {
             if (arAdmin()) { lasMeta(snap.docs); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } }
-            else uppdateraLas(snap.docs.map((d) => Object.assign({ id: d.id }, d.data())));
+            else uppdateraBeh(snap.docs.map((d) => Object.assign({ id: d.id }, d.data())));
+            // molnets version av tavlor man inte ser, så att de följer med orörda vid uppladdning
+            snap.docs.forEach((d) => { const x = d.data(); if ((x.rev || 0) >= (moln.rev[d.id] || 0)) uppdateraDolda(d.id, x.data); });
             snap.docChanges().forEach((c) => {
                 const id = c.doc.id, d = c.doc.data();
                 if (c.type === "removed") {
@@ -356,7 +510,8 @@
         const [snap, anvSnap] = await Promise.all([fb.fs.getDocs(projektFraga()), fb.fs.getDoc(anvDoc())]);
         if (arAdmin()) lasMeta(snap.docs);
         const dokument = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-        if (!arAdmin()) uppdateraLas(dokument); else { lasIds = new Set(); markeraLasvy(); }
+        if (!arAdmin()) uppdateraBeh(dokument); else markeraLasvy();
+        dokument.forEach((d) => uppdateraDolda(d.id, d.data));
         const aktivt = anvSnap.exists() ? anvSnap.data().aktivtProjekt : null;
         const agare = moln.uid;
 
@@ -448,6 +603,8 @@
     function klar() {
         synkKlar = true;
         lyssna();
+        tillampaVantande();
+        startaAnvandarlista();
         lage = konflikter.size ? "konflikt" : "synkad";
         senastSynkad = new Date();
         uppdateraUI();
@@ -672,7 +829,7 @@
                 "<h1>" + esc(namn || anvandare.email || "Mitt konto") + "</h1>" +
                 "<p>" + esc(anvandare.email || "") + " · inloggad med " + esc(satt) +
                   " · konto skapat " + esc(datumText(anvandare.metadata && anvandare.metadata.creationTime)) +
-                  (arAdmin() ? ' · <span class="p4-ks-tagg admin">Admin</span>' : "") + "</p>" +
+                  (arAdmin() ? ' · <span class="p4-ks-tagg admin">Huvudadmin</span>' : "") + "</p>" +
               "</div>" +
               '<button type="button" class="navknapp" data-ks="tillbaka">← Till tavlan</button>' +
             "</div>" +
@@ -763,14 +920,14 @@
             const poster = p.tavlor.reduce((n, t) => n + t.kort.length, 0);
             const andrad = senastAndrad(p);
             const lageTxt = k ? (k.borttagen ? "Borttaget på en annan enhet" : "Ändrat på två ställen")
-                : !synkKlar ? "Väntar" : arLas(p.id) ? "Läsbehörig" : arAndrad(p) ? "Sparas…" : "Sparat";
+                : !synkKlar ? "Väntar" : !kanSkriva(p) ? "Läsbehörig" : arAndrad(p) ? "Sparas…" : "Sparat";
             const klass = k ? "konflikt" : arAndrad(p) || !synkKlar ? "vantar" : "ok";
             return "<tr><td><b>" + esc(p.projekt) + "</b>" +
                 (p.id === state.id ? ' <span class="p4-ks-tagg oppet">Öppet</span>' : "") +
                 (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
-                (arLas(p.id) ? ' <span class="p4-ks-tagg">Bara läsa</span>' : "") + "</td>" +
+                rollTagg(p.id) + "</td>" +
                 "<td>" + p.tavlor.length + "</td><td>" + poster + "</td>" +
-                (arAdmin() ? "<td>" + medlemsText(p.id) + "</td>" : "") +
+                (harNagonAdminroll() ? "<td>" + (arProjektAdmin(p.id) ? medlemsText(p.id) : "") + "</td>" : "") +
                 "<td>" + esc(andrad ? new Date(andrad).toLocaleDateString("sv-SE") : "—") + "</td>" +
                 '<td><span class="p4-ks-status ' + klass + '">' + esc(lageTxt) + "</span>" +
                 (k ? '<span class="p4-konto-val">' +
@@ -778,7 +935,7 @@
                     '<button type="button" class="mknapp primar" data-behall="' + esc(p.id) + '">Behåll min</button></span>' : "") +
                 "</td>" +
                 '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' +
-                  (arAdmin() && projektMeta.has(p.id) ? '<button type="button" class="mknapp" data-medlemmar="' + esc(p.id) + '">Medlemmar…</button>' : "") +
+                  (projektMeta.has(p.id) && (arProjektAdmin(p.id) || harTavlaAdmin(p.id)) ? '<button type="button" class="mknapp" data-medlemmar="' + esc(p.id) + '">' + (arProjektAdmin(p.id) ? "Medlemmar…" : "Behörigheter…") + "</button>" : "") +
                   (p.arkiverad ? "" : '<button type="button" class="mknapp" data-oppna="' + esc(p.id) + '">Öppna</button>') + "</span></td></tr>";
         }).join("");
         kort.innerHTML =
@@ -788,7 +945,7 @@
               '<span class="p4-ks-knappar p4-ks-hoger-knappar">' + (arAdmin() ? '<button type="button" class="mknapp" data-ks="nyttprojekt">+ Nytt projekt</button>' : "") +
               '<button type="button" class="mknapp" data-ks="synka">Synka nu</button></span></div>' +
             (konflikter.size ? '<div class="notis">Välj vilken version som ska gälla för projekten som ändrats på två ställen.</div>' : "") +
-            '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Projekt</th><th>Tavlor</th><th>Poster</th>' + (arAdmin() ? "<th>Medlemmar</th>" : "") + '<th>Senast ändrat</th><th>Molnet</th><th></th></tr></thead>' +
+            '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Projekt</th><th>Tavlor</th><th>Poster</th>' + (harNagonAdminroll() ? "<th>Medlemmar</th>" : "") + '<th>Senast ändrat</th><th>Molnet</th><th></th></tr></thead>' +
             "<tbody>" + rader + "</tbody></table></div>";
     }
 
@@ -973,7 +1130,7 @@
     // I ett läsbehörigt projekt sparas ingenting: ändringen rullas tillbaka i stället.
     const ursSpara = spara;
     spara = function () {
-        if (lasIds.size && lasAndrat()) {
+        if (anvandare && !arAdmin() && lasAndrat()) {
             if (!aterstallTimer) aterstallTimer = setTimeout(aterstallLas, 0);
             return;
         }
@@ -1053,7 +1210,7 @@
             stoppaApp();
             visaVy("vantar");
         }
-        if (arAdmin()) startaAdmin(); else stoppaAdmin();
+        if (arAdmin()) startaAdmin(); else { stoppaAdmin(); startaAnvandarlista(); }
         uppdateraUI();
     }
 
@@ -1117,6 +1274,11 @@
             if (kontoOppen()) ritaAdmin();
         }, (e) => console.warn("Plan4 användarlista:", e));
     }
+    // Användarlistan behövs för huvudadmin och för den som är admin för ett projekt eller en tavla.
+    function startaAnvandarlista() {
+        if (!anvandare || !synkKlar) return;
+        if (arAdmin() || harNagonAdminroll() || [...projektMeta.keys()].some((id) => harTavlaAdmin(id))) startaAdmin();
+    }
     function stoppaAdmin() {
         if (adminLyssnare) { adminLyssnare(); adminLyssnare = null; }
         allaAnvandare = [];
@@ -1143,12 +1305,12 @@
                 if (st !== "godkand") atgard += knapp("godkann", a.uid, "Godkänn…", "primar");
                 if (st === "godkand" && roll !== "admin") atgard += knapp("projekt", a.uid, "Projekt…");
                 if (st !== "nekad") atgard += knapp("neka", a.uid, st === "godkand" ? "Spärra" : "Neka", "fara");
-                if (st === "godkand") atgard += roll === "admin" ? knapp("user", a.uid, "Ta bort admin") : knapp("admin", a.uid, "Gör till admin");
+                if (st === "godkand") atgard += roll === "admin" ? knapp("user", a.uid, "Ta bort huvudadmin") : knapp("admin", a.uid, "Gör till huvudadmin");
             }
             return "<tr><td><b>" + esc(a.namn || a.epost || a.uid) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">Du</span>' : "") +
                 (a.namn ? "<br><small>" + esc(a.epost || "") + "</small>" : "") + "</td>" +
                 "<td>" + esc(skapad ? skapad.toLocaleDateString("sv-SE") : "—") + "</td>" +
-                "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Admin</span>' : "Användare") + "</td>" +
+                "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Huvudadmin</span>' : "Användare") + "</td>" +
                 "<td>" + projektFor(a) + "</td>" +
                 '<td><span class="p4-ks-status ' + (st === "godkand" ? "ok" : st === "nekad" ? "konflikt" : "vantar") + '">' + STATUSNAMN[st] + "</span></td>" +
                 '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' + atgard + "</span></td></tr>";
@@ -1161,7 +1323,8 @@
                 '<button type="button" data-adminfilter="alla"' + (filter === "alla" ? ' class="vald"' : "") + ">Alla (" + allaAnvandare.length + ")</button>" +
               "</span></div>" +
             '<p class="hjalp">Nya konton kommer inte åt Plan4 förrän du godkänner dem och ger dem minst ett projekt. ' +
-              "Användare ser bara projekten de är medlemmar i, och du väljer om de får redigera eller bara läsa. Admin har tillgång till alla projekt.</p>" +
+              "Användare ser bara projekten de är medlemmar i. Under Projekt… väljer du roll per projekt (Kan redigera, Bara läsa eller Projektadmin), " +
+              "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Huvudadmin har tillgång till allt.</p>" +
             (lista.length
               ? '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Användare</th><th>Skapad</th><th>Roll</th><th>Projekt</th><th>Status</th><th></th></tr></thead><tbody>' +
                 rader + "</tbody></table></div>"
@@ -1177,18 +1340,19 @@
             try {
                 await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", uid),
                     Object.assign(andring, { behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }), { merge: true });
-                status((a.namn || a.epost) + ": " + ({ godkann: "godkänd", neka: "nekad", admin: "är nu admin", user: "är inte längre admin" })[vad]);
+                status((a.namn || a.epost) + ": " + ({ godkann: "godkänd", neka: "nekad", admin: "är nu huvudadmin", user: "är inte längre huvudadmin" })[vad]);
             } catch (e) { status("Kunde inte ändra användaren: " + (e.code || e.message), true); }
         };
         if (vad === "godkann") return projektvalDialog(a, true);
         if (vad === "projekt") return projektvalDialog(a, false);
         if (vad === "admin" || (vad === "neka" && a.status === "godkand")) {
             const txt = vad === "admin"
-                ? (a.namn || a.epost) + " får samma behörighet som du: godkänna och spärra konton och dela ut adminrollen."
+                ? (a.namn || a.epost) + " blir huvudadmin med samma behörighet som du: tillgång till alla projekt, godkänna och spärra konton och dela ut alla roller. " +
+                  "Vill du bara att personen ska styra ett projekt väljer du Projektadmin under Projekt… i stället."
                 : (a.namn || a.epost) + " stängs ute från Plan4 direkt. Projekten finns kvar i kontot och blir tillgängliga igen om du godkänner kontot på nytt.";
-            return fraga(vad === "admin" ? "Gör till admin?" : "Spärra kontot?", txt,
+            return fraga(vad === "admin" ? "Gör till huvudadmin?" : "Spärra kontot?", txt,
                 [{ txt: "Avbryt", fn: stangModal },
-                 { txt: vad === "admin" ? "Gör till admin" : "Spärra", primar: vad === "admin", fara: vad !== "admin", fn: () => { stangModal(); gor(); } }], false);
+                 { txt: vad === "admin" ? "Gör till huvudadmin" : "Spärra", primar: vad === "admin", fara: vad !== "admin", fn: () => { stangModal(); gor(); } }], false);
         }
         gor();
     }
@@ -1204,17 +1368,49 @@
         }
     });
 
-    // ---------- medlemmar i projekt (admin) ----------
+    // ---------- medlemmar och behörigheter ----------
+    const ROLLNAMN = { admin: "Projektadmin", red: "Kan redigera", las: "Bara läsa" };
+    const TAVLANAMN = [["", "Som projektet"], ["admin", "Admin"], ["red", "Redigera"], ["las", "Läsa"], ["ingen", "Ingen åtkomst"]];
+    const arHuvud = (a) => (a && a.roll) === "admin";
+    const rollI = (m, uid) => m.projektAdmin.includes(uid) ? "admin" : m.lasare.includes(uid) ? "las" : "red";
+
     function projektFor(a) {
-        if ((a.roll || "user") === "admin") return '<span class="p4-ks-dampad">Alla projekt</span>';
-        const namn = [...projektMeta].filter(([, m]) => m.medlemmar.includes(a.uid))
-            .map(([, m]) => esc(m.namn) + (m.lasare.includes(a.uid) ? ' <span class="p4-ks-tagg">Bara läsa</span>' : ""));
+        if (arHuvud(a)) return '<span class="p4-ks-dampad">Alla projekt</span>';
+        const namn = [...projektMeta].filter(([, m]) => m.medlemmar.includes(a.uid)).map(([, m]) => {
+            const r = rollI(m, a.uid), egna = Object.keys((m.tavlaBeh || {})[a.uid] || {}).length;
+            return esc(m.namn) + (r !== "red" ? ' <span class="p4-ks-tagg' + (r === "admin" ? " admin" : "") + '">' + ROLLNAMN[r] + "</span>" : "") +
+                (egna && r !== "admin" ? ' <span class="p4-ks-tagg">' + egna + (egna === 1 ? " tavla" : " tavlor") + " egen behörighet</span>" : "");
+        });
         return namn.length ? namn.join(", ") : '<span class="p4-ks-dampad">Inga</span>';
     }
     const valbaraProjekt = () => [...projektMeta].map(([id, m]) => Object.assign({ id }, m))
         .sort((x, y) => (x.arkiverad - y.arkiverad) || x.namn.localeCompare(y.namn, "sv"));
 
-    // Godkänn (kräver minst ett projekt) eller ändra vilka projekt en användare är med i.
+    // Väljare för roll i ett projekt.
+    function rollval(attr, id, roll, av) {
+        return '<select class="f p4-ks-beh" ' + attr + '="' + esc(id) + '"' + (av ? " disabled" : "") + ' aria-label="Roll i projektet">' +
+            ["red", "las", "admin"].map((r) => '<option value="' + r + '"' + (r === roll ? " selected" : "") + ">" + ROLLNAMN[r] + "</option>").join("") +
+            "</select>";
+    }
+    // Väljare för en tavla.
+    function tavlaval(uid, tid, varde, av) {
+        return '<select class="f p4-ks-tbeh" data-tu="' + esc(uid) + '" data-tt="' + esc(tid) + '"' + (av ? " disabled" : "") + ">" +
+            TAVLANAMN.map(([v, t]) => '<option value="' + v + '"' + (v === (varde || "") ? " selected" : "") + ">" + t + "</option>").join("") + "</select>";
+    }
+    // Rollen och tavlorna gäller bara när personen är med i projektet; projektadmin styrs inte per tavla.
+    function synkaRad(li) {
+        const box = li.querySelector("input[type=checkbox]"), roll = li.querySelector(".p4-ks-beh");
+        const med = !box || box.checked;
+        if (roll && box) roll.disabled = !med || box.disabled;
+        const tav = li.querySelector(".p4-ks-tavlor");
+        if (tav) tav.classList.toggle("dold", !med || (roll && roll.value === "admin"));
+    }
+    document.addEventListener("change", (e) => {
+        const li = e.target.closest && e.target.closest(".p4-ks-medbeh");
+        if (li) synkaRad(li);
+    });
+
+    // Godkänn (kräver minst ett projekt) eller ändra vilka projekt en användare är med i (huvudadmin).
     function projektvalDialog(a, godkann) {
         const lista = valbaraProjekt();
         if (!lista.length) {
@@ -1223,25 +1419,26 @@
         }
         const kropp =
             '<p class="hjalp" style="margin-top:0">' + (godkann
-                ? "Välj vilka projekt " + esc(a.namn || a.epost) + " ska få tillgång till. Minst ett projekt krävs."
-                : "Bocka i projekten " + esc(a.namn || a.epost) + " ska vara med i. Utan projekt kommer personen inte åt något.") + "</p>" +
+                ? "Välj vilka projekt " + esc(a.namn || a.epost) + " ska få tillgång till och vilken roll personen har i varje. Minst ett projekt krävs."
+                : "Bocka i projekten " + esc(a.namn || a.epost) + " ska vara med i och välj roll. Utan projekt kommer personen inte åt något.") +
+            " En projektadmin bestämmer själv vilka som är med i projektet. Behörighet per tavla väljer du under Medlemmar… på projektet.</p>" +
             '<ul class="p4-ks-valista">' + lista.map((p) => {
                 const med = p.medlemmar.includes(a.uid);
                 return '<li class="p4-ks-medbeh"><label><input type="checkbox" data-pval="' + esc(p.id) + '"' + (med ? " checked" : "") + "> " +
                     "<span><b>" + esc(p.namn) + "</b>" + (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
                     "<small>" + (p.medlemmar.filter((u) => u !== a.uid).length) + " andra medlemmar</small></span></label>" +
-                    behorighetsval("data-pbeh", p.id, med && p.lasare.includes(a.uid), !med) + "</li>";
+                    rollval("data-pbeh", p.id, med ? rollI(p, a.uid) : "red", !med) + "</li>";
             }).join("") + "</ul>" +
             '<div class="notis rod dold" id="pvFel"></div>';
         modal(godkann ? "Godkänn " + (a.namn || a.epost) : "Projekt för " + (a.namn || a.epost), a.namn ? a.epost : "", kropp, [
             { txt: "Avbryt", fn: stangModal },
             { txt: godkann ? "Godkänn och ge tillgång" : "Spara", primar: true, fn: async () => {
                 const valda = [...document.querySelectorAll("[data-pval]")].filter((x) => x.checked).map((x) => x.dataset.pval);
-                const lasVal = new Set([...document.querySelectorAll("[data-pbeh]")].filter((x) => x.value === "las").map((x) => x.dataset.pbeh));
+                const roller = new Map([...document.querySelectorAll("[data-pbeh]")].map((x) => [x.dataset.pbeh, x.value]));
                 if (godkann && !valda.length) { const f = $("pvFel"); f.textContent = "Välj minst ett projekt."; f.classList.remove("dold"); return; }
                 stangModal();
                 try {
-                    await sattProjektFor(a.uid, valda, lasVal);
+                    await sattProjektFor(a.uid, valda, roller);
                     if (godkann) {
                         await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", a.uid),
                             { status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }, { merge: true });
@@ -1252,67 +1449,125 @@
         ]);
     }
 
-    // Väljare för behörighet i ett projekt: redigera eller bara läsa.
-    function behorighetsval(attr, id, las, av) {
-        return '<select class="f p4-ks-beh" ' + attr + '="' + esc(id) + '"' + (av ? " disabled" : "") + ' aria-label="Behörighet">' +
-            '<option value="red"' + (las ? "" : " selected") + ">Kan redigera</option>" +
-            '<option value="las"' + (las ? " selected" : "") + ">Bara läsa</option></select>";
+    // Nya listor för ett projekt när en person får en viss roll (null = inte med).
+    function medRoll(m, uid, roll) {
+        const utan = (lista) => lista.filter((u) => u !== uid);
+        const tb = Object.assign({}, m.tavlaBeh || {});
+        if (!roll) delete tb[uid];
+        return {
+            medlemmar: roll ? (m.medlemmar.includes(uid) ? m.medlemmar : m.medlemmar.concat(uid)) : utan(m.medlemmar),
+            lasare: roll === "las" ? utan(m.lasare).concat(uid) : utan(m.lasare),
+            projektAdmin: roll === "admin" ? utan(m.projektAdmin).concat(uid) : utan(m.projektAdmin),
+            tavlaBeh: tb
+        };
     }
-    // Väljaren gäller bara när personen är med i projektet.
-    document.addEventListener("change", (e) => {
-        const box = e.target.closest && e.target.closest(".p4-ks-medbeh input[type=checkbox]");
-        if (!box) return;
-        const val = box.closest("li").querySelector(".p4-ks-beh");
-        if (val) val.disabled = !box.checked || box.disabled;
-    });
+    async function sparaMeta(pid, m, ny) {
+        await fb.fs.updateDoc(projektDoc(pid), ny);
+        Object.assign(m, ny);
+    }
 
-    // Lägger till och tar bort en användare ur projekt så att hen är med i exakt de valda,
-    // med läsbehörighet i de projekt som finns i lasVal.
-    async function sattProjektFor(uid, valda, lasVal) {
-        lasVal = lasVal || new Set();
+    // Lägger till och tar bort en användare ur projekt så att hen är med i exakt de valda, med vald roll.
+    async function sattProjektFor(uid, valda, roller) {
+        roller = roller || new Map();
         for (const [id, m] of projektMeta) {
             const med = m.medlemmar.includes(uid), ska = valda.includes(id);
-            const arL = m.lasare.includes(uid), skaL = ska && lasVal.has(id);
-            if (med === ska && arL === skaL) continue;
-            const ny = ska ? (med ? m.medlemmar : m.medlemmar.concat(uid)) : m.medlemmar.filter((u) => u !== uid);
-            const nyL = skaL ? (arL ? m.lasare : m.lasare.concat(uid)) : m.lasare.filter((u) => u !== uid);
-            await fb.fs.setDoc(projektDoc(id), { medlemmar: ny, lasare: nyL }, { merge: true });
-            m.medlemmar = ny; m.lasare = nyL;
+            const roll = ska ? roller.get(id) || "red" : null;
+            if (med === ska && (!ska || rollI(m, uid) === roll)) continue;
+            await sparaMeta(id, m, medRoll(m, uid, roll));
         }
     }
 
-    // Vilka användare är med i ett projekt?
+    // Medlemmar och behörigheter i ett projekt. Huvudadmin och projektadmin ändrar allt;
+    // den som är admin för en tavla ändrar bara vilka som kommer åt den tavlan.
     function medlemmarDialog(pid) {
         const m = projektMeta.get(pid);
         if (!m) return;
-        const anvandareLista = allaAnvandare.filter((a) => a.status === "godkand")
-            .sort((x, y) => (x.namn || x.epost || "").localeCompare(y.namn || y.epost || "", "sv"));
+        const full = arProjektAdmin(pid);
+        const tavlor = m.tavlor.length ? m.tavlor : ((plan4.projekt.find((p) => p.id === pid) || {}).tavlor || []).map((t) => ({ id: t.id, namn: t.namn }));
+        const mina = full ? tavlor : tavlor.filter((t) => tavlaRatt(pid, t.id) === "admin");
+        if (!full && !mina.length) return;
+        const godkanda = allaAnvandare.filter((a) => a.status === "godkand");
+        const namnFor = (uid) => { const a = allaAnvandare.find((x) => x.uid === uid); return a ? a.namn || a.epost : "Okänd användare"; };
+        // vilka som visas: alla godkända (full), annars bara projektets medlemmar
+        let lista = full ? godkanda.slice() : godkanda.filter((a) => m.medlemmar.includes(a.uid));
+        m.medlemmar.forEach((u) => { if (!lista.some((a) => a.uid === u) && !allaAnvandare.some((a) => a.uid === u && a.status !== "godkand")) lista.push({ uid: u, namn: "", epost: "" }); });
+        lista = lista.filter((a) => full || (!arHuvud(a) && !m.projektAdmin.includes(a.uid) && a.uid !== anvandare.uid))
+            .sort((x, y) => (arHuvud(y) - arHuvud(x)) || (x.namn || x.epost || "").localeCompare(y.namn || y.epost || "", "sv"));
+        const tb = m.tavlaBeh || {};
+        const rad = (a) => {
+            const huvud = arHuvud(a), med = huvud || m.medlemmar.includes(a.uid), jag = a.uid === anvandare.uid;
+            const roll = med && !huvud ? rollI(m, a.uid) : "red";
+            const namn = a.namn || a.epost || namnFor(a.uid);
+            if (huvud)
+                return '<li class="p4-ks-medbeh"><label><input type="checkbox" checked disabled> <span><b>' + esc(namn) + '</b> <span class="p4-ks-tagg admin">Huvudadmin</span>' +
+                    "<small>Full åtkomst till allt</small></span></label></li>";
+            const egen = tb[a.uid] || {};
+            const tavelrutor = (full ? tavlor : mina).length > 0
+                ? '<div class="p4-ks-tavlor' + (!med || roll === "admin" ? " dold" : "") + '">' +
+                    (full ? tavlor : mina).map((t) => '<label class="p4-ks-tavla"><span>' + esc(t.namn) + "</span>" +
+                        tavlaval(a.uid, t.id, egen[t.id], jag) + "</label>").join("") + "</div>"
+                : "";
+            return '<li class="p4-ks-medbeh">' +
+                (full
+                    ? '<label><input type="checkbox" data-mval="' + esc(a.uid) + '"' + (med ? " checked" : "") + (jag ? " disabled" : "") + "> "
+                    : "<label>") +
+                "<span><b>" + esc(namn) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">Du</span>' : "") +
+                (a.namn && a.epost ? "<small>" + esc(a.epost) + "</small>" : "") +
+                (!full ? "<small>" + ROLLNAMN[roll] + " i projektet</small>" : "") + "</span></label>" +
+                (full ? rollval("data-mbeh", a.uid, roll, !med || jag) : "") + tavelrutor + "</li>";
+        };
         const kropp =
-            '<p class="hjalp" style="margin-top:0">Bocka i vilka som ska ha tillgång till projektet och välj om de får redigera eller bara läsa. Admin har alltid tillgång. ' +
-              "Konton som väntar på godkännande ger du projekt när du godkänner dem.</p>" +
-            (anvandareLista.length ? '<ul class="p4-ks-valista">' + anvandareLista.map((a) => {
-                const admin = a.roll === "admin", med = m.medlemmar.includes(a.uid);
-                return '<li class="p4-ks-medbeh"><label><input type="checkbox" data-mval="' + esc(a.uid) + '"' +
-                    (admin || med ? " checked" : "") + (admin ? " disabled" : "") + "> " +
-                    "<span><b>" + esc(a.namn || a.epost) + "</b>" + (admin ? ' <span class="p4-ks-tagg admin">Admin</span>' : "") +
-                    (a.namn ? "<small>" + esc(a.epost || "") + "</small>" : "") + "</span></label>" +
-                    (admin ? "" : behorighetsval("data-mbeh", a.uid, med && m.lasare.includes(a.uid), !med)) + "</li>";
-            }).join("") + "</ul>" : '<p class="listtom">Inga godkända användare ännu.</p>');
-        modal("Medlemmar i " + m.namn, "", kropp, [
+            '<p class="hjalp" style="margin-top:0">' + (full
+                ? "Bocka i vilka som ska vara med i projektet och välj roll. <b>Projektadmin</b> får allt i projektet och väljer själv vilka som är med. " +
+                  "Under varje person kan du ge en egen behörighet per tavla: <b>Admin</b> för tavlan, <b>Redigera</b>, <b>Läsa</b> eller <b>Ingen åtkomst</b> (tavlan syns inte alls)."
+                : "Du är admin för " + mina.map((t) => "<b>" + esc(t.namn) + "</b>").join(", ") + ". Välj vilka av projektets medlemmar som ska komma åt " +
+                  (mina.length === 1 ? "tavlan" : "tavlorna") + " och vad de får göra där.") + "</p>" +
+            (godkanda.length || !full ? (lista.length ? '<ul class="p4-ks-valista p4-ks-medlista">' + lista.map(rad).join("") + "</ul>"
+                : '<p class="listtom">Inga andra medlemmar i projektet.</p>')
+                : '<p class="listtom">Användarlistan hämtas… Stäng och öppna igen om en stund.</p>') +
+            '<div class="notis rod dold" id="mdFel"></div>';
+        modal((full ? "Medlemmar i " : "Behörigheter i ") + m.namn, full ? "" : "Tavlor du är admin för", kropp, [
             { txt: "Avbryt", fn: stangModal },
             { txt: "Spara", primar: true, fn: async () => {
-                const valda = [...document.querySelectorAll("[data-mval]")].filter((x) => x.checked && !x.disabled).map((x) => x.dataset.mval);
-                const admins = m.medlemmar.filter((u) => { const a = allaAnvandare.find((x) => x.uid === u); return a && a.roll === "admin"; });
-                // andra som inte syns i listan (väntande eller spärrade) ligger kvar som de var
-                const osynliga = m.medlemmar.filter((u) => !anvandareLista.some((a) => a.uid === u));
-                const ny = [...new Set(admins.concat(osynliga, valda))];
-                const lasValda = [...document.querySelectorAll("[data-mbeh]")].filter((x) => x.value === "las" && valda.includes(x.dataset.mbeh)).map((x) => x.dataset.mbeh);
-                const nyL = [...new Set(m.lasare.filter((u) => osynliga.includes(u)).concat(lasValda))];
+                const fel = (t) => { const f = $("mdFel"); f.textContent = t; f.classList.remove("dold"); };
+                const nyTb = JSON.parse(JSON.stringify(tb));
+                document.querySelectorAll(".p4-ks-tbeh").forEach((x) => {
+                    if (x.disabled) return;
+                    const u = x.dataset.tu, t = x.dataset.tt;
+                    if (!full && !mina.some((mt) => mt.id === t)) return;
+                    nyTb[u] = nyTb[u] || {};
+                    if (x.value) nyTb[u][t] = x.value; else delete nyTb[u][t];
+                    if (!Object.keys(nyTb[u]).length) delete nyTb[u];
+                });
+                let ny;
+                if (full) {
+                    const synliga = new Set(lista.map((a) => a.uid));
+                    const valda = [...document.querySelectorAll("[data-mval]")].filter((x) => x.checked).map((x) => x.dataset.mval);
+                    // jag själv (disabled) och personer som inte syns i listan ligger kvar som de var
+                    const kvar = m.medlemmar.filter((u) => !synliga.has(u) || u === anvandare.uid || allaAnvandare.some((a) => a.uid === u && arHuvud(a)));
+                    const huvuden = allaAnvandare.filter(arHuvud).map((a) => a.uid).filter((u) => m.medlemmar.includes(u));
+                    const medlemmar = [...new Set(kvar.concat(huvuden, valda))];
+                    const roll = new Map([...document.querySelectorAll("[data-mbeh]")].map((x) => [x.dataset.mbeh, x.value]));
+                    const lasare = [], projektAdmin = [];
+                    medlemmar.forEach((u) => {
+                        const r = roll.has(u) && valda.includes(u) ? roll.get(u) : rollI(m, u);
+                        if (r === "las") lasare.push(u);
+                        if (r === "admin") projektAdmin.push(u);
+                    });
+                    Object.keys(nyTb).forEach((u) => { if (!medlemmar.includes(u) || projektAdmin.includes(u)) delete nyTb[u]; });
+                    ny = { medlemmar, lasare, projektAdmin, tavlaBeh: nyTb };
+                } else ny = { tavlaBeh: nyTb };
+                // ingen får bli helt utestängd från alla tavlor (ta då bort personen ur projektet i stället)
+                const utestangd = Object.keys(nyTb).find((u) => {
+                    if (full && !ny.medlemmar.includes(u)) return false;
+                    if ((full ? ny.projektAdmin : m.projektAdmin).includes(u)) return false;
+                    return tavlor.length && tavlor.every((t) => nyTb[u][t.id] === "ingen");
+                });
+                if (utestangd) return fel(namnFor(utestangd) + " har Ingen åtkomst på alla tavlor. Ta bort personen ur projektet i stället, eller öppna minst en tavla.");
                 stangModal();
                 try {
-                    await fb.fs.setDoc(projektDoc(pid), { medlemmar: ny, lasare: nyL }, { merge: true });
-                    m.medlemmar = ny; m.lasare = nyL;
-                    status("Medlemmarna i " + m.namn + " är sparade");
+                    await sparaMeta(pid, m, ny);
+                    status((full ? "Medlemmarna i " : "Behörigheterna i ") + m.namn + " är sparade");
                     if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); }
                 } catch (e) { status("Kunde inte spara: " + (e.code || e.message), true); }
             } },
@@ -1350,7 +1605,8 @@
             anvandare = u;
             konflikter.clear(); vantande.clear();
             const lasCache = u ? lasJson(LASNYCKEL, null) : null;
-            lasIds = new Set(lasCache && lasCache.uid === u.uid ? lasCache.ids || [] : []);
+            behCache = lasCache && lasCache.uid === u.uid && lasCache.beh ? lasCache.beh : {};
+            projektMeta.clear(); doldaTavlor.clear();
             markeraLasvy();
             if (!u) {
                 lage = "utloggad"; uppdateraUI();

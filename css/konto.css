@@ -835,3 +835,55 @@ body.p4-las .kort {
     margin: 0 14px 10px 42px;
   }
 }
+
+/* ---------- behörighet per tavla ---------- */
+.p4-ks-medlista li.p4-ks-medbeh {
+  flex-wrap: wrap;
+}
+.p4-ks-tavlor {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 10px;
+  margin: 0 14px 12px 42px;
+  padding: 10px 12px;
+  background: var(--bg-main);
+  border-radius: var(--r-s);
+}
+.p4-ks-tavlor.dold {
+  display: none;
+}
+.p4-ks-tavla {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.p4-ks-tavla span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p4-ks-tavla .f {
+  width: auto;
+  padding: 5px 8px;
+  font-size: 12.5px;
+}
+.p4-ks-tavla select[value="ingen"],
+.p4-ks-tbeh option[value="ingen"] {
+  color: var(--leverans);
+}
+@media (max-width: 560px) {
+  .p4-ks-tavlor {
+    margin-left: 14px;
+  }
+}
+/* bara läsa i projektet: inga nya tavlor (en tavla med egen behörighet går ändå att ändra) */
+body.p4-projlas #nyTavlaKnapp,
+body.p4-projlas .flik.plus {
+  display: none !important;
+}
