@@ -110,7 +110,7 @@ function kanDupliceras(k) {
 
 // Bara delen ur Plats / del, t.ex. "Prenadhuset Del 1:2" → "Del 1:2". Ingen del → tom text.
 function delText(plats) {
-    const m = /\bdel\s*(\d+)(?:\s*[:\/]\s*(\d+))?/i.exec(plats || "");
+    const m = /\bdel\s*(\d+)(?:\s*(?:[:\/.;,\-–—]|\bav\b|\bof\b)\s*(\d+))?/i.exec(plats || "");
     return m ? "Del " + m[1] + (m[2] ? ":" + m[2] : "") : "";
 }
 

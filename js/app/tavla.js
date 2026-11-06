@@ -814,11 +814,19 @@ function kortEl(k) {
     }
     const txt = document.createElement("span");
     txt.className = "txt";
-    if (k.typ === "mote" && k.tid) {
-        const tr = document.createElement("span");
-        tr.className = "tidrad";
-        tr.textContent = tidText(k);
-        txt.appendChild(tr);
+    const rub = k.typ === "franvaro" ? null : kortRubrik(k, kortText(k, T(), projektForTavla(T())));
+    if (rub) {
+        // överst: typen (och klockslag för möten), sedan namnet som rubrik
+        const ov = document.createElement("span");
+        ov.className = "kortetikett";
+        ov.textContent = rub.etikett + (k.typ === "mote" && k.tid ? " · " + tidText(k) : "");
+        if (rub.gorIdag) {
+            const gi = document.createElement("span");
+            gi.className = "gorIdag";
+            gi.textContent = "Gör idag";
+            ov.appendChild(gi);
+        }
+        txt.appendChild(ov);
     }
     if (k.typ === "franvaro" && franvaroNy(k)) {
         txt.appendChild(document.createTextNode(franvaroTitel(state, k)));
@@ -834,10 +842,19 @@ function kortEl(k) {
             fr.textContent = "Frånvaro · " + (k.franvaroOrsak || "Annat");
             txt.appendChild(fr);
         }
-        txt.appendChild(document.createTextNode(kortText(k, T(), projektForTavla(T()))));
+        const ti = document.createElement("span");
+        ti.className = "korttitel";
+        ti.textContent = rub ? rub.titel : kortText(k, T(), projektForTavla(T()));
+        txt.appendChild(ti);
+        if (rub && rub.under) {
+            const un = document.createElement("span");
+            un.className = "kortunder";
+            un.textContent = rub.under;
+            txt.appendChild(un);
+        }
     }
     // Plats / del visas på alla kort i momentet (avrop, leverans, start och klart).
-    const plats = k.typ === "franvaro" ? "" : kortPlats(k, T()), del = delText(plats);
+    const plats = k.typ === "franvaro" ? "" : kortPlats(k, T()), del = k.typ === "franvaro" ? "" : kortDel(k, T());
     if (del) {
         const pl = document.createElement("span");
         pl.className = "platsrad";
@@ -1168,6 +1185,15 @@ function kortPlats(k, t) {
     return bar && bar.plats || "";
 }
 
+// Delen ett kort hör till: ur Plats / del, annars ur momentets namn (t.ex. "Gjutning del 1:3").
+function kortDel(k, t) {
+    const ur = delText(kortPlats(k, t));
+    if (ur)
+        return ur;
+    const bar = k.kedja && t ? t.kort.find(x => x.kedja === k.kedja && (x.roll === "S" || x.roll === "P")) : null;
+    return delText(bar ? bar.text : k.text);
+}
+
 // Öppna hinder i hela projektet (alla tavlor).
 function projektetsHinder(p) {
     const ut = [];
@@ -1185,4 +1211,31 @@ function ritaHindermark() {
     el.classList.toggle("dold", !lista.length);
     el.classList.toggle("sen", sena > 0);
     el.title = lista.length + (lista.length === 1 ? " öppet hinder" : " öppna hinder") + (sena ? ", varav " + sena + " försenade" : "");
+}
+
+// Delar upp korttexten i en liten typetikett och själva namnet.
+// "Avrop · Optimera · gör idag" → etikett "Avrop", namn "Optimera", Gör idag-märke.
+const KORT_ETIKETT = { A: "Avrop", L: "Leverans", S: "Start", K: "Klart", P: "Produktion" };
+const TYP_ETIKETT = { mote: "Möte", produktion: "Produktion", avrop: "Avrop", leverans: "Leverans / UE", ovrigt: "Övrigt", franvaro: "Frånvaro" };
+function kortRubrik(k, text) {
+    let titel = text || "", gorIdag = false;
+    if (/ · gör idag$/i.test(titel)) {
+        gorIdag = true;
+        titel = titel.replace(/ · gör idag$/i, "");
+    }
+    const etikett = KORT_ETIKETT[k.roll] || (k.attgora ? "Att göra" : TYP_ETIKETT[k.typ] || "");
+    const bort = ["Avrop · ", "Leverans · ", "Att göra · ", "Möte · "];
+    if (k.roll === "S" || k.roll === "P") bort.push("Start ");
+    if (k.roll === "K") bort.push("Klart ");
+    bort.forEach(p => { if (titel.indexOf(p) === 0) titel = titel.slice(p.length); });
+    if (k.roll === "K")
+        titel = titel.replace(/\s+(klart|färdigt)$/i, "");
+    // avrop och leveranser: leverantören på en egen rad under det som levereras
+    let under = "";
+    const delar = titel.split(" · ");
+    if ((k.typ === "avrop" || k.typ === "leverans") && delar.length > 1) {
+        under = delar.pop();
+        titel = delar.join(" · ");
+    }
+    return { etikett, titel: titel.trim() || text, under: under.trim(), gorIdag };
 }

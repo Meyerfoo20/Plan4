@@ -937,3 +937,101 @@ details[open] > summary::before {
 .panel.stangd #varningsinnehall {
   display: none;
 }
+
+/* ==== Korttext: etikett + rubrik ===================================== */
+.kort { --kc: var(--mote); }
+.kort.t-produktion { --kc: var(--produktion); }
+.kort.t-avrop { --kc: var(--avrop); }
+.kort.t-leverans { --kc: var(--leverans); }
+.kort.t-ovrigt { --kc: var(--ovrigt); }
+.kort.t-franvaro { --kc: var(--franvaro); }
+.kort.klar { --kc: var(--text-faint); }
+
+.kort .txt,
+.kort.t-mote .txt,
+.kort.t-produktion .txt,
+.kort.t-avrop .txt,
+.kort.t-leverans .txt,
+.kort.t-ovrigt .txt {
+  color: var(--text-main);
+  font-weight: 500;
+}
+.kort .kedjemark {
+  display: none;
+}
+.kort .kortetikett {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  font-size: .74em;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--kc);
+  margin: 1px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+.kort .gorIdag {
+  font-size: .95em;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: #fff;
+  background: var(--leverans);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.5;
+}
+.kort .korttitel {
+  display: block;
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.28;
+  letter-spacing: -.005em;
+  color: color-mix(in srgb, var(--kc) 28%, #16191c);
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.kort .meta {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.kort .momentref {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--kc) 55%, var(--text-muted));
+  opacity: 1;
+  margin-top: 3px;
+}
+.kort .momentref.fristaende {
+  font-weight: 500;
+  color: var(--text-faint);
+}
+.kort .platsrad {
+  margin: 4px 0 1px;
+}
+.kort.klar .txt {
+  text-decoration: none;
+}
+.kort.klar .korttitel {
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, .3);
+  color: var(--text-faint);
+}
+.kort .bock {
+  margin-top: 2px;
+}
+.kort .kortunder {
+  display: block;
+  font-size: .86em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--kc) 45%, var(--text-muted));
+  margin-top: 1px;
+}
+.kort.klar .kortunder {
+  color: var(--text-faint);
+}

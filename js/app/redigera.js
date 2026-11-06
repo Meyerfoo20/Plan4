@@ -654,6 +654,9 @@ function taBortAllt(k, rader) {
 function redigeraKort(k) {
     if (k.typ === "franvaro" && !k.virtuell)
         return franvaroDialog(k);
+    // Kort i ett moment (avrop, leverans, klart) delar momentets Plats / del, som ligger på startposten.
+    const momentBar = k.kedja ? T().kort.find(x => x.kedja === k.kedja && (x.roll === "S" || x.roll === "P") && x.id !== k.id) : null;
+    const platsVarde = momentBar && !k.plats ? momentBar.plats || "" : k.plats || "";
     const kropp = '<div class="falt"><label for="rText">Text</label><input class="f" id="rText" value="' + esc(k.text) + '"></div>' +
         '<div class="tva"><div class="falt"><label for="rDag">Dag</label><select class="f" id="rDag">' + dagOptioner(k.dag) + '</select></div>' +
         '<div class="falt"><label for="rTyp">Typ</label><select class="f" id="rTyp">' +
@@ -668,8 +671,10 @@ function redigeraKort(k) {
                 '<input class="f" id="rPlats" value="' + esc(k.plats || "") + '"></div>'
             : '<div class="tva"><div class="falt"><label for="rTid">Klockslag</label>' +
                 '<input class="f" id="rTid" value="' + esc(k.tid || "") + '"></div>' +
-                (k.typ === "produktion" ? '</div><div class="tva"><div class="falt"><label for="rPlats">Plats / del</label>' +
-                    '<input class="f" id="rPlats" value="' + esc(k.plats || "") + '"></div>' : "")) +
+                '</div><div class="tva"><div class="falt"><label for="rPlats">Plats / del</label>' +
+                    '<input class="f" id="rPlats" value="' + esc(platsVarde) + '" placeholder="T.ex. Del 1:3">' +
+                    (momentBar ? '<p class="hjalp" style="margin:4px 0 0">Gäller hela momentet ' + esc(momentNamn(momentBar)) + "</p>" : "") +
+                    "</div>") +
         '<div class="falt"><label for="rVem">Vem</label><input class="f" id="rVem" value="' + esc(k.vem || "") + '"></div></div>' +
         (k.typ === "franvaro" ? '<div class="falt"><label for="rFOrsak">Orsak</label><select class="f" id="rFOrsak">' +
             FRANVARO.map(o => '<option' + (o === (k.franvaroOrsak || "Annat") ? " selected" : "") + '>' + o + '</option>').join("") +
@@ -707,6 +712,12 @@ function redigeraKort(k) {
                     if (document.getElementById("rPlats"))
                         o.plats = document.getElementById("rPlats").value.trim();
                 }
+                // I ett moment sparas Plats / del på startposten, så att alla kort i momentet visar samma del.
+                let momentPlats = null;
+                if (momentBar && o.plats !== undefined && nyTyp !== "mote") {
+                    momentPlats = o.plats;
+                    o.plats = "";
+                }
                 o.vem = document.getElementById("rVem").value.trim();
                 o.not = document.getElementById("rNot").value.trim();
                 if (document.getElementById("rFOrsak"))
@@ -719,6 +730,11 @@ function redigeraKort(k) {
                     return;
                 if (!appliceraPatch(patch, { tavla: t, projekt: state }))
                     return;
+                if (momentPlats !== null && (momentBar.plats || "") !== momentPlats) {
+                    const pp = opRedigeraKort(momentBar, { plats: momentPlats }, t.id);
+                    if (pp.ok)
+                        appliceraPatch(pp, { tavla: t, projekt: state });
+                }
                 if (kravOrsak)
                     return fragaOrsak(k, nyDag, foreKort);
                 if (flytt)
