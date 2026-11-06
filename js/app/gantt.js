@@ -4,12 +4,12 @@
    Visar ett eller flera projekt samtidigt. Ett moment är en produktionspost:
    en kedja från Start till Klart (roll S → K) eller en endagspost. Avrop och
    leveranser visas som milstolpar, på momentets rad om de hör till det.
-   Perioden (idag, vecka, månad, år) och valen av projekt minns i webbläsaren.
+   Perioden (vecka, månad, år) och valen av projekt minns i webbläsaren.
    ====================================================================== */
 
 const GANTT_NYCKEL = "plan4_gantt";
 const GANTT_FARGER = ["#0a6f61", "#254e9c", "#6b4a9c", "#b8611a", "#2f7d32", "#b32d22", "#1f6f8b", "#8a5b12"];
-const GANTT_PERIODER = { idag: "Idag", vecka: "Vecka", manad: "Månad", ar: "År" };
+const GANTT_PERIODER = { vecka: "Vecka", manad: "Månad", ar: "År" };
 const MANADER_LANG = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
 const DAGAR_LANG = ["måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag", "söndag"];
 const GANTT_DAGKORT = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
@@ -114,12 +114,6 @@ function ganttStatus(m) {
 function ganttPeriod() {
     const per = GANTT_PERIODER[gantt.period] ? gantt.period : "manad", idag = iso2d(IDAG);
     const mandagFor = (iso) => d2iso(mandag(iso2d(iso)));
-    if (per === "idag") {
-        const dag = plus(IDAG, ganttSteg), d = iso2d(dag);
-        return { per, dag, fran: mandagFor(dag), till: plus(mandagFor(dag), 6),
-            namn: ganttSteg === 0 ? "Idag, " + DAGAR_LANG[(d.getDay() + 6) % 7] + " " + d.getDate() + " " + MANADER_LANG[d.getMonth()]
-                : DAGAR_LANG[(d.getDay() + 6) % 7].replace(/^./, c => c.toUpperCase()) + " " + d.getDate() + " " + MANADER_LANG[d.getMonth()] };
-    }
     if (per === "vecka") {
         const fran = plus(mandagFor(IDAG), 7 * ganttSteg), till = plus(fran, 6);
         return { per, fran, till, namn: "Vecka " + veckonr(fran) + " · " + kortDatum(fran) + "–" + kortDatum(till) };
@@ -141,10 +135,8 @@ function ganttUrval() {
     const valda = ganttValda();
     const per = ganttPeriod(), { fran, till } = per;
     // det som syns i perioden (Idag: bara det som pågår den dagen)
-    const iPerioden = per.per === "idag"
-        ? (m) => m.fran <= per.dag && per.dag <= m.till
-        : (m) => m.fran <= till && m.till >= fran;
-    const milIPerioden = per.per === "idag" ? (m) => m.dag === per.dag : (m) => m.dag >= fran && m.dag <= till;
+    const iPerioden = (m) => m.fran <= till && m.till >= fran;
+    const milIPerioden = (m) => m.dag >= fran && m.dag <= till;
     const data = valda.map(p => {
         const d = ganttMoment(p);
         return { p, moment: d.moment.filter(m => (gantt.klara || !m.klar) && iPerioden(m))
@@ -257,7 +249,7 @@ function ganttTabell(data, o) {
             : w >= 34 ? "v" + veckonr(iso) : w >= 15 || veckonr(iso) % 2 === 0 ? String(veckonr(iso)) : "";
         veckor += '<div class="g-cell' + (nu ? " idag" : "") + '" style="left:' + (i * dw).toFixed(1) + "px;width:" + w.toFixed(1) + 'px">' + txt + "</div>";
     }
-    // dagrad med Mån, Tis … när dagarna är breda nog (vecka och idag)
+    // dagrad med Mån, Tis … när dagarna är breda nog (veckovyn)
     const medDagar = dw >= 30;
     if (medDagar)
         for (let i = 0; i < dagar; i++) {
@@ -317,8 +309,8 @@ function ganttTabell(data, o) {
     });
     if (tom)
         rader += '<div class="g-rad g-tomrad"><div class="g-etikett"></div><div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' +
-            "<span>" + (o.per.per === "idag" ? "Inga produktionsmoment pågår den här dagen." : "Inga produktionsmoment i perioden.") + "</span></div></div>";
-    const markdag = o.per.per === "idag" ? o.per.dag : IDAG;
+            "<span>" + "Inga produktionsmoment i perioden." + "</span></div></div>";
+    const markdag = IDAG;
     const idag = markdag >= fran && markdag <= till ? '<div class="g-idaglinje" style="left:calc(var(--g-et) + ' + (x(markdag) + dw / 2).toFixed(1) + 'px)"></div>' : "";
     return '<div class="g-skroll"><div class="g-tabell' + (dw < 12 ? " grov" : "") + (7 * dw < 20 ? " tat" : "") + (medDagar ? " meddagar" : "") + '" style="width:calc(var(--g-et) + ' + bredd + 'px)">' +
         '<div class="g-rad g-huvud"><div class="g-etikett g-horn">Moment</div>' +
@@ -465,7 +457,7 @@ function ganttFilnamn(andelse) {
     const { valda, per } = ganttUrval();
     const namn = valda.length === 1 ? valda[0].projekt : valda.length + " projekt";
     const period = per.per === "vecka" ? "v" + veckonr(per.fran) + " " + iso2d(per.fran).getFullYear()
-        : per.per === "idag" ? per.dag : per.namn;
+        : per.namn;
     return ("Gantt " + namn + " " + period).replace(/[^\p{L}\p{N} ._-]+/gu, "").replace(/\s+/g, " ").trim() + "." + andelse;
 }
 
@@ -713,7 +705,7 @@ function ganttRitaBild() {
     g.strokeStyle = F.kant;
     g.beginPath(); g.moveTo(KANT + ET + .5, y0); g.lineTo(KANT + ET + .5, y); g.stroke();
     g.strokeRect(KANT + .5, y0 + .5, ET + TID - 1, y - y0 - 1);
-    const markdag = per.per === "idag" ? per.dag : IDAG;
+    const markdag = IDAG;
     if (markdag >= fran && markdag <= till) {
         const xx = x(markdag) + dw / 2;
         g.strokeStyle = "#0284c7";
