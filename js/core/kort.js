@@ -108,6 +108,12 @@ function kanDupliceras(k) {
     return ["mote", "franvaro", "ovrigt", "produktion"].indexOf(k.typ) >= 0;
 }
 
+// Bara delen ur Plats / del, t.ex. "Prenadhuset Del 1:2" → "Del 1:2". Ingen del → tom text.
+function delText(plats) {
+    const m = /\bdel\s*(\d+)(?:\s*[:\/]\s*(\d+))?/i.exec(plats || "");
+    return m ? "Del " + m[1] + (m[2] ? ":" + m[2] : "") : "";
+}
+
 function momentNamn(k) {
     let t = k.text || "";
     if (t.indexOf("Start ") === 0)
@@ -163,7 +169,8 @@ function pagaendeForDag(t, iso) {
         const slut = t.kort.find(x => x.kedja === k.kedja && x.roll === "K");
         if (!slut || !(k.dag < iso && iso < slut.dag))
             return;
-        ut.push({ kort: k, text: momentNamn(k) + (k.plats ? " · " + k.plats : ""), klar: !!slut.klar });
+        const del = delText(k.plats);
+        ut.push({ kort: k, text: momentNamn(k) + (del ? " · " + del : ""), klar: !!slut.klar });
     });
     return ut.sort((a, b) => a.text.localeCompare(b.text, "sv"));
 }

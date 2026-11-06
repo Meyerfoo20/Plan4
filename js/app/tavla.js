@@ -837,11 +837,11 @@ function kortEl(k) {
         txt.appendChild(document.createTextNode(kortText(k, T(), projektForTavla(T()))));
     }
     // Plats / del visas på alla kort i momentet (avrop, leverans, start och klart).
-    const plats = k.typ === "franvaro" ? "" : kortPlats(k, T());
-    if (plats) {
+    const plats = k.typ === "franvaro" ? "" : kortPlats(k, T()), del = delText(plats);
+    if (del) {
         const pl = document.createElement("span");
         pl.className = "platsrad";
-        pl.textContent = plats;
+        pl.textContent = del;
         pl.title = "Plats / del: " + plats;
         txt.appendChild(pl);
     }

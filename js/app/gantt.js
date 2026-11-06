@@ -293,12 +293,12 @@ function ganttTabell(data, o) {
             const kant = (m.fran < fran ? " fore" : "") + (m.till > till ? " efter" : "");
             const dagarTxt = m.fran === m.till ? kortDatum(m.fran) : kortDatum(m.fran) + "–" + kortDatum(m.till);
             const tips = m.namn + "\n" + dagarTxt + " · " + st.text + "\n" + p.projekt + " · " + m.t.namn +
-                (m.k.plats ? " · " + m.k.plats : "") + (m.k.vem ? "\nAnsvarig: " + m.k.vem : "");
+                (delText(m.k.plats) ? " · " + delText(m.k.plats) : "") + (m.k.vem ? "\nAnsvarig: " + m.k.vem : "");
             const textInne = w >= m.namn.length * 6.6 + 18 || (w >= 60 && v + w + m.namn.length * 6.6 + 12 > bredd);
             rader += '<div class="g-rad" style="--gf:' + farg + '">' +
                 '<button type="button" class="g-etikett g-mom" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id + '">' +
                 '<span class="g-etext"><b>' + esc(m.namn) + "</b><small>" + esc(dagarTxt) +
-                (p.tavlor.length > 1 ? " · " + esc(m.t.namn) : "") + (m.k.plats ? " · " + esc(m.k.plats) : "") + "</small></span>" +
+                (p.tavlor.length > 1 ? " · " + esc(m.t.namn) : "") + (delText(m.k.plats) ? " · " + esc(delText(m.k.plats)) : "") + "</small></span>" +
                 (st.klass ? '<span class="g-status ' + st.klass + '">' + st.text + "</span>" : "") + "</button>" +
                 '<div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' +
                 '<button type="button" class="g-stapel ' + st.klass + kant + '" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id + '" style="left:' +
@@ -488,9 +488,9 @@ function ganttExportCsv() {
         return /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
     const dagarMellan = (a, b) => Math.round((iso2d(b) - iso2d(a)) / 86400000) + 1;
-    const rader = [["Projekt", "Tavla", "Moment", "Plats / del", "Ansvarig", "Start", "Klart", "Dagar", "Vecka start", "Vecka klart", "Status"]];
+    const rader = [["Projekt", "Tavla", "Moment", "Del", "Ansvarig", "Start", "Klart", "Dagar", "Vecka start", "Vecka klart", "Status"]];
     data.forEach(d => {
-        d.moment.forEach(m => rader.push([d.p.projekt, m.t.namn, m.namn, m.k.plats || "", m.k.vem || "", m.fran, m.till,
+        d.moment.forEach(m => rader.push([d.p.projekt, m.t.namn, m.namn, delText(m.k.plats), m.k.vem || "", m.fran, m.till,
             dagarMellan(m.fran, m.till), veckonr(m.fran), veckonr(m.till), ganttStatus(m).text]));
         if (gantt.milstolpar) {
             const mil = d.losa.concat(...d.moment.map(m => m.mil.map(x => Object.assign({ moment: m.namn }, x))));
@@ -653,7 +653,7 @@ function ganttRitaBild() {
             g.font = font(500, 11);
             g.fillStyle = F.svag;
             const under = (m.fran === m.till ? kortDatum(m.fran) : kortDatum(m.fran) + "–" + kortDatum(m.till)) +
-                (rad.d.p.tavlor.length > 1 ? " · " + m.t.namn : "") + (m.k.plats ? " · " + m.k.plats : "") + (st.klass ? " · " + st.text : "");
+                (rad.d.p.tavlor.length > 1 ? " · " + m.t.namn : "") + (delText(m.k.plats) ? " · " + delText(m.k.plats) : "") + (st.klass ? " · " + st.text : "");
             g.fillText(klipp(under, ET - 28), KANT + 16, y + 28);
             const xa = x(kl(m.fran)), w = Math.max(6, x(kl(m.till)) - xa + dw), yb = y + 7, hb = h - 14;
             if (st.klass === "klar") {
