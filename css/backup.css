@@ -1,0 +1,240 @@
+/* ======================================================================
+   Plan4 · Back up (jobb att ta när ett planerat moment inte går)
+   ====================================================================== */
+
+.ik-backup {
+  --ik: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6'/%3E%3C/svg%3E");
+}
+
+#backup {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+body.p4-kontovy #backup {
+  display: none !important;
+}
+
+.bu-intro {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--produktion);
+  border-radius: var(--r-m);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  max-width: 900px;
+}
+.bu-intro b {
+  color: var(--text-main);
+}
+
+/* väder */
+.bu-vader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-radius: var(--r-m);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  background: var(--varning-fyll);
+  border: 1px solid color-mix(in srgb, var(--varning) 30%, transparent);
+}
+.bu-vader.rod {
+  background: var(--leverans-fyll);
+  border-color: color-mix(in srgb, var(--leverans) 30%, transparent);
+}
+.bu-vaderikon {
+  font-size: 22px;
+  line-height: 1;
+}
+.bu-vader > div {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bu-vader b {
+  font-size: 14px;
+}
+.bu-vader span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* flikar med antal */
+.bu-hero .g-seg button span {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--bg-main);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* kort */
+.bu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.bu-kort {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-top: 4px solid var(--text-faint);
+  border-radius: var(--r-m);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+.bu-kort.prio-hog { border-top-color: var(--leverans); }
+.bu-kort.prio-normal { border-top-color: var(--produktion); }
+.bu-kort.prio-lag { border-top-color: var(--border-strong, #c9c1b4); }
+.bu-kort.st-klar {
+  opacity: .7;
+}
+.bu-kort.st-klar h3 {
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, .3);
+}
+.bu-korttopp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bu-prio {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.bu-kort.prio-hog .bu-prio { color: var(--leverans); }
+.bu-kort.prio-normal .bu-prio { color: var(--produktion); }
+.bu-lage {
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.bu-lage.planerad {
+  background: var(--accent-light);
+  color: var(--accent-main);
+}
+.bu-lage.klar {
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+}
+.bu-kort h3 {
+  margin: 0;
+  font-family: var(--rubrik);
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  line-height: 1.25;
+}
+.bu-beskr {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+.bu-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bu-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-main);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.bu-chip.vader-inne {
+  background: var(--produktion-fyll);
+  color: var(--produktion);
+}
+.bu-chip.vader-ute {
+  background: var(--varning-fyll);
+  color: var(--varning);
+}
+.bu-material {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.bu-material b {
+  color: var(--text-main);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.bu-knappar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.bu-knappar .fara {
+  margin-left: auto;
+}
+
+/* tomt */
+.bu-tom {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--r-m);
+  padding: 24px;
+  max-width: 900px;
+}
+.bu-tom b {
+  font-size: 15px;
+}
+.bu-tom span {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* kortet på tavlan blinkar till när man kommer dit från Back up */
+@keyframes buBlink {
+  0%, 100% { box-shadow: none; }
+  30% { box-shadow: 0 0 0 3px var(--accent-pop); }
+}
+.kort.p4-blink {
+  animation: buBlink 1.4s ease 2;
+}
+
+@media (max-width: 560px) {
+  .bu-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  #backup .bu-knappar { display: none !important; }
+}
+.bu-knappar .mknapp.fara {
+  border-color: transparent;
+  background: transparent;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.bu-knappar .mknapp.fara:hover {
+  background: var(--leverans-fyll);
+}

@@ -36,6 +36,11 @@
                 stangGantt();
         }
         catch (e) { }
+        try {
+            if (backupOppen())
+                stangBackup();
+        }
+        catch (e) { }
     }
     document.querySelectorAll("[data-nav]").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -62,6 +67,10 @@
                 oppnaGantt();
                 window.scrollTo({ top: 0 });
             }
+            else if (vy === "backup") {
+                oppnaBackup();
+                window.scrollTo({ top: 0 });
+            }
             markeraNav();
         });
     });
@@ -83,6 +92,8 @@
                 return "dash";
             if (ganttOppen())
                 return "gantt";
+            if (backupOppen())
+                return "backup";
         }
         catch (e) { }
         return "tavla";
@@ -104,6 +115,7 @@
         obs.observe($("dash"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("pstart"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("gantt"), { attributes: true, attributeFilter: ["class"] });
+        obs.observe($("backup"), { attributes: true, attributeFilter: ["class"] });
     }
     function stangMeny() { document.body.classList.remove("p4-menyoppen"); $("p4Meny").setAttribute("aria-expanded", "false"); }
     $("p4Meny").addEventListener("click", function () {

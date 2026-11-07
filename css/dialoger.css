@@ -1340,3 +1340,43 @@ body.visning .lagemark.satt {
   white-space: nowrap;
   min-width: 108px;
 }
+
+/* ---------- Maila anteckningar ---------- */
+.p4-mailrad {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.p4-mailrad .hjalp {
+  margin: 0;
+}
+.p4-mailknapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.p4-mailknapp:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+/* kuvert ritat i CSS */
+.p4-mailikon {
+  position: relative;
+  width: 16px;
+  height: 12px;
+  border: 1.6px solid currentColor;
+  border-radius: 2px;
+  overflow: hidden;
+  flex: none;
+}
+.p4-mailikon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 11px;
+  height: 11px;
+  border: 1.6px solid currentColor;
+  transform: translateX(-50%) rotate(45deg);
+}

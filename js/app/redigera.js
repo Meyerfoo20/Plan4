@@ -127,7 +127,11 @@ function visaKort(k) {
         ordHtml + resHtml + flyttHtml + forHtml + kedjeHtml +
         '<div class="falt" style="margin-top:14px"><label for="dNot">Anteckningar</label>' +
         '<p class="hjalp">Metod, mängd, avvikelse, vad som sades på mötet. Syns som en prick på kortet.</p>' +
-        '<textarea class="f" id="dNot" rows="3">' + esc(k.not || "") + '</textarea></div>';
+        '<textarea class="f" id="dNot" rows="3">' + esc(k.not || "") + '</textarea>' +
+        '<div class="p4-mailrad"><button type="button" class="mknapp p4-mailknapp" id="dMaila"' + (k.not ? "" : " disabled") +
+        ' title="Öppnar ett nytt mejl i Outlook (eller ditt vanliga mejlprogram) med anteckningarna">' +
+        '<span class="p4-mailikon" aria-hidden="true"></span>Maila</button>' +
+        '<span class="hjalp" id="dMailaHjalp">' + (k.not ? "" : "Skriv en anteckning först") + "</span></div></div>";
     const knappar = [];
     if (k.virtuell) {
         knappar.push({ txt: "Serien…", vanster: true, fn: () => { sparaNot(k); seriensVal(k); } });
@@ -158,6 +162,15 @@ function visaKort(k) {
             bockaKort(k, stangModal);
         } });
     modal(k.typ === "franvaro" && franvaroNy(k) ? franvaroTitel(state, k) : kortText(k, T(), projektForTavla(T())), TYPNAMN[k.typ] + " · " + dagEtikett(k.dag), kropp, knappar);
+    // Maila: nytt mejl med kortets uppgifter och anteckningarna
+    const not = document.getElementById("dNot"), mail = document.getElementById("dMaila");
+    if (not && mail) {
+        not.addEventListener("input", () => {
+            mail.disabled = !not.value.trim();
+            document.getElementById("dMailaHjalp").textContent = mail.disabled ? "Skriv en anteckning först" : "";
+        });
+        mail.addEventListener("click", () => { sparaNot(k); mailaAnteckning(k, t, not.value.trim()); });
+    }
     const oU = document.getElementById("ordUpp"), oN = document.getElementById("ordNer");
     if (oU)
         oU.addEventListener("click", () => { sparaNot(k); if (flyttaIDag(k, -1)) {
@@ -744,4 +757,34 @@ function redigeraKort(k) {
                 rita();
             } }
     ]);
+}
+
+// Öppnar ett nytt mejl (mailto:) i datorns mejlprogram, t.ex. Outlook, med kortets anteckningar.
+function mailaAnteckning(k, t, text) {
+    if (!text)
+        return;
+    const p = projektForTavla(t) || state;
+    const namn = kortText(k, t, p);
+    const del = typeof kortDel === "function" ? kortDel(k, t) : "";
+    const amne = namn + " · " + p.projekt + (p.tavlor.length > 1 ? " – " + t.namn : "");
+    const rader = [
+        namn,
+        "Projekt: " + p.projekt + (p.tavlor.length > 1 ? " · " + t.namn : ""),
+        "Datum: " + dagEtikett(k.dag) + (k.tid ? " · " + tidText(k) : ""),
+    ];
+    if (del) rader.push("Del: " + del);
+    if (k.vem) rader.push("Ansvarig: " + k.vem);
+    let kropp = rader.join("\r\n") + "\r\n\r\nAnteckningar:\r\n" + text.replace(/\r?\n/g, "\r\n") + "\r\n";
+    // mejlprogrammen klarar inte hur långa länkar som helst
+    const MAX = 1800;
+    if (encodeURIComponent(kropp).length > MAX) {
+        while (kropp.length > 50 && encodeURIComponent(kropp + "…\r\n(förkortat)").length > MAX) kropp = kropp.slice(0, -20);
+        kropp += "…\r\n(förkortat – hela anteckningen finns i Plan4)";
+        status("Anteckningen är lång och kortades i mejlet");
+    }
+    const a = document.createElement("a");
+    a.href = "mailto:?subject=" + encodeURIComponent(amne) + "&body=" + encodeURIComponent(kropp);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
 }
