@@ -11,6 +11,14 @@ const BU_PRIOORDNING = { hog: 0, normal: 1, lag: 2 };
 const BU_VADER = { inne: "Inomhus", ute: "Utomhus", bada: "Inne eller ute" };
 let buFilter = "redo";
 
+// "Var" skrivs fritt. Står det inne/inomhus räknas jobbet som inomhus (föreslås vid dåligt väder).
+function buVaderAv(text) {
+    const t = (text || "").toLowerCase();
+    const inne = /\b(inne|inomhus|invändig|invändigt|under tak)/.test(t), ute = /\b(ute|utomhus|utvändig|utvändigt)/.test(t);
+    return inne && !ute ? "inne" : ute && !inne ? "ute" : "bada";
+}
+const buVarText = (j) => j.var || BU_VADER[j.vader || "bada"];
+
 function buLista(p) {
     if (!Array.isArray(p.backup))
         p.backup = [];
@@ -83,7 +91,7 @@ function buVaderTips(p, redoInne) {
     return '<div class="bu-vader ' + forst.b.niva + '"><span class="bu-vaderikon" aria-hidden="true">' + (VADER[forst.d].symbol || "⚠") + "</span>" +
         "<div><b>" + esc(forst.b.status) + " " + nar + "</b><span>" +
         esc(forst.b.rader.map(x => x.txt).join(" · ")) + (redoInne ? " — " + redoInne + (redoInne === 1 ? " jobb inomhus är redo att tas." : " jobb inomhus är redo att tas.") : " — inga jobb inomhus är redo, lägg gärna till några.") +
-        "</span></div>" + (redoInne ? '<button type="button" class="navknapp" data-bu="visainne">Visa inomhusjobben</button>' : "") + "</div>";
+        "</span></div></div>";
 }
 
 function buKort(p, j) {
@@ -91,7 +99,7 @@ function buKort(p, j) {
     const t = j.tavlaId && p.tavlor.find(x => x.id === j.tavlaId);
     const chip = (klass, txt) => '<span class="bu-chip ' + klass + '">' + txt + "</span>";
     const chips = [
-        chip("vader-" + (j.vader || "bada"), esc(BU_VADER[j.vader || "bada"])),
+        chip("vader-" + (j.vader || "bada"), "📌 " + esc(buVarText(j))),
         j.tid ? chip("", "⏱ " + esc(j.tid)) : "",
         j.personer ? chip("", "👷 " + esc(String(j.personer)) + (j.kompetens ? " · " + esc(j.kompetens) : "")) : j.kompetens ? chip("", "👷 " + esc(j.kompetens)) : "",
         j.plats ? chip("", "📍 " + esc(j.plats)) : "",
@@ -128,7 +136,7 @@ function ritaBackup() {
     const antal = { redo: 0, planerad: 0, klar: 0 };
     med.forEach(x => antal[x.st]++);
     const redoInne = med.filter(x => x.st === "redo" && x.j.vader === "inne").length;
-    const visas = med.filter(x => buFilter === "alla" || x.st === buFilter || (buFilter === "inne" && x.st === "redo" && x.j.vader === "inne"))
+    const visas = med.filter(x => buFilter === "alla" || x.st === buFilter)
         .sort((a, b) => {
             const o = { redo: 0, planerad: 1, klar: 2 };
             if (o[a.st] !== o[b.st]) return o[a.st] - o[b.st];
@@ -144,7 +152,7 @@ function ritaBackup() {
         '<div class="g-meta">' + antal.redo + (antal.redo === 1 ? " jobb redo" : " jobb redo") +
         (redoInne ? " · " + redoInne + " inomhus" : "") + (antal.planerad ? " · " + antal.planerad + " inplanerade" : "") + "</div></div>" +
         '<div class="g-knappar">' +
-        '<div class="g-seg" role="group" aria-label="Visa">' + flik("redo", "Redo", antal.redo) + flik("inne", "Inomhus", redoInne) +
+        '<div class="g-seg" role="group" aria-label="Visa">' + flik("redo", "Redo", antal.redo) +
         flik("planerad", "Inplanerade", antal.planerad) + flik("klar", "Klara", antal.klar) + flik("alla", "Alla") + "</div>" +
         (buLas() ? "" : '<button type="button" class="p4-btn p4-btn-primar" data-bu="ny">+ Nytt back-up jobb</button>') +
         "</div></div>";
@@ -182,8 +190,8 @@ function buDialog(j) {
         '<div class="falt"><label for="buTitel">Jobb</label><input class="f" id="buTitel" value="' + esc(j.titel || "") + '" placeholder="T.ex. Montera skyddsräcken plan 3"></div>' +
         '<div class="falt"><label for="buBeskr">Beskrivning <span class="hjalp" style="display:inline">(frivilligt)</span></label>' +
         '<textarea class="f" id="buBeskr" rows="2" placeholder="Vad ska göras, var, och vad är viktigt att tänka på">' + esc(j.beskrivning || "") + "</textarea></div>" +
-        '<div class="tva"><div class="falt"><label for="buVader">Var</label><select class="f" id="buVader">' + opt(BU_VADER, j.vader || "inne") + "</select>" +
-        '<p class="hjalp" style="margin:4px 0 0">Inomhusjobb föreslås när vädret är dåligt.</p></div>' +
+        '<div class="tva"><div class="falt"><label for="buVar">Var</label><input class="f" id="buVar" value="' + esc(ny ? "" : buVarText(j)) +
+        '" placeholder="T.ex. Inomhus, Utomhus, Plan 3"><p class="hjalp" style="margin:4px 0 0">Står det inne eller inomhus föreslås jobbet när vädret är dåligt.</p></div>' +
         '<div class="falt"><label for="buPrio">Prioritet</label><select class="f" id="buPrio">' + opt(BU_PRIO, j.prio || "normal") + "</select></div></div>" +
         '<div class="tva"><div class="falt"><label for="buTid">Tidsåtgång</label><input class="f" id="buTid" value="' + esc(j.tid || "") + '" placeholder="T.ex. 4 timmar, 2 dagar"></div>' +
         '<div class="falt"><label for="buPers">Antal personer</label><input class="f" id="buPers" type="number" min="1" max="50" value="' + esc(j.personer || "") + '" placeholder="T.ex. 2"></div></div>' +
@@ -205,7 +213,8 @@ function buDialog(j) {
                     f.classList.remove("dold");
                     return;
                 }
-                const falt = { titel, beskrivning: v("buBeskr").trim(), vader: v("buVader") || "inne", prio: v("buPrio") || "normal",
+                const varText = v("buVar").trim();
+                const falt = { titel, beskrivning: v("buBeskr").trim(), var: varText, vader: buVaderAv(varText), prio: v("buPrio") || "normal",
                     tid: v("buTid").trim(), personer: parseInt(v("buPers"), 10) || "", kompetens: v("buKomp").trim(),
                     plats: v("buPlats").trim(), tavlaId: v("buTavla") || null, material: v("buMat").trim() };
                 if (ny)
@@ -290,7 +299,6 @@ document.addEventListener("click", (e) => {
         return;
     const vad = b.dataset.bu, j = buLista(state).find(x => x.id === b.dataset.id);
     if (vad === "ny") return buDialog(null);
-    if (vad === "visainne") { buFilter = "inne"; return ritaBackup(); }
     if (!j) return;
     if (vad === "andra") return buDialog(j);
     if (vad === "planera") return buPlaneraDialog(j);
