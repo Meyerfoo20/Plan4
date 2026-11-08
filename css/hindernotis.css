@@ -179,3 +179,48 @@
 @media print {
   .p4-hnotis { display: none !important; }
 }
+
+/* ---------- notiserna staplas uppe till höger ---------- */
+.p4-notiser {
+  position: fixed;
+  top: calc(var(--hh, 64px) + 14px);
+  right: 18px;
+  z-index: 90;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.p4-notiser .p4-hnotis {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  width: auto;
+  max-width: none;
+}
+.p4-notiser .p4-hnotis:not(.synlig) {
+  display: none;
+}
+.p4-vnotis {
+  border-left-color: var(--leverans);
+}
+.p4-vnotis .p4-hnotis-ikon {
+  color: var(--leverans);
+  background: var(--leverans-fyll);
+  font-size: 17px;
+}
+@media (max-width: 560px) {
+  .p4-notiser {
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+@media print {
+  .p4-notiser { display: none !important; }
+}
+@keyframes p4notisIn { from { opacity: 0; transform: translateY(-8px); } }
+.p4-notiser .p4-hnotis.synlig { animation: p4notisIn .22s ease; }

@@ -238,3 +238,7 @@ body.p4-kontovy #backup {
 .bu-knappar .mknapp.fara:hover {
   background: var(--leverans-fyll);
 }
+.bu-vader {
+  background: var(--leverans-fyll);
+  border-color: color-mix(in srgb, var(--leverans) 30%, transparent);
+}

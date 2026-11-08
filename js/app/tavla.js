@@ -101,7 +101,12 @@ function rita() {
             ruta.addEventListener("drop", e => {
                 e.preventDefault();
                 ruta.classList.remove("dragover");
-                flyttaKort(e.dataTransfer.getData("text/plain"), iso);
+                const id = e.dataTransfer.getData("text/plain");
+                const d = T().kort.find(x => x.id === id);
+                // släppt på samma dag (under korten): lägg kortet sist
+                if (d && d.dag === iso)
+                    return ordnaVid(d, null, true);
+                flyttaKort(id, iso);
             });
             g.appendChild(ruta);
         }
@@ -181,6 +186,24 @@ function flyttaIDag(k, steg, dag) {
     spara();
     rita();
     return true;
+}
+
+// Flyttar ett kort inom dagen: före eller efter ett annat kort, eller sist (mal = null).
+function ordnaVid(flytt, mal, efter) {
+    const t = T();
+    const lista = sorteraDag(kortForDag(t, flytt.dag).filter(x => !x.virtuell && startMinut(x) === null && x.id !== flytt.id));
+    let i = mal ? lista.indexOf(mal) : lista.length;
+    if (i < 0)
+        return;
+    if (mal && efter)
+        i++;
+    const ordnad = lista.slice();
+    ordnad.splice(i, 0, flytt);
+    const patch = ordningsPatch(t, ordnad);
+    if (!patch || !patch.ok || !appliceraPatch(patch, { tavla: t, projekt: state }))
+        return;
+    spara();
+    rita();
 }
 
 function ordnaFore(flytt, mal) {
@@ -909,10 +932,17 @@ function kortEl(k) {
     el.appendChild(txt);
     el.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", k.id); el.classList.add("dragging"); });
     if (!k.virtuell && startMinut(k) === null) {
-        el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("ordna"); });
-        el.addEventListener("dragleave", () => el.classList.remove("ordna"));
+        // Övre halvan av kortet = lägg före, nedre halvan = lägg efter.
+        const nedre = e => { const r = el.getBoundingClientRect(); return e.clientY > r.top + r.height / 2; };
+        el.addEventListener("dragover", e => {
+            e.preventDefault();
+            const efter = nedre(e);
+            el.classList.toggle("ordna", !efter);
+            el.classList.toggle("ordna-efter", efter);
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("ordna", "ordna-efter"));
         el.addEventListener("drop", e => {
-            el.classList.remove("ordna");
+            el.classList.remove("ordna", "ordna-efter");
             const d = T().kort.find(x => x.id === e.dataTransfer.getData("text/plain"));
             if (!d || d.id === k.id || d.dag !== k.dag)
                 return;
@@ -920,7 +950,7 @@ function kortEl(k) {
             e.stopPropagation();
             if (startMinut(d) !== null)
                 return;
-            ordnaFore(d, k);
+            ordnaVid(d, k, nedre(e));
         });
     }
     el.addEventListener("dragend", () => el.classList.remove("dragging"));

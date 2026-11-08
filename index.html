@@ -11,16 +11,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261107c">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261107c">
-  <link rel="stylesheet" href="css/vyer.css?v=20261107c">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261107c">
-  <link rel="stylesheet" href="css/skal.css?v=20261107c">
-  <link rel="stylesheet" href="css/konto.css?v=20261107c">
-  <link rel="stylesheet" href="css/datumval.css?v=20261107c">
-  <link rel="stylesheet" href="css/gantt.css?v=20261107c">
-  <link rel="stylesheet" href="css/backup.css?v=20261107c">
-  <link rel="stylesheet" href="css/hindernotis.css?v=20261107c">
+  <link rel="stylesheet" href="css/bas.css?v=20261108c">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261108c">
+  <link rel="stylesheet" href="css/vyer.css?v=20261108c">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261108c">
+  <link rel="stylesheet" href="css/skal.css?v=20261108c">
+  <link rel="stylesheet" href="css/konto.css?v=20261108c">
+  <link rel="stylesheet" href="css/datumval.css?v=20261108c">
+  <link rel="stylesheet" href="css/gantt.css?v=20261108c">
+  <link rel="stylesheet" href="css/backup.css?v=20261108c">
+  <link rel="stylesheet" href="css/hindernotis.css?v=20261108c">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -108,18 +108,18 @@
         <button class="p4-nav aktiv" type="button" data-nav="tavla"><span class="p4-ik ik-tavla"></span><span>Tavlan</span></button>
         <button class="p4-nav" type="button" data-nav="dash"><span class="p4-ik ik-dash"></span><span>Projektöversikt</span><span class="p4-badge dold" id="p4AtgBadge" title="Kräver åtgärd"></span></button>
         <button class="p4-nav" type="button" data-nav="start"><span class="p4-ik ik-lista"></span><span>Att göra</span><span class="p4-badge p4-badge-ljus dold" id="p4AgBadge" title="Öppna punkter"></span></button>
-        <button class="p4-nav" type="button" data-nav="gantt"><span class="p4-ik ik-gantt"></span><span>Gantt-schema</span></button>
         <button class="p4-nav" type="button" data-nav="backup"><span class="p4-ik ik-backup"></span><span>Back up</span><span class="p4-badge p4-badge-ljus dold" id="p4BuBadge" title="Back-up jobb som är redo"></span></button>
+        <button class="p4-nav" type="button" data-nav="gantt"><span class="p4-ik ik-gantt"></span><span>Gantt-schema</span></button>
       </div>
       <div class="p4-navgrupp">
         <div class="p4-navrubrik">Uppföljning</div>
         <button class="p4-nav" id="utfallKnapp" type="button"><span class="p4-ik ik-utfall"></span><span>Veckans utfall</span></button>
         <button class="p4-nav" id="resursKnapp" type="button"><span class="p4-ik ik-folk"></span><span>Resurser</span></button>
         <button class="p4-nav" id="avropKnapp" type="button"><span class="p4-ik ik-last"></span><span>Avropslista</span></button>
-        <button class="p4-nav" type="button" data-klick="visning"><span class="p4-ik ik-tv"></span><span>Visningsläge</span></button>
       </div>
       <div class="p4-navgrupp">
         <div class="p4-navrubrik">Data</div>
+        <button class="p4-nav" type="button" data-klick="visning"><span class="p4-ik ik-tv"></span><span>Visningsläge</span></button>
         <button class="p4-nav" id="skrivUt" type="button"><span class="p4-ik ik-skriv"></span><span>Skriv ut</span></button>
         <button class="p4-nav" type="button" data-nav="konto"><span class="p4-ik ik-konto"></span><span>Mitt konto</span><span class="p4-badge dold" id="p4KontoBadge"></span></button>
       </div>
@@ -148,7 +148,6 @@
           </div>
           <div class="p4-hero-knappar">
             <button class="navknapp" id="visning" title="Avsluta visningsläget ( V )">Avsluta visning</button>
-            <button class="navknapp" id="tavlameny" title="Tavlans inställningar">Tavla ⋯</button>
           </div>
         </div>
 
@@ -281,39 +280,39 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261107c"></script>
-  <script src="js/core/datum.js?v=20261107c"></script>
-  <script src="js/core/kort.js?v=20261107c"></script>
-  <script src="js/core/operationer.js?v=20261107c"></script>
-  <script src="js/core/avrop.js?v=20261107c"></script>
-  <script src="js/core/resurser.js?v=20261107c"></script>
-  <script src="js/core/franvaro.js?v=20261107c"></script>
-  <script src="js/core/foretag.js?v=20261107c"></script>
-  <script src="js/core/projekt.js?v=20261107c"></script>
+  <script src="js/core/konstanter.js?v=20261108c"></script>
+  <script src="js/core/datum.js?v=20261108c"></script>
+  <script src="js/core/kort.js?v=20261108c"></script>
+  <script src="js/core/operationer.js?v=20261108c"></script>
+  <script src="js/core/avrop.js?v=20261108c"></script>
+  <script src="js/core/resurser.js?v=20261108c"></script>
+  <script src="js/core/franvaro.js?v=20261108c"></script>
+  <script src="js/core/foretag.js?v=20261108c"></script>
+  <script src="js/core/projekt.js?v=20261108c"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261107c"></script>
-  <script src="js/app/tavla.js?v=20261107c"></script>
-  <script src="js/app/flytt.js?v=20261107c"></script>
-  <script src="js/app/guide.js?v=20261107c"></script>
-  <script src="js/app/redigera.js?v=20261107c"></script>
-  <script src="js/app/utfall-vader.js?v=20261107c"></script>
-  <script src="js/app/utskrift.js?v=20261107c"></script>
-  <script src="js/app/register.js?v=20261107c"></script>
-  <script src="js/app/oversikt.js?v=20261107c"></script>
-  <script src="js/app/projekt.js?v=20261107c"></script>
-  <script src="js/app/gantt.js?v=20261107c"></script>
-  <script src="js/app/backup.js?v=20261107c"></script>
-  <script src="js/app/hindernotis.js?v=20261107c"></script>
+  <script src="js/app/grund.js?v=20261108c"></script>
+  <script src="js/app/tavla.js?v=20261108c"></script>
+  <script src="js/app/flytt.js?v=20261108c"></script>
+  <script src="js/app/guide.js?v=20261108c"></script>
+  <script src="js/app/redigera.js?v=20261108c"></script>
+  <script src="js/app/utfall-vader.js?v=20261108c"></script>
+  <script src="js/app/utskrift.js?v=20261108c"></script>
+  <script src="js/app/register.js?v=20261108c"></script>
+  <script src="js/app/oversikt.js?v=20261108c"></script>
+  <script src="js/app/projekt.js?v=20261108c"></script>
+  <script src="js/app/gantt.js?v=20261108c"></script>
+  <script src="js/app/backup.js?v=20261108c"></script>
+  <script src="js/app/hindernotis.js?v=20261108c"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261107c"></script>
+  <script src="js/skal.js?v=20261108c"></script>
 
   <!-- Egen datumväljare för alla datumfält -->
-  <script src="js/app/datumval.js?v=20261107c"></script>
+  <script src="js/app/datumval.js?v=20261108c"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261107c"></script>
-  <script src="js/konto/konto.js?v=20261107c"></script>
+  <script src="js/konto/firebase-config.js?v=20261108c"></script>
+  <script src="js/konto/konto.js?v=20261108c"></script>
 </body>
 </html>

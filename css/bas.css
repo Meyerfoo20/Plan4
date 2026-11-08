@@ -272,7 +272,7 @@ button, input, select, textarea {
   font-weight: 700;
 }
 .varningsremsa .vdag {
-  color: var(--leverans);
+  color: #fff;
   font-weight: 700;
   background: rgba(255,255,255,.18);
   border-radius: 3px;
@@ -1034,4 +1034,50 @@ details[open] > summary::before {
 }
 .kort.klar .kortunder {
   color: var(--text-faint);
+}
+
+/* Dåligt väder visas rött (Mycket dåligt väder är helt rött) */
+.vp-summa.gul { color: var(--leverans); }
+.vp-dag.niva-gul { border-left-color: color-mix(in srgb, var(--leverans) 55%, transparent); }
+.vp-tagg.gul { background: var(--leverans-fyll); color: var(--leverans); }
+
+/* ---------- varning för helgens väder bredvid Fredag ---------- */
+.dagrubrik {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.helgvader {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid color-mix(in srgb, var(--leverans) 55%, transparent);
+  border-radius: 999px;
+  background: var(--leverans-fyll);
+  color: var(--leverans);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.helgvader.rod {
+  background: var(--leverans);
+  border-color: var(--leverans);
+  color: #fff;
+}
+.helgvader:hover {
+  filter: brightness(.95);
+}
+body.visning.v1 .helgvader {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+@media print {
+  .helgvader { display: none; }
 }

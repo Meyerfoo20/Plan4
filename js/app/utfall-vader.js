@@ -8,15 +8,29 @@ function visaUtfall(vStart) {
     const u = veckoUtfall(vStart, T());
     const antal = u.planerade.length;
     const procent = antal ? Math.round(u.genomforda.length / antal * 100) : null;
+    // Ingen plan fanns när veckan började men poster lades in under veckan: visa det i stället för bara "–".
+    const baraTillkomna = !antal && u.tillkomna.length > 0;
+    const tillkomnaProcent = baraTillkomna ? Math.round(u.tillkomnaKlara.length / u.tillkomna.length * 100) : null;
     const orsakLista = Object.keys(u.orsaker).sort((a, b) => u.orsaker[b] - u.orsaker[a]);
     const max = orsakLista.length ? u.orsaker[orsakLista[0]] : 1;
-    const veckor = [0, 1, 2, 3].map(i => plus(visaStart(), i * 7));
+    // de fyra veckorna på tavlan plus fyra veckor bakåt
+    const veckor = [-4, -3, -2, -1, 0, 1, 2, 3].map(i => plus(visaStart(), i * 7));
+    if (!veckor.includes(vStart)) veckor.push(vStart);
+    veckor.sort();
     const kropp = '<div class="falt" style="margin-bottom:16px"><select class="f" id="uVecka">' +
         veckor.map(v => '<option value="' + v + '"' + (v === vStart ? " selected" : "") + '>v' + veckonr(v) + " · " + kortDatum(v) + "–" + kortDatum(plus(v, 4)) + '</option>').join("") +
         '</select></div>' +
         '<div class="utfall"><div class="rubrikrad">' +
-        '<span class="stor ' + (procent === null ? "" : procent >= 80 ? "bra" : "svag") + '">' + (procent === null ? "–" : procent + " %") + '</span>' +
-        '<span class="under">planpålitlighet<br>hur mycket av det vi lovade som blev gjort</span></div>' +
+        (baraTillkomna
+            ? '<span class="stor">' + tillkomnaProcent + ' %</span>' +
+              '<span class="under">genomfört av det som lades in under veckan<br>' + u.tillkomnaKlara.length + " av " + u.tillkomna.length + " produktionsposter</span></div>" +
+              '<div class="notis">Ingen planpålitlighet för v' + veckonr(vStart) + ": inga produktionsposter låg på tavlan när veckan började " +
+              "(måndag " + kortDatum(vStart) + "). Allt lades in under veckan och räknas därför som tillkommet. " +
+              "Lägg in nästa veckas produktion senast på fredagens veckoplanering, så mäts den.</div>"
+            : '<span class="stor ' + (procent === null ? "" : procent >= 80 ? "bra" : "svag") + '">' + (procent === null ? "–" : procent + " %") + '</span>' +
+              '<span class="under">planpålitlighet<br>hur mycket av det vi lovade som blev gjort</span></div>' +
+              (procent === null ? '<div class="notis">Inga produktionsposter för v' + veckonr(vStart) + " ännu. Planpålitligheten räknas på " +
+                  "produktionsposterna som ligger på tavlan när veckan börjar.</div>" : "")) +
         '<div class="talrad"><span>Planerade produktionsaktiviteter</span><b>' + antal + '</b></div>' +
         '<div class="talrad"><span>Genomförda</span><b>' + u.genomforda.length + '</b></div>' +
         (u.senaBockar.length ? '<div class="talrad"><span class="underrad">varav avbockade efter veckans slut</span><b>' +
@@ -175,4 +189,46 @@ async function slaUppOrt(namn) {
         return null;
     const o = d.results[0];
     return { namn: o.name, lat: o.latitude, lon: o.longitude };
+}
+
+/* ---------- varning för helgens väder, till höger om Fredag ---------- */
+// Helgen efter närmaste fredag (idag eller senare). På lördag och söndag gäller alltså nästa helg.
+function helgDagar() {
+    const d = iso2d(IDAG).getDay();
+    const fre = plus(IDAG, (5 - d + 7) % 7);
+    return [plus(fre, 1), plus(fre, 2)];
+}
+function ritaHelgvader() {
+    const fre = document.querySelectorAll("#rutnat .dagrubrik")[4];
+    if (!fre)
+        return;
+    const gammal = fre.querySelector(".helgvader");
+    if (gammal)
+        gammal.remove();
+    if (typeof vaderBedomning !== "function" || !VADER || !VADER._idag)
+        return;
+    const daliga = helgDagar().filter(d => VADER[d]).map(d => ({ d, b: vaderBedomning(VADER[d]) }))
+        .filter(x => x.b.niva === "rod" || x.b.niva === "gul");
+    if (!daliga.length)
+        return;
+    const namn = d => (iso2d(d).getDay() === 6 ? "Lör " : "Sön ") + kortDatum(d);
+    const rod = daliga.some(x => x.b.niva === "rod");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "helgvader" + (rod ? " rod" : "");
+    b.textContent = "⚠";
+    const txt = "Dåligt väder i helgen: " + daliga.map(x => namn(x.d) + " " + x.b.status.toLowerCase() + " (" + x.b.rader.map(r => r.txt).join(", ") + ")").join(" · ");
+    b.title = txt;
+    b.setAttribute("aria-label", txt);
+    b.addEventListener("click", e => {
+        e.stopPropagation();
+        const panel = document.getElementById("varningspanel");
+        if (panel && panel.classList.contains("stangd")) {
+            const k = document.getElementById("vaderFall");
+            if (k) k.click();
+        }
+        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "center" });
+        status(txt);
+    });
+    fre.appendChild(b);
 }

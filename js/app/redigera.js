@@ -760,21 +760,51 @@ function redigeraKort(k) {
 }
 
 // Öppnar ett nytt mejl (mailto:) i datorns mejlprogram, t.ex. Outlook, med kortets anteckningar.
+// Leveransen som hör till ett avrop: kopplat leveranskort, kedjans leverans eller avropets leveransdag.
+function avropsLeverans(k, t) {
+    const a = k.avrop || {};
+    let l = a.levKortId ? t.kort.find(x => x.id === a.levKortId) : null;
+    if (!l && k.kedja) {
+        const lev = t.kort.filter(x => x.kedja === k.kedja && x.roll === "L" && x.dag >= k.dag).sort((x, y) => x.dag < y.dag ? -1 : 1);
+        l = lev[0] || t.kort.find(x => x.kedja === k.kedja && x.roll === "L") || null;
+    }
+    if (l)
+        return { dag: l.dag, tid: l.tid || "" };
+    return a.levDag ? { dag: a.levDag, tid: "" } : null;
+}
+
+// "Mån 9/11 kl 07.00 · v46" (fungerar även för helgdagar)
+const MAIL_DAGAR = ["Sön", "Mån", "Tis", "Ons", "Tor", "Fre", "Lör"];
+function mailDagNamn(dag) {
+    const d = iso2d(dag);
+    return MAIL_DAGAR[d.getDay()] + " " + d.getDate() + "/" + (d.getMonth() + 1);
+}
+function mailDag(dag, tid) {
+    return mailDagNamn(dag) + (tid ? " kl " + tid.replace(/:/g, ".") : "") + " · v" + veckonr(dag);
+}
+
 function mailaAnteckning(k, t, text) {
     if (!text)
         return;
     const p = projektForTavla(t) || state;
     const namn = kortText(k, t, p);
     const del = typeof kortDel === "function" ? kortDel(k, t) : "";
+    const delAv = del.replace(/^Del\s*(\d+)(?::(\d+))?$/, (m, a, b) => b ? a + " av " + b : a);
+    const avrop = k.typ === "avrop" || k.roll === "A";
     const amne = namn + " · " + p.projekt + (p.tavlor.length > 1 ? " – " + t.namn : "");
-    const rader = [
-        namn,
-        "Projekt: " + p.projekt + (p.tavlor.length > 1 ? " · " + t.namn : ""),
-        "Datum: " + dagEtikett(k.dag) + (k.tid ? " · " + tidText(k) : ""),
-    ];
-    if (del) rader.push("Del: " + del);
+    const rader = [namn, "Projekt: " + p.projekt + (p.tavlor.length > 1 ? " · " + t.namn : "")];
+    if (avrop) {
+        // avropets eget datum är samma dag som mejlet skickas, så det är leveransen som står
+        const l = avropsLeverans(k, t);
+        if (l) rader.push("Leverans: " + mailDag(l.dag, l.tid));
+    }
+    else
+        rader.push((k.typ === "leverans" ? "Leverans: " : "Datum: ") + mailDag(k.dag, k.tid ? tidText(k) : ""));
+    if (delAv) rader.push("Del: " + delAv);
     if (k.vem) rader.push("Ansvarig: " + k.vem);
-    let kropp = rader.join("\r\n") + "\r\n\r\nAnteckningar:\r\n" + text.replace(/\r?\n/g, "\r\n") + "\r\n";
+    const skickat = mailDagNamn(d2iso(new Date()));
+    let kropp = rader.join("\r\n") + "\r\n" + (avrop ? "Material:" : "\r\nAnteckningar:") + "\r\n" + text.replace(/\r?\n/g, "\r\n") +
+        (avrop ? "\r\nSkickat " + skickat.charAt(0).toLowerCase() + skickat.slice(1) : "") + "\r\n";
     // mejlprogrammen klarar inte hur långa länkar som helst
     const MAX = 1800;
     if (encodeURIComponent(kropp).length > MAX) {

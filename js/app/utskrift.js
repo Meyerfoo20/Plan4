@@ -592,6 +592,7 @@ function vaderDagRad(iso) {
 }
 
 function ritaVarningar() {
+    try { ritaHelgvader(); } catch (e) { }
     const box = document.getElementById("varningsinnehall");
     if (!box)
         return;

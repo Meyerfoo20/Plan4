@@ -454,6 +454,11 @@ function projektInstallningar() {
         (state.logotyp ? '<button type="button" class="mknapp fara" id="tmLoggaBort">Ta bort bild</button>' : "") +
         '<input type="file" id="tmLoggaFil" accept="image/png,image/jpeg,image/webp" hidden>' +
         '</div><div id="tmLoggaFel"></div>' +
+        '<p class="fraga" style="font-size:14px;margin-top:18px">Tavlor</p>' +
+        '<p class="hjalp">Namn, första veckans måndag och om pågående moment ska visas, för varje tavla.</p>' +
+        '<ul class="pi-tavlor">' + state.tavlor.map(t => '<li><span><b>' + esc(t.namn) + '</b><small>Från ' + esc(kortDatum(t.start)) +
+            ' · v' + veckonr(t.start) + (t.visaPagaende ? " · Pågående visas" : "") + '</small></span>' +
+            '<button type="button" class="mknapp" data-tavlainst="' + t.id + '">Inställningar…</button></li>').join("") + '</ul>' +
         '<p class="fraga" style="font-size:14px;margin-top:18px">Företag</p>' +
         '<p class="hjalp">' + state.foretag.filter(f => f.aktiv).length + ' aktiva leverantörer och UE. ' +
         '<button type="button" class="parkiv" id="piForetag">Hantera företag</button></p>' +
@@ -512,6 +517,10 @@ function projektInstallningar() {
             } }
     ]);
     koppplaLogga();
+    document.querySelectorAll("[data-tavlainst]").forEach(b => b.addEventListener("click", () => {
+        const t = state.tavlor.find(x => x.id === b.dataset.tavlainst);
+        if (t) tavlaInstallningar(t);
+    }));
     const pf = document.getElementById("piForetag");
     if (pf)
         pf.addEventListener("click", () => { stangModal(); foretagDialog(); });
@@ -625,8 +634,9 @@ function nyTavlaDialog() {
 
 document.getElementById("nyTavlaKnapp").addEventListener("click", nyTavlaDialog);
 
-document.getElementById("tavlameny").addEventListener("click", () => {
-    const t = T();
+// Tavlans inställningar: öppnas från Projektinställningar → Tavlor.
+function tavlaInstallningar(t) {
+    t = t || T();
     const kropp = '<div class="falt"><label for="tmNamn">Tavlans namn</label><input class="f" id="tmNamn" value="' + esc(t.namn) + '"></div>' +
         '<div class="falt"><label for="tmStart">Första veckans måndag</label><input class="f" id="tmStart" type="date" value="' + t.start + '"></div>' +
         '<div class="falt"><label class="kryssrad"><input type="checkbox" id="tmPagaende"' + (t.visaPagaende ? " checked" : "") +
@@ -662,7 +672,7 @@ document.getElementById("tavlameny").addEventListener("click", () => {
                 rita();
             } }
     ]);
-});
+}
 
 function koppplaLogga() {
     const valj = document.getElementById("tmLoggaValj"), fil = document.getElementById("tmLoggaFil");
@@ -751,8 +761,19 @@ document.getElementById("resursKnapp").addEventListener("click", resursVy);
 function vaxlaVisning(pa) {
     if (pa === undefined)
         pa = !document.body.classList.contains("visning");
-    if (pa)
+    if (pa) {
         visaVeckor = 1;
+        // visningsläget visar bara tavlan: stäng Gantt, Back up, översikter och kontosidan först
+        try {
+            if (ganttOppen()) stangGantt();
+            if (dashOppen()) stangDash();
+            if (startOppen()) stangStart();
+            if (typeof backupOppen === "function" && backupOppen()) stangBackup();
+        }
+        catch (e) { }
+        document.body.classList.remove("p4-kontovy", "dashlage");
+        if (window.p4MarkeraNav) window.p4MarkeraNav();
+    }
     document.body.classList.toggle("visning", pa);
     rita();
     document.getElementById("visning").textContent = pa ? "Avsluta visning" : "Visningsläge";
