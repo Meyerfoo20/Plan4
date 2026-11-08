@@ -41,6 +41,11 @@
                 stangBackup();
         }
         catch (e) { }
+        try {
+            if (hjalpOppen())
+                stangHjalp();
+        }
+        catch (e) { }
     }
     document.querySelectorAll("[data-nav]").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -71,6 +76,10 @@
                 oppnaBackup();
                 window.scrollTo({ top: 0 });
             }
+            else if (vy === "hjalp") {
+                oppnaHjalp();
+                window.scrollTo({ top: 0 });
+            }
             markeraNav();
         });
     });
@@ -94,6 +103,8 @@
                 return "gantt";
             if (backupOppen())
                 return "backup";
+            if (hjalpOppen())
+                return "hjalp";
         }
         catch (e) { }
         return "tavla";
@@ -116,6 +127,7 @@
         obs.observe($("pstart"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("gantt"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("backup"), { attributes: true, attributeFilter: ["class"] });
+        obs.observe($("hjalp"), { attributes: true, attributeFilter: ["class"] });
     }
     function stangMeny() { document.body.classList.remove("p4-menyoppen"); $("p4Meny").setAttribute("aria-expanded", "false"); }
     $("p4Meny").addEventListener("click", function () {
@@ -229,7 +241,7 @@
     }
     function visaGenvagar() {
         var rader = [["N", "Snabb post idag"], ["P", "Planera moment"], ["← / →", "Bläddra en vecka"], ["T", "Denna vecka"],
-            ["O", "Projektöversikt"], ["A", "Att göra"], ["G", "Gantt-schema"], ["V", "Visningsläge"], ["/", "Sök på tavlan"], ["Esc", "Stäng dialog eller sida"]];
+            ["O", "Projektöversikt"], ["A", "Att göra"], ["G", "Gantt-schema"], ["V", "Visningsläge"], ["H", "Hjälp"], ["/", "Sök på tavlan"], ["Esc", "Stäng dialog eller sida"]];
         modal("Kortkommandon", "Fungerar när du inte skriver i ett fält", '<ul class="detalj">' + rader.map(function (r) { return '<li><span class="et"><kbd>' + esc(r[0]) + '</kbd></span><span>' + esc(r[1]) + '</span></li>'; }).join("") + "</ul>", [{ txt: "Stäng", primar: true, fn: stangModal }]);
     }
     $("p4Genvagar").addEventListener("click", function () { stangMeny(); visaGenvagar(); });
@@ -282,6 +294,10 @@
         }
         else if (l === "v") {
             $("visning").click();
+        }
+        else if (l === "h" && !tv) {
+            oppnaHjalp();
+            window.scrollTo({ top: 0 });
         }
     });
     uppdateraBackup();

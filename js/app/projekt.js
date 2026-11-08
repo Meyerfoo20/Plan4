@@ -769,6 +769,7 @@ function vaxlaVisning(pa) {
             if (dashOppen()) stangDash();
             if (startOppen()) stangStart();
             if (typeof backupOppen === "function" && backupOppen()) stangBackup();
+            if (typeof hjalpOppen === "function" && hjalpOppen()) stangHjalp();
         }
         catch (e) { }
         document.body.classList.remove("p4-kontovy", "dashlage");

@@ -60,6 +60,8 @@
         try { if (typeof ganttOppen === "function" && ganttOppen()) stangGantt(); } catch (e) { }
         try { if (typeof dashOppen === "function" && dashOppen()) stangDash(); } catch (e) { }
         try { if (typeof startOppen === "function" && startOppen()) stangStart(); } catch (e) { }
+        try { if (typeof backupOppen === "function" && backupOppen()) stangBackup(); } catch (e) { }
+        try { if (typeof hjalpOppen === "function" && hjalpOppen()) stangHjalp(); } catch (e) { }
         if (tavlaId && state.tavlor.some(t => t.id === tavlaId) && state.aktiv !== tavlaId) {
             state.aktiv = tavlaId;
             rita();
@@ -180,6 +182,7 @@
                     const panel = document.getElementById("varningspanel");
                     if (panel && panel.classList.contains("stangd")) document.getElementById("vaderFall").click();
                     try { if (typeof backupOppen === "function" && backupOppen()) stangBackup(); } catch (x) { }
+                    try { if (typeof hjalpOppen === "function" && hjalpOppen()) stangHjalp(); } catch (x) { }
                     try { if (ganttOppen()) stangGantt(); if (dashOppen()) stangDash(); if (startOppen()) stangStart(); } catch (x) { }
                     if (window.p4MarkeraNav) window.p4MarkeraNav();
                     if (panel) panel.scrollIntoView({ behavior: "smooth", block: "center" });
