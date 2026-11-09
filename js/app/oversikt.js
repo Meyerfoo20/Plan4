@@ -54,7 +54,7 @@ function ritaStart(markera) {
     const start = fAktiviteter(p).filter(a => a.fas === "start");
     let html = '<div class="dashtopp">' +
         (p.logotyp ? '<img class="logga" src="' + p.logotyp + '" alt="">' : "") +
-        '<b>Wimo</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
+        '<img class="dashlogotyp" src="img/wimo.png?v=1" alt="Wimo"><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
         '<span class="dashrub">Att göra</span>' +
         '<div class="hoger">' +
         '<button class="navknapp" id="psNy">+ Att göra</button>' +
@@ -316,7 +316,7 @@ function ritaDash() {
     const diff = (u.procent !== null && fore.procent !== null) ? u.procent - fore.procent : null;
     let html = '<div class="dashtopp">' +
         (p.logotyp ? '<img class="logga" src="' + p.logotyp + '" alt="">' : "") +
-        '<b>Wimo</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
+        '<img class="dashlogotyp" src="img/wimo.png?v=1" alt="Wimo"><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
         '<span class="dashrub">Projektöversikt</span>' +
         '<span class="dashvecka">v.' + veckonr(dv) + ' · ' + dagNamnKort(IDAG) + '</span>' +
         '<div class="hoger">' +

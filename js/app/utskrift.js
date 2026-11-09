@@ -201,22 +201,22 @@ function utskriftVader() {
         '</tbody></table>';
 }
 
+// Utskrift av Projektöversikten: samma innehåll som på skärmen — nyckeltal, kräver åtgärd,
+// Gantt-schemat för valda projekt och kalendern med projektets alla tavlor.
 function skrivUtOversikt(p, tavlor) {
     const sv = senasteAvslutadeVecka(IDAG), dv = dennaVeckasMandag(IDAG);
     const u = projUtfall(p, sv, tavlor), nu = projUtfall(p, dv, tavlor);
     const h = projHinder(p, tavlor, IDAG), obek = obekraftadeDatum(p, tavlor);
     const sena = projAvrop(p, tavlor, null, null).filter(r => forsenatAvrop(r, IDAG));
-    const atg = kraverAtgard(p, tavlor, IDAG, vaderForAtgard(p)), fh = framforhallning(p, tavlor, 2, IDAG);
-    const flera = (tavlor || p.tavlor).length > 1;
-    let html = utskriftHuvud("Veckans produktionsöversikt", ((tavlor || p.tavlor).length === p.tavlor.length ? "Alla tavlor" : (tavlor[0] && tavlor[0].namn)) +
-        " · v." + veckonr(sv) + " avslutad · v." + veckonr(dv) + " pågår");
-    html += '<table class="lista"><tbody>' +
-        '<tr><td>Planpålitlighet v.' + veckonr(sv) + '</td><td><b>' + (u.procent === null ? "–" : u.procent + " %") + '</b></td></tr>' +
-        '<tr><td>Genomförda av planerade löften</td><td>' + u.genomforda + " av " + u.planerade + '</td></tr>' +
-        '<tr><td>Tillkom under veckan</td><td>' + u.tillkomna + " (varav " + u.tillkomnaKlara + ' genomförda)</td></tr>' +
-        '<tr><td>Öppna hinder</td><td>' + h.oppna.length + " (varav " + h.forfallna.length + ' förfallna)</td></tr>' +
-        '<tr><td>Försenade avrop</td><td>' + sena.length + '</td></tr>' +
-        '<tr><td>Obekräftade leverans- eller UE-datum</td><td>' + obek.length + '</td></tr>' +
+    const atg = kraverAtgard(p, tavlor, IDAG, vaderForAtgard(p));
+    const urvalTavlor = (tavlor || p.tavlor).length === p.tavlor.length ? "Alla tavlor" : (tavlor[0] && tavlor[0].namn);
+    let html = utskriftHuvud("Projektöversikt", urvalTavlor + " · v." + veckonr(dv) + " · " + dagNamnKort(IDAG));
+    html += '<table class="lista ukpi"><tbody>' +
+        '<tr><td>Planpålitlighet v.' + veckonr(sv) + '</td><td><b>' + (u.procent === null ? "–" : u.procent + " %") + '</b> · ' +
+            (u.procent === null ? "inga löften" : u.genomforda + " av " + u.planerade + " löften") + '</td></tr>' +
+        '<tr><td>Öppna hinder</td><td><b>' + h.oppna.length + '</b> · ' + (h.forfallna.length ? "varav " + h.forfallna.length + " förfallna" : "inga förfallna") + '</td></tr>' +
+        '<tr><td>Försenade avrop</td><td><b>' + sena.length + '</b></td></tr>' +
+        '<tr><td>Obekräftade datum</td><td><b>' + obek.length + '</b> · leverans eller UE-start</td></tr>' +
         '<tr><td>v.' + veckonr(dv) + ' pågår</td><td>' + nu.genomforda + " av " + nu.planerade + ' löften avbockade</td></tr>' +
         '</tbody></table>';
     html += '<div class="ublock"><h3>Kräver åtgärd</h3>' +
@@ -226,23 +226,43 @@ function skrivUtOversikt(p, tavlor) {
                 '<td>' + esc(r.tavla.namn) + '</td><td>' + esc(r.text) + '</td><td>' + esc(r.metatext) + '</td>' +
                 '<td class="kvitt">□</td></tr>').join("") + '</tbody></table>'
             : '<p class="utom">Inget kräver åtgärd.</p>') + '</div>';
-    html += '<div class="ublock"><h3>Läge per tavla</h3><table class="lista"><thead><tr><th>Tavla</th>' +
-        '<th>Idag</th><th>Planpålit.</th><th>Ej gjorda</th><th>Hinder</th><th>Förfallna</th></tr></thead><tbody>' +
-        (tavlor || p.tavlor).map(t => {
-            const tu = projUtfall(p, sv, [t]), th = projHinder(p, [t], IDAG), av = senasteAvstamning(t), def = av ? lageDef(av.lage) : null;
-            return '<tr><td>' + esc(t.namn) + '</td><td>' + (def ? def.txt : "–") + '</td>' +
-                '<td>' + (tu.procent === null ? "–" : tu.procent + " %") + '</td><td>' + tu.ejGjorda + '</td>' +
-                '<td>' + th.oppna.length + '</td><td>' + th.forfallna.length + '</td></tr>';
-        }).join("") + '</tbody></table>' +
-        '<p class="hjalp">Dagens läge är arbetsledningens egen bedömning, inte en automatisk bedömning.</p></div>';
-    html += '<div class="ublock"><h3>Kommande två veckor</h3><table class="lista"><tbody>' +
-        '<tr><td>Moment som startar</td><td>' + fh.moment + '</td></tr>' +
-        '<tr><td>Avrop</td><td>' + fh.avrop + '</td></tr>' +
-        '<tr><td>Leveranser</td><td>' + fh.leveranser + '</td></tr>' +
-        '<tr><td>UE-starter</td><td>' + fh.uestarter + '</td></tr>' +
-        '<tr><td>Moment med öppna hinder</td><td>' + fh.medHinder + '</td></tr>' +
-        '</tbody></table></div>';
-    skrivUt(html, false);
+    // Gantt-schemat som bild, samma urval och period som i översikten
+    try {
+        const g = ganttUrval();
+        html += '<div class="ublock ugantt"><h3>Gantt-schema · ' + esc(g.per.namn) + " · " + g.valda.length + (g.valda.length === 1 ? " projekt" : " projekt") + '</h3>' +
+            (g.valda.length ? '<img alt="Gantt-schema" src="' + ganttRitaBild().toDataURL("image/png") + '">' : '<p class="utom">Inga projekt valda.</p>') + '</div>';
+    }
+    catch (e) { }
+    // Kalendern: alla tavlor, denna vecka och tre framåt
+    p.tavlor.forEach(t => {
+        const fp = projektForTavla(t);
+        html += '<div class="ublock ukal"><h3>Kalender · ' + esc(t.namn) + " · v" + veckonr(dv) + "–v" + veckonr(plus(dv, 21)) + '</h3>' +
+            '<table class="kal"><thead><tr><th class="vk">Vecka</th>' + DAGNAMN.map(d => '<th>' + d + '</th>').join("") + '</tr></thead><tbody>';
+        for (let v = 0; v < 4; v++) {
+            const vStart = plus(dv, v * 7);
+            html += '<tr><td class="vk"><b>v' + veckonr(vStart) + '</b><br>' + kortDatum(vStart) + "–" + kortDatum(plus(vStart, 4)) + '</td>';
+            for (let d = 0; d < 5; d++) {
+                const iso = plus(vStart, d);
+                const kort = sorteraDag(virtuella(iso, t).concat(kortForDag(t, iso), attGoraForDag(t, iso, fp)));
+                html += '<td><div class="ddat">' + kortDatum(iso) + '</div>' + kort.map(k => {
+                    if (k.typ === "franvaro" && franvaroNy(k))
+                        return '<div class="ukort t-franvaro' + (k.klar ? " klar" : "") + '">' + esc(franvaroTitel(fp, k)) +
+                            '<span class="umeta2">' + esc(franvaroUnder(fp, k)) + '</span></div>';
+                    return '<div class="ukort t-' + k.typ + (k.klar ? " klar" : "") + '">' + esc(kortText(k, t, fp)) +
+                        ([k.tid, k.vem].filter(Boolean).length ? '<span class="umeta2">' + esc([k.tid, k.vem].filter(Boolean).join(" · ")) + '</span>' : "") +
+                        '</div>';
+                }).join("") + '</td>';
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+    });
+    // Liggande sida; vänta tills Gantt-bilden är inläst innan utskriften öppnas
+    const box = document.getElementById("utskrift");
+    box.innerHTML = html;
+    sidorientering(true);
+    const bilder = [...box.querySelectorAll("img")].map(b => b.decode ? b.decode().catch(() => { }) : Promise.resolve());
+    Promise.all(bilder).then(() => window.print());
 }
 
 function skrivUtProjektstart(p) {

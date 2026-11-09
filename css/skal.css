@@ -1641,3 +1641,22 @@ body.visning .kort:hover {
   left: auto;
   bottom: auto;
 }
+
+/* ---------- Wimo-loggan (bild i stället för text) ---------- */
+img.p4-logotyp {
+  display: block;
+  width: auto;
+  height: 24px;
+  max-width: none;
+  font-size: 0;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.p4-brand-mork img.p4-logotyp {
+  height: 28px;
+}
+.dashtopp .dashlogotyp {
+  display: block;
+  height: 20px;
+  width: auto;
+}

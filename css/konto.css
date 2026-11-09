@@ -887,3 +887,16 @@ body.p4-projlas #nyTavlaKnapp,
 body.p4-projlas .flik.plus {
   display: none !important;
 }
+
+/* Wimo-loggan på laddnings-, vänte- och inloggningssidan */
+.p4-laddning img.p4-logotyp {
+  height: 44px;
+}
+.p4-vantar-kort img.p4-logotyp {
+  height: 32px;
+  margin: 0 auto;
+}
+.p4-in-intro img.p4-logotyp {
+  height: 34px;
+  align-self: flex-start;
+}
