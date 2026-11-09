@@ -277,7 +277,7 @@ function stegNar() {
                 'Slutposten sparas och dyker upp på tavlan när planen rullas fram. Den syns tills dess i momentets detaljvy.</div>';
             return;
         }
-        const vecka = Math.floor((iso2d(s.value) - iso2d(T().start)) / 86400000 / 7);
+        const vecka = Math.floor((iso2d(s.value) - iso2d(tavlaStart())) / 86400000 / 7);
         if (vecka < 0) {
             v.innerHTML = '<div class="notis">Ligger före planens första vecka. Kontrollera datumet.</div>';
             return;
@@ -411,7 +411,7 @@ function ritaMaterial() {
     });
     function varna(rad, m) {
         const v = rad.querySelector(".mvarn");
-        if (iso2d(m.avropDag) < iso2d(T().start)) {
+        if (iso2d(m.avropDag) < iso2d(tavlaStart())) {
             v.innerHTML = '<div class="notis rod" style="margin:8px 0 0">Avropet skulle ha legat ' + kortDatum(m.avropDag) +
                 ' (v' + veckonr(m.avropDag) + ') — före tavlan. Det läggs på första dagen märkt "gör idag" och hamnar på hinderlistan.</div>';
         }
@@ -735,7 +735,7 @@ function planeradeKort() {
     g.kedja = g.kedja || "k" + uid();
     const kedja = g.kedja, ut = [];
     (g.mtrl || []).forEach(m => {
-        const sent = iso2d(m.avropDag) < iso2d(T().start);
+        const sent = iso2d(m.avropDag) < iso2d(tavlaStart());
         ut.push({ dag: arbetsdag(m.avropDag), typ: "avrop", roll: "A", mid: m.id,
             text: avropText(m) + (sent ? " · gör idag" : ""), vem: g.vem, kedja: kedja });
         ut.push({ dag: m.levDag, typ: "leverans", roll: "L", mid: m.id,
@@ -764,7 +764,7 @@ function planeradeHinder() {
         h.push({ vad: forvalText(f), vem: f.vem || "", nar: f.nar || "", forId: f.id });
     });
     (g.mtrl || []).forEach(m => {
-        if (iso2d(m.avropDag) < iso2d(T().start))
+        if (iso2d(m.avropDag) < iso2d(tavlaStart()))
             h.push({ vad: avropText(m) + " är sent mot ledtiden", vem: g.vem || "", nar: IDAG, forId: null });
     });
     return h;

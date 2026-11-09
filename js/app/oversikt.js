@@ -285,9 +285,15 @@ function oppnaDash() {
 }
 
 function stangDash() {
+    const varPP = dashTV;
     document.body.classList.remove("dashlage", "dashtv");
     document.getElementById("dash").classList.add("dold");
     dashTV = false;
+    try {
+        if (varPP && document.fullscreenElement && document.exitFullscreen)
+            document.exitFullscreen().catch(() => { });
+    }
+    catch (e) { }
 }
 
 function dashOppen() { return !document.getElementById("dash").classList.contains("dold"); }
@@ -317,7 +323,7 @@ function ritaDash() {
         '<select class="f dashval" id="dashTavla"><option value="">Alla tavlor</option>' +
         p.tavlor.map(t => '<option value="' + t.id + '"' + (dashTavlaId === t.id ? " selected" : "") + '>' + esc(t.namn) + '</option>').join("") +
         '</select>' +
-        '<button class="navknapp" id="dashTvKnapp">' + (dashTV ? "Avsluta TV" : "TV") + '</button>' +
+        '<button class="navknapp' + (dashTV ? " pp-pa" : "") + '" id="dashTvKnapp" title="' + (dashTV ? "Avsluta fullskärm" : "Visa översikten i fullskärm") + '">' + (dashTV ? "Avsluta PP" : "PP") + '</button>' +
         '<button class="navknapp" id="dashSkrivUt">Skriv ut</button>' +
         '<button class="navknapp" id="dashStang">Stäng</button>' +
         '</div></div>';
@@ -341,91 +347,21 @@ function ritaDash() {
         (r.metatext ? '<span class="atgmeta">' + esc(r.metatext) + '</span>' : "") + '</span></li>').join("") + '</ul>'
         : '<p class="hjalp">Inget kräver åtgärd just nu.</p>';
     html += '</div>';
-    html += '<div class="dashkol"><div class="dashblock"><h3>Planpålitlighet 6 veckor</h3><ul class="trend">';
-    for (let i = 5; i >= 0; i--) {
-        const v = plus(sv, -i * 7), t2 = projUtfall(p, v, tavlor);
-        const bredd = t2.procent === null ? 0 : t2.procent;
-        html += '<li data-vecka="' + v + '"' + (t2.procent === null ? ' title="Inga produktionslöften fanns i v.' + veckonr(v) + '"' :
-            ' title="' + t2.genomforda + " av " + t2.planerade + ' löften"') + '><span class="tv">v' + veckonr(v) + '</span>' +
-            '<span class="stapelbg"><span class="stapel" style="width:' + bredd + '%"></span></span>' +
-            '<span class="tp">' + (t2.procent === null ? "–" : t2.procent + " %") + '</span></li>';
-    }
-    html += '</ul></div>';
-    html += '<div class="dashblock"><h3>Kommande' +
-        '<span class="veckoval2">' + [1, 2, 4].map(v => '<button type="button" data-fv="' + v + '"' +
-        (dashVeckor === v ? ' class="vald"' : "") + '>' + v + " v</button>").join("") + '</span></h3>' +
-        '<ul class="framlista">' +
-        '<li data-fram="moment"><b>' + fh.moment + '</b> moment startar</li>' +
-        '<li data-fram="avrop"><b>' + fh.avrop + '</b> avrop ska göras</li>' +
-        '<li data-fram="lev"><b>' + fh.leveranser + '</b> leveranser</li>' +
-        '<li data-fram="ue"><b>' + fh.uestarter + '</b> UE-starter</li>' +
-        '<li data-fram="hinder"><b>' + fh.medHinder + '</b> moment har öppna hinder</li>' +
-        '</ul></div></div>';
-    const resFran2 = dennaVeckasMandag(IDAG), resTill2 = plus(resFran2, dashVeckor * 7 - 1);
-    const harRes = p.resurser.personer.length || bemannadeMoment(p, tavlor).length;
-    let resRad;
-    if (!harRes)
-        resRad = '<span class="hjalp" style="margin:0">Ingen resursplanering registrerad.</span>';
-    else {
-        const konf = dubbelbokningar(p, resFran2, resTill2).filter(k => k.moment.some(m => tavlor.indexOf(m.tavla) >= 0));
-        const personer = new Set(konf.map(k => k.personId)).size;
-        const brist = bemannadeMoment(p, tavlor).filter(m => m.till >= resFran2 && m.fran <= resTill2 && bemanningsLage(p, m.kort).saknas > 0);
-        const franv = new Set(franvaroKonflikter(p, resFran2, resTill2, tavlor).filter(g => g.hel).map(g => g.personId)).size;
-        const delar = [];
-        if (personer)
-            delar.push('<span class="rodtal">' + personer + (personer === 1 ? " dubbelbokad person" : " dubbelbokade personer") + '</span>');
-        if (franv)
-            delar.push('<span class="rodtal">' + franv + (franv === 1 ? " frånvarande person är resurssatt" : " frånvarande personer är resurssatta") + '</span>');
-        if (brist.length)
-            delar.push('<span>' + brist.length + ' moment saknar namngiven bemanning</span>');
-        resRad = delar.length ? delar.join(" · ") : '<span>inga identifierade konflikter</span>';
-    }
-    const fl = fLage(p, IDAG);
-    if (fl.fore) {
-        html += '<div class="dashblock resblock" id="dashStart" title="Öppna Att göra"><h3>Att göra</h3>' +
-            '<span>' + fl.foreKlara + " av " + fl.fore + " klara</span>" +
-            (fl.forfallna ? ' · <span class="rodtal">' + fl.forfallna + (fl.forfallna === 1 ? " förfallen" : " förfallna") + '</span>' : "") + '</div>';
-    }
-    html += '<div class="dashblock resblock" id="dashRes" title="Öppna Resursplanering"><h3>Resurser' +
-        '<span class="antal">kommande ' + dashVeckor + (dashVeckor === 1 ? " vecka" : " veckor") + '</span></h3>' + resRad + '</div>';
-    html += '<div class="dashblock"><h3>Produktionsläge per tavla</h3>' +
-        '<p class="hjalp" style="margin-top:-4px">Jämför delområdenas senaste avstämning, föregående veckas utfall och aktuella avvikelser.</p>' +
-        '<table class="lista dashtabell"><thead><tr><th>Tavla</th>' +
-        '<th title="Arbetsledningens egen senaste dagsavstämning — inte en beräknad KPI">Idag</th>' +
-        '<th title="Genomförda av planerade produktionslöften i v.' + veckonr(sv) + '">Planpålit. v' + veckonr(sv) + '</th>' +
-        '<th title="Produktionslöften i v.' + veckonr(sv) + ' som inte bockades av">Ej gjorda v' + veckonr(sv) + '</th>' +
-        '<th title="Öppna hinder just nu">Hinder</th>' +
-        '<th title="Öppna hinder vars senast-datum har passerat">Förfallna</th>' +
-        '<th title="Poster som flyttades under v.' + veckonr(sv) + '">Flyttade v' + veckonr(sv) + '</th>' +
-        '</tr></thead><tbody>' +
-        p.tavlor.map(t => {
-            const tu = projUtfall(p, sv, [t]), th = projHinder(p, [t], IDAG), av = senasteAvstamning(t);
-            const def = av ? lageDef(av.lage) : null;
-            const idag = av && av.dag === IDAG;
-            return '<tr data-tavla="' + t.id + '"><td><b>' + esc(t.namn) + '</b></td>' +
-                '<td>' + (def ? '<span class="' + (idag ? "" : "gammalavst") + '" title="' +
-                esc(def.txt + " · " + dagNamnKort(av.dag) + " · arbetsledningens egen bedömning") + '">' +
-                def.ikon + (idag ? "" : " · senast " + kortDatum(av.dag)) + '</span>'
-                : '<span class="gammalavst" title="Ingen dagsavstämning registrerad">–</span>') + '</td>' +
-                '<td' + (tu.procent === null ? ' title="Inga produktionslöften fanns i v.' + veckonr(sv) + '"' : "") + '>' +
-                (tu.procent === null ? "–" : tu.procent + " %") + '</td>' +
-                '<td>' + tu.ejGjorda + '</td><td>' + th.oppna.length + '</td>' +
-                '<td' + (th.forfallna.length ? ' class="rodtal"' : "") + '>' + th.forfallna.length + '</td>' +
-                '<td>' + flyttadeIVecka(t, sv) + '</td></tr>';
-        }).join("") + '</tbody></table>' +
-        '<p class="hjalp">Emojin är arbetsledningens egen bedömning vid eftermiddagspulsen — inte en automatisk bedömning från Wimo.</p>' +
-        '</div>';
-    const vv = vaderVarningarPeriod(IDAG, 10);
-    if (vv.length)
-        html += '<div class="dashblock vaderblock"><h3>⚠ Vädervarning</h3><ul class="framlista">' +
-            vv.slice(0, 4).map(v => '<li><b>' + dagNamnKort(v.dag) + '</b> ' + esc(v.traffar.join(" · ")) + '</li>').join("") +
-            '</ul></div>';
-    html += '<p class="dashfot">' +
-        (u.utanTid ? u.utanTid + ' poster saknar tidsstämpel (skapade före 1.1) och räknas som planerade. ' : "") +
-        (tack.totalt ? tack.utan + " av " + tack.totalt + " kommande moment saknar förutsättningskontroll — det är datatäckning, inte att de har problem." : "") +
-        '</p>';
+    // Gantt-schemat för de valda projekten (samma urval som på Gantt-sidan)
+    html += '<div class="dashblock dashgantt"><h3>Gantt-schema<span class="antal" id="dashGanttInfo"></span>' +
+        '<span class="dg-knappar">' +
+        Object.keys(GANTT_PERIODER).map(s2 => '<button type="button" data-dgper="' + s2 + '"' + (s2 === gantt.period ? ' class="vald"' : "") + ">" + GANTT_PERIODER[s2] + "</button>").join("") +
+        '<button type="button" data-dgsteg="-1" aria-label="Föregående">←</button><button type="button" data-dgsteg="1" aria-label="Nästa">→</button>' +
+        '<button type="button" id="dashTillGantt">Öppna Gantt</button></span></h3>' +
+        dashGanttProjektval() +
+        '<div id="dashGantt"></div></div>';
+    // Kalendern: alla tavlor i projektet under varandra, denna vecka och tre framåt
+    html += '<div class="dashblock dashkal"><h3>Kalender<span class="antal">' + esc(p.projekt) + " · v" + veckonr(dv) + "–v" + veckonr(plus(dv, 21)) +
+        "</span></h3>" + p.tavlor.map(t => dashKalender(t, dv)).join("") + "</div>";
     const dash = document.getElementById("dash");
     dash.innerHTML = html;
+    ritaDashGantt(document.getElementById("dashGantt"));
+    dashGanttLyssnare(dash);
     document.getElementById("dashStang").addEventListener("click", stangDash);
     const dst = document.getElementById("dashStart");
     if (dst)
@@ -441,11 +377,7 @@ function ritaDash() {
             resursVy();
         });
     document.getElementById("dashSkrivUt").addEventListener("click", () => skrivUtOversikt(p, tavlor));
-    document.getElementById("dashTvKnapp").addEventListener("click", () => {
-        dashTV = !dashTV;
-        document.body.classList.toggle("dashtv", dashTV);
-        ritaDash();
-    });
+    document.getElementById("dashTvKnapp").addEventListener("click", () => vaxlaDashPP(!dashTV));
     document.getElementById("dashTavla").addEventListener("change", e => {
         dashTavlaId = e.target.value || null;
         ritaDash();
@@ -623,3 +555,135 @@ function momentLista(p, tavlor, vilken) {
         visaKort(r.kort);
     }));
 }
+
+/* ---------- Projektöversiktens kalender: en tavla, fyra veckor ---------- */
+
+function dashKalender(t, dv) {
+    const dagNamn = ["Mån", "Tis", "Ons", "Tors", "Fre"];
+    let html = '<div class="dk-tavla"><div class="dk-topp"><b>' + esc(t.namn) + '</b><span>' + t.kort.filter(k => !k.klar && k.dag >= dv && k.dag <= plus(dv, 25)).length +
+        ' öppna poster</span><button type="button" class="dk-oppna" data-dktavla="' + t.id + '">Öppna tavlan</button></div>' +
+        '<div class="dk-grid"><div class="dk-horn"></div>' + dagNamn.map(n => '<div class="dk-dag">' + n + "</div>").join("");
+    for (let v = 0; v < 4; v++) {
+        const vs = plus(dv, v * 7);
+        html += '<div class="dk-vecka"><b>v' + veckonr(vs) + "</b><small>" + kortDatum(vs) + "</small></div>";
+        for (let d = 0; d < 5; d++) {
+            const iso = plus(vs, d);
+            const lista = sorteraDag(virtuella(iso, t).concat(kortForDag(t, iso)));
+            html += '<div class="dk-ruta' + (iso === IDAG ? " idag" : "") + (iso < IDAG ? " forbi" : "") + '" data-dkdag="' + iso + '" data-dktavla="' + t.id + '">' +
+                '<span class="dk-datum">' + dagNamn[d] + " " + kortDatum(iso) + "</span>" +
+                lista.map(k => '<span class="dk-kort t-' + k.typ + (k.klar ? " klar" : "") + '"' + (k.virtuell ? "" : ' data-dkkort="' + k.id + '"') +
+                    ' title="' + esc(TYPNAMN[k.typ] + " · " + (k.text || "")) + '">' + (k.tid ? "<em>" + esc(k.tid) + "</em> " : "") + esc(k.text || TYPNAMN[k.typ]) + "</span>").join("") +
+                "</div>";
+        }
+    }
+    return html + "</div></div>";
+}
+
+function dashGanttLyssnare(dash) {
+    const box = dash.querySelector(".dashgantt");
+    if (!box)
+        return;
+    box.addEventListener("click", (e) => {
+        const plus = e.target.closest(".g-plus");
+        if (plus) {
+            e.preventDefault();
+            e.stopPropagation();
+            return ganttLaggTill(plus.dataset.gplus);
+        }
+        const b = e.target.closest("button");
+        if (!b)
+            return;
+        if (b.dataset.dgper) {
+            gantt.period = b.dataset.dgper;
+            ganttSteg = 0;
+            sparaGantt();
+            return ritaDash();
+        }
+        if (b.dataset.dgsteg) {
+            ganttSteg += +b.dataset.dgsteg;
+            return ritaDash();
+        }
+        if (b.dataset.dgproj) {
+            const alla = ganttProjekt().map(x => x.id);
+            if (b.dataset.dgproj === "alla")
+                gantt.valda = null;
+            else {
+                let valda = gantt.valda ? gantt.valda.filter(id => alla.includes(id)) : alla.slice();
+                valda = valda.includes(b.dataset.dgproj) ? valda.filter(id => id !== b.dataset.dgproj) : valda.concat(b.dataset.dgproj);
+                gantt.valda = valda.length === alla.length ? null : valda;
+            }
+            sparaGantt();
+            return ritaDash();
+        }
+        if (b.id === "dashTillGantt") {
+            stangDash();
+            oppnaGantt();
+            if (window.p4MarkeraNav)
+                window.p4MarkeraNav();
+            return window.scrollTo({ top: 0 });
+        }
+        if (b.dataset.gihop) {
+            const id = b.dataset.gihop;
+            gantt.ihop = gantt.ihop.includes(id) ? gantt.ihop.filter(x => x !== id) : gantt.ihop.concat(id);
+            sparaGantt();
+            return ritaDashGantt(document.getElementById("dashGantt"));
+        }
+        if (b.dataset.gkort) {
+            stangDash();
+            return ganttTillKort(b.dataset.gkort);
+        }
+    });
+    dash.querySelector(".dashkal").addEventListener("click", (e) => {
+        const kort = e.target.closest("[data-dkkort]"), el = e.target.closest("[data-dktavla]");
+        if (!el)
+            return;
+        const t = state.tavlor.find(x => x.id === el.dataset.dktavla);
+        if (!t)
+            return;
+        state.aktiv = t.id;
+        vyOffset = 0;
+        stangDash();
+        if (window.p4MarkeraNav)
+            window.p4MarkeraNav();
+        rita();
+        window.scrollTo({ top: 0 });
+        if (kort) {
+            const k = t.kort.find(x => x.id === kort.dataset.dkkort);
+            if (k)
+                visaKort(k);
+        }
+    });
+}
+
+// Projektval direkt i översiktens Gantt: tryck på ett projekt för att visa eller dölja det.
+function dashGanttProjektval() {
+    const alla = ganttProjekt();
+    if (alla.length < 2)
+        return "";
+    const vald = (p) => !gantt.valda || gantt.valda.includes(p.id);
+    return '<div class="dg-projekt" role="group" aria-label="Projekt i schemat">' +
+        '<button type="button" data-dgproj="alla"' + (!gantt.valda ? ' class="vald"' : "") + ">Alla</button>" +
+        alla.map(p => '<button type="button" data-dgproj="' + esc(p.id) + '" aria-pressed="' + vald(p) + '"' + (vald(p) ? ' class="pa"' : "") +
+            ' style="--gf:' + ganttFarg(p) + '"><span class="g-ruta"></span>' + esc(p.projekt) + "</button>").join("") + "</div>";
+}
+
+// PP: Projektöversikten i fullskärm, som visningsläget men för översikten.
+function vaxlaDashPP(pa) {
+    dashTV = pa;
+    document.body.classList.toggle("dashtv", pa);
+    try {
+        if (pa && !document.fullscreenElement && document.documentElement.requestFullscreen)
+            document.documentElement.requestFullscreen().catch(() => { });
+        if (!pa && document.fullscreenElement && document.exitFullscreen)
+            document.exitFullscreen().catch(() => { });
+    }
+    catch (e) { }
+    if (dashOppen())
+        ritaDash();
+    window.scrollTo({ top: 0 });
+}
+
+document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && dashTV)
+        vaxlaDashPP(false);
+});

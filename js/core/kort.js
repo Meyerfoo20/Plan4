@@ -209,7 +209,7 @@ function forvalText(f) {
     return f.txt || (f.omrade === "annat" ? (f.namn || "Egen förutsättning") : omradeNamn(f.omrade));
 }
 
-function veckoIndex(iso, t) { return Math.round((iso2d(iso) - iso2d(t.start)) / 86400000 / 7); }
+function veckoIndex(iso, t) { return Math.round((iso2d(iso) - iso2d(tavlaStart())) / 86400000 / 7); }
 
 function momentFor(k, t) {
     if (!k.kedja || k.roll === "S" || k.roll === "P" || k.roll === "K")

@@ -55,8 +55,13 @@ function ganttOppen() { return !document.getElementById("gantt").classList.conta
 
 /* ---------- data ---------- */
 
+// Bara projekt man är med i (huvudadmin har tillgång till alla och ser därför alla).
+function ganttArMed(p) {
+    try { return typeof window.p4ArMed !== "function" || window.p4ArMed(p.id); } catch (e) { return true; }
+}
+
 function ganttProjekt() {
-    return plan4.projekt.filter(p => gantt.arkiverade || !p.arkiverad);
+    return plan4.projekt.filter(p => (gantt.arkiverade || !p.arkiverad) && ganttArMed(p));
 }
 
 function ganttValda() {
@@ -273,7 +278,8 @@ function ganttTabell(data, o) {
             '<button type="button" class="g-etikett" data-gihop="' + p.id + '" aria-expanded="' + !ihop + '">' +
             '<span class="p4-caret' + (ihop ? " stangd" : "") + '" aria-hidden="true"></span>' +
             '<span class="g-ruta"></span><span class="g-etext"><b>' + esc(p.projekt) + "</b>" +
-            "<small>" + (moment.length ? moment.length + " moment · " + klara + " klara" : "Inget i perioden") + "</small></span></button>" +
+            "<small>" + (moment.length ? moment.length + " moment · " + klara + " klara" : "Inget i perioden") + "</small></span>" +
+            ganttPlus(p.id, "Lägg till i " + p.projekt) + "</button>" +
             '<div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' +
             (span ? '<div class="g-summa" style="left:' + x(span.fran) + "px;width:" + (x(span.till) - x(span.fran) + dw) + 'px"></div>' : "") +
             (ihop && gantt.milstolpar ? d.losa.map(m => ganttDiamant(m, x, dw)).join("") : "") +
@@ -336,7 +342,7 @@ function ganttTillKort(nyckel) {
     const t = T(), k = t.kort.find(x => x.id === kid);
     if (!k)
         return;
-    const v = Math.floor((iso2d(k.dag) - iso2d(t.start)) / 86400000 / 7);
+    const v = Math.floor((iso2d(k.dag) - iso2d(tavlaStart())) / 86400000 / 7);
     vyOffset = v >= 0 && v < 4 ? 0 : v;
     stangGantt();
     if (window.p4MarkeraNav)
@@ -347,6 +353,12 @@ function ganttTillKort(nyckel) {
 }
 
 document.getElementById("gantt").addEventListener("click", (e) => {
+    const plus = e.target.closest(".g-plus");
+    if (plus) {
+        e.preventDefault();
+        e.stopPropagation();
+        return ganttLaggTill(plus.dataset.gplus);
+    }
     const b = e.target.closest("button");
     if (!b)
         return;
@@ -731,4 +743,167 @@ function ganttRitaBild() {
         fk("Leverans", dia(F.lev));
     }
     return c;
+}
+
+/* ---------- lägg till direkt i schemat ---------- */
+
+// Plustecknet på varje rad i sidopanelen. Ligger inuti radens knapp, därför ett span med rollen knapp.
+function ganttPlus(nyckel, etikett) {
+    return '<span class="g-plus" role="button" tabindex="0" data-gplus="' + esc(nyckel) + '" title="' + esc(etikett) +
+        '" aria-label="' + esc(etikett) + '">+</span>';
+}
+
+document.getElementById("gantt").addEventListener("keydown", (e) => {
+    const plus = e.target.closest && e.target.closest(".g-plus");
+    if (!plus || (e.key !== "Enter" && e.key !== " "))
+        return;
+    e.preventDefault();
+    e.stopPropagation();
+    ganttLaggTill(plus.dataset.gplus);
+});
+
+const GANTT_NYTT = {
+    produktion: { namn: "Produktionsmoment", text: "T.ex. Montage innerväggar plan 3" },
+    avrop: { namn: "Avrop", text: "T.ex. Gips, reglar och skenor" },
+    leverans: { namn: "Leverans / UE", text: "T.ex. Leverans NP Nilsson" },
+    mote: { namn: "Möte", text: "T.ex. Byggmöte" },
+    ovrigt: { namn: "Övrigt", text: "Vad ska hända?" }
+};
+
+// Lördag och söndag finns inte på tavlan: lägg posten på fredagen före.
+function ganttVardag(iso) {
+    const d = iso2d(iso), v = (d.getDay() + 6) % 7;
+    if (v > 4)
+        d.setDate(d.getDate() - (v - 4));
+    return d2iso(d);
+}
+
+function ganttKanRedigera(p, t) {
+    try { return typeof window.p4KanRedigera !== "function" || window.p4KanRedigera(p.id, t.id); } catch (e) { return true; }
+}
+
+function ganttLaggTill(nyckel) {
+    const [pid, tid, kid] = String(nyckel || "").split("|");
+    const p = plan4.projekt.find(x => x.id === pid);
+    if (!p)
+        return;
+    const tavlor = p.tavlor.filter(t => ganttKanRedigera(p, t));
+    if (!tavlor.length)
+        return status("Du har bara läsbehörighet i " + p.projekt);
+    const mt = tid ? p.tavlor.find(t => t.id === tid) : null;
+    const mk = mt && kid ? mt.kort.find(k => k.id === kid) : null;
+    const slut = mk ? slutPostI(mt, mk) : null;
+    const typer = mk ? ["avrop", "leverans", "produktion", "mote", "ovrigt"] : ["produktion", "avrop", "leverans", "mote", "ovrigt"];
+    const startTavla = mk && tavlor.includes(mt) ? mt : (tavlor.find(t => p === state && t.id === state.aktiv) || tavlor[0]);
+    const dag0 = mk ? (mk.dag >= IDAG ? mk.dag : IDAG) : IDAG;
+    const kropp =
+        (mk ? '<div class="notis">Kopplas till momentet <b>' + esc(momentNamn(mk)) + "</b> och syns på samma rad i schemat.</div>" : "") +
+        '<div class="falt"><label>Vad vill du lägga till?</label><div class="snabbtyp g-nytyp" role="radiogroup">' +
+        typer.map((ty, i) => '<button type="button" role="radio" data-gtyp="' + ty + '" data-t="' + ty + '"' + (i === 0 ? ' class="vald"' : "") +
+            '" aria-checked="' + (i === 0) + '">' + GANTT_NYTT[ty].namn + "</button>").join("") + "</div></div>" +
+        '<div class="falt"><label for="gpText">Text</label><input class="f" id="gpText" maxlength="120" placeholder="' + esc(GANTT_NYTT[typer[0]].text) + '"></div>' +
+        '<div class="tva"><div class="falt"><label for="gpDag" id="gpDagEtikett">' + (typer[0] === "produktion" ? "Start" : "Datum") + "</label>" +
+        '<input class="f" id="gpDag" type="date" required value="' + dag0 + '"></div>' +
+        '<div class="falt" id="gpKlarFalt"' + (typer[0] === "produktion" ? "" : " hidden") + '><label for="gpKlar">Klart</label>' +
+        '<input class="f" id="gpKlar" type="date" required value="' + dag0 + '"></div></div>' +
+        '<div class="tva">' +
+        (tavlor.length > 1 ? '<div class="falt"><label for="gpTavla">Tavla</label><select class="f" id="gpTavla">' +
+            tavlor.map(t => '<option value="' + esc(t.id) + '"' + (t === startTavla ? " selected" : "") + ">" + esc(t.namn) + "</option>").join("") +
+            "</select></div>" : "") +
+        '<div class="falt"><label for="gpVem">Ansvarig (valfritt)</label><input class="f" id="gpVem" maxlength="60" value="' +
+        esc(mk && mk.vem ? mk.vem : "") + '"></div></div>' +
+        '<p class="hjalp">Posten hamnar direkt på tavlan i kalendern. Lördag och söndag läggs på fredagen före.</p>';
+    modal(mk ? "Lägg till i " + momentNamn(mk) : "Lägg till i " + p.projekt,
+        mk ? p.projekt + (p.tavlor.length > 1 ? " · " + mt.namn : "") + " · " + (slut && slut.dag > mk.dag ? kortDatum(mk.dag) + "–" + kortDatum(slut.dag) : kortDatum(mk.dag)) : "Direkt från Gantt-schemat",
+        kropp, [
+        { txt: "Avbryt", fn: stangModal },
+        { txt: "Lägg till", primar: true, fn: () => ganttSparaNytt(p, tavlor, mt, mk) }
+    ]);
+    const box = document.getElementById("overlay");
+    let typ = typer[0];
+    box.querySelector(".g-nytyp").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-gtyp]");
+        if (!b)
+            return;
+        typ = b.dataset.gtyp;
+        box.querySelectorAll("[data-gtyp]").forEach(x => { x.classList.toggle("vald", x === b); x.setAttribute("aria-checked", String(x === b)); });
+        document.getElementById("gpText").placeholder = GANTT_NYTT[typ].text;
+        document.getElementById("gpKlarFalt").hidden = typ !== "produktion";
+        document.getElementById("gpDagEtikett").textContent = typ === "produktion" ? "Start" : "Datum";
+        box.dataset.gtyp = typ;
+    });
+    box.dataset.gtyp = typ;
+    setTimeout(() => { const f = document.getElementById("gpText"); if (f) f.focus(); }, 30);
+}
+
+function ganttSparaNytt(p, tavlor, mt, mk) {
+    const box = document.getElementById("overlay");
+    const typ = box.dataset.gtyp || "produktion";
+    const text = document.getElementById("gpText").value.trim();
+    if (!text) {
+        document.getElementById("gpText").focus();
+        return status("Skriv vad som ska läggas till", true);
+    }
+    const valj = document.getElementById("gpTavla");
+    const t = valj ? tavlor.find(x => x.id === valj.value) : tavlor[0];
+    const dagIn = document.getElementById("gpDag").value;
+    if (!dagIn)
+        return status("Välj ett datum", true);
+    const dag = ganttVardag(dagIn);
+    const vem = document.getElementById("gpVem").value.trim();
+    let patch;
+    if (typ === "produktion") {
+        const klarIn = document.getElementById("gpKlar").value || dagIn;
+        const klar = ganttVardag(klarIn < dagIn ? dagIn : klarIn);
+        const kedja = "k" + uid();
+        const kort = klar === dag
+            ? [{ dag, typ: "produktion", roll: "P", text, vem, kedja }]
+            : [{ dag, typ: "produktion", roll: "S", text: "Start " + text, vem, kedja }, { dag: klar, typ: "produktion", roll: "K", text: text + " klart", vem, kedja }];
+        patch = opGuideLaggUpp({ kort, text, start: dag, plats: "", bemanning: { behov: [], personer: [] }, grund: [], forval: [], mtrl: [], hinder: [] }, t.id);
+    }
+    else {
+        // avrop och leveranser kopplas till momentet (samma kedja) när de läggs till från en momentrad på samma tavla
+        const kedja = mk && mt === t && mk.kedja && (typ === "avrop" || typ === "leverans") ? mk.kedja : null;
+        patch = opNyttKort({ dag, typ, text, vem, kedja, roll: kedja ? (typ === "avrop" ? "A" : "L") : null }, t.id);
+    }
+    if (!patch || !patch.ok || !appliceraPatch(patch, { tavla: t, projekt: p }))
+        return status("Det gick inte att lägga till", true);
+    if (patch.historik && patch.historik.length)
+        patch.historik.forEach(h => logg2(t, h));
+    else
+        logg2(t, GANTT_NYTT[typ].namn + " tillagt från Gantt-schemat: " + text);
+    stangModal();
+    spara();
+    try { rita(); } catch (e) { }
+    ritaGantt();
+    status(GANTT_NYTT[typ].namn + " tillagt · " + kortDatum(dag) + (p.tavlor.length > 1 ? " · " + t.namn : ""));
+}
+
+/* ---------- Gantt i Projektöversikten ---------- */
+
+function ritaDashGantt(el, andraForsok) {
+    if (!el)
+        return;
+    const { valda, per, data } = ganttUrval(), { fran, till } = per;
+    const dagar = Math.round((iso2d(till) - iso2d(fran)) / 86400000) + 1;
+    const et = window.innerWidth <= 700 ? 170 : 270;
+    const bredd0 = el._yta || Math.max(200, el.clientWidth - 2 - et);
+    const dw = Math.max(per.per === "ar" ? 1.5 : 6, bredd0 / dagar);
+    const x = (iso) => Math.round((iso2d(iso) - iso2d(fran)) / 86400000) * dw;
+    const bredd = Math.floor(dagar * dw);
+    const info = document.getElementById("dashGanttInfo");
+    if (info)
+        info.textContent = per.namn + " · " + valda.length + " projekt";
+    el.innerHTML = '<div class="p4-gantt"><div class="g-schema">' + (valda.length ? ganttTabell(data, { fran, till, dagar, dw, x, bredd, per })
+        : '<div class="g-tom"><b>Inga projekt valda</b><span>Välj projekt på Gantt-sidan.</span></div>') + "</div></div>";
+    const sk = el.querySelector(".g-skroll");
+    if (sk) {
+        const yta = sk.clientWidth - et;
+        if (!andraForsok && yta > 0 && Math.abs(yta - bredd0) > 1) {
+            el._yta = yta;
+            return ritaDashGantt(el, true);
+        }
+        if (per.per === "ar" && sk.scrollWidth > sk.clientWidth)
+            sk.scrollLeft = Math.max(0, x(IDAG) - 4 * 7 * dw);
+    }
 }

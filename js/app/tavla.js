@@ -23,11 +23,9 @@ function rita() {
     document.getElementById("tavlanamn").value = t.namn;
     const vs = ritStart();
     document.getElementById("spann").textContent = "v" + veckonr(vs) + "–v" + veckonr(plus(vs, 21)) + " · " + kortDatum(vs) + "–" + kortDatum(plus(vs, 25));
-    const synk = document.getElementById("synkchip");
-    synk.classList.toggle("dold", state.tavlor.length < 2 || osynkade(state, T()).length === 0);
     const chip = document.getElementById("vychip");
     chip.classList.toggle("dold", vyOffset === 0);
-    chip.firstChild.textContent = vyOffset === 0 ? "" : "Du bläddrar — planen börjar v" + veckonr(t.start) + " ";
+    chip.firstChild.textContent = vyOffset === 0 ? "" : "Du bläddrar — planen börjar v" + veckonr(tavlaStart()) + " ";
     ritaFlikar();
     const g = document.getElementById("rutnat");
     g.innerHTML = "";

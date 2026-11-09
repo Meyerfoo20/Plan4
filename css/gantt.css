@@ -744,3 +744,50 @@ button.g-etikett:hover {
   body.g-skrivut #gUtskrift { display: block !important; }
   body.g-skrivut #gUtskrift img { width: 100%; height: auto; display: block; }
 }
+
+/* Plustecknet i sidopanelen: lägg till direkt i schemat */
+.g-plus {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  font: 700 16px/1 var(--rubrik);
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  opacity: .55;
+  transition: opacity .15s, background .15s, color .15s, border-color .15s;
+}
+.g-etikett:hover .g-plus,
+.g-plus:focus-visible {
+  opacity: 1;
+}
+.g-plus:hover {
+  opacity: 1;
+  color: #fff;
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+}
+.g-plus:focus-visible {
+  outline: 2px solid var(--accent-pop);
+  outline-offset: 2px;
+}
+@media (hover: none) {
+  .g-plus {
+    opacity: 1;
+  }
+}
+.g-nytyp {
+  flex-wrap: wrap;
+}
+.g-nytyp button {
+  flex: 1 1 auto;
+}
+@media print {
+  .g-plus {
+    display: none !important;
+  }
+}

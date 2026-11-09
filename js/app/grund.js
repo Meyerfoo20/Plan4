@@ -98,13 +98,16 @@ function ritStart() {
     const vs = visaStart();
     if (!document.body.classList.contains("visning") || vyOffset !== 0)
         return vs;
-    const m = d2iso(mandag(new Date())), ps = T().start;
-    return (m >= ps && m <= plus(ps, 21)) ? m : vs;
+    return vs;
 }
 
 function antalVeckor() { return document.body.classList.contains("visning") ? visaVeckor : 4; }
 
-function visaStart() { return plus(T().start, vyOffset * 7); }
+// Tavlan börjar alltid på innevarande vecka, med de tre kommande under.
+// Räknas fram från dagens datum (sparas inte), så alla tavlor och alla användare visar samma veckor.
+function tavlaStart() { return d2iso(mandag(iso2d(IDAG))); }
+
+function visaStart() { return plus(tavlaStart(), vyOffset * 7); }
 
 /* ---------- lagring ---------- */
 

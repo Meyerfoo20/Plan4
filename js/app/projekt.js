@@ -456,8 +456,7 @@ function projektInstallningar() {
         '</div><div id="tmLoggaFel"></div>' +
         '<p class="fraga" style="font-size:14px;margin-top:18px">Tavlor</p>' +
         '<p class="hjalp">Namn, första veckans måndag och om pågående moment ska visas, för varje tavla.</p>' +
-        '<ul class="pi-tavlor">' + state.tavlor.map(t => '<li><span><b>' + esc(t.namn) + '</b><small>Från ' + esc(kortDatum(t.start)) +
-            ' · v' + veckonr(t.start) + (t.visaPagaende ? " · Pågående visas" : "") + '</small></span>' +
+        '<ul class="pi-tavlor">' + state.tavlor.map(t => '<li><span><b>' + esc(t.namn) + '</b><small>' + t.kort.length + " poster" + (t.visaPagaende ? " · Pågående visas" : "") + '</small></span>' +
             '<button type="button" class="mknapp" data-tavlainst="' + t.id + '">Inställningar…</button></li>').join("") + '</ul>' +
         '<p class="fraga" style="font-size:14px;margin-top:18px">Företag</p>' +
         '<p class="hjalp">' + state.foretag.filter(f => f.aktiv).length + ' aktiva leverantörer och UE. ' +
@@ -562,12 +561,6 @@ function kopieraVecka(v) {
     ]);
 }
 
-function rullaTavla(t) {
-    angraForeAvbryt();
-    logg2(t, "Ny vecka: v" + veckonr(plus(t.start, 28)));
-    t.start = plus(t.start, 7);
-    t.skippa = t.skippa.filter(x => x.split("|")[1] >= t.start);
-}
 
 function logg2(t, txt) {
     t.historik.unshift(typeof txt === "object" && txt
@@ -576,42 +569,6 @@ function logg2(t, txt) {
     if (t.historik.length > 300)
         t.historik.length = 300;
 }
-
-document.getElementById("rullaFram").addEventListener("click", () => {
-    const t = T();
-    const grupp = state.tavlor.filter(x => x.start === t.start);
-    const andra = osynkade(state, T());
-    const kvar = grupp.reduce((n, x) => n + x.kort.filter(k => k.dag <= plus(x.start, 4) && !k.klar).length, 0);
-    const kropp = '<p class="fraga">v' + veckonr(plus(t.start, 28)) + ' kommer in längst ner</p>' +
-        '<p class="hjalp">Tavlan visar alltid fyra veckor. En ny vecka skapas genom att planeringen flyttas ett steg framåt: v' +
-        veckonr(t.start) + ' lämnar tavlan och v' + veckonr(plus(t.start, 28)) + ' kommer in som ny förberedelsevecka. ' +
-        'Gör det på fredagens veckoplanering. Vill du fylla den nya veckan med förra veckans innehåll — använd ⧉ i veckohuvudet efteråt.</p>' +
-        (grupp.length > 1 ? '<div class="notis gron">Rullas för ' + grupp.length + ' tavlor i projektet: ' +
-            grupp.map(x => esc(x.namn)).join(", ") + '. Delområdena ska ligga på samma period.</div>' : "") +
-        (andra.length ? '<div class="notis">Ligger på annan period och berörs inte: ' +
-            andra.map(x => esc(x.namn) + " (v" + veckonr(x.start) + ")").join(", ") + '.</div>' : "") +
-        (kvar ? '<div class="notis rod"><b>' + kvar + ' poster i v' + veckonr(t.start) + ' är inte avbockade.</b> Flytta dem framåt med orsak i stället — annars försvinner de ur vyn utan spår.</div>' : "");
-    const knappar = [{ txt: "Avbryt", fn: stangModal }];
-    if (andra.length)
-        knappar.push({ txt: "Synka alla till v" + veckonr(plus(t.start, 7)), fn: () => {
-                grupp.forEach(rullaTavla);
-                const mal = t.start;
-                andra.forEach(x => { logg2(x, "Synkad till v" + veckonr(mal)); x.start = mal; x.skippa = x.skippa.filter(y => y.split("|")[1] >= mal); });
-                vyOffset = 0;
-                stangModal();
-                spara();
-                rita();
-                status("Alla tavlor på v" + veckonr(mal));
-            } });
-    knappar.push({ txt: grupp.length > 1 ? "Rulla " + grupp.length + " tavlor" : "Lägg till v" + veckonr(plus(t.start, 28)), primar: true, fn: () => {
-            grupp.forEach(rullaTavla);
-            vyOffset = 0;
-            stangModal();
-            spara();
-            rita();
-        } });
-    modal("Ny vecka", "", kropp, knappar);
-});
 
 function nyTavlaDialog() {
     const kropp = '<div class="falt"><label for="ntNamn">Vad heter tavlan?</label>' +
@@ -638,7 +595,6 @@ document.getElementById("nyTavlaKnapp").addEventListener("click", nyTavlaDialog)
 function tavlaInstallningar(t) {
     t = t || T();
     const kropp = '<div class="falt"><label for="tmNamn">Tavlans namn</label><input class="f" id="tmNamn" value="' + esc(t.namn) + '"></div>' +
-        '<div class="falt"><label for="tmStart">Första veckans måndag</label><input class="f" id="tmStart" type="date" value="' + t.start + '"></div>' +
         '<div class="falt"><label class="kryssrad"><input type="checkbox" id="tmPagaende"' + (t.visaPagaende ? " checked" : "") +
         '> Visa pågående moment</label><p class="hjalp" style="margin:3px 0 0">Visar flerdagarsmoment kompakt på dagarna ' +
         'mellan start och klart. Påverkar inga siffror.</p></div>' +
@@ -662,11 +618,6 @@ function tavlaInstallningar(t) {
         { txt: "Spara", primar: true, fn: () => {
                 t.namn = document.getElementById("tmNamn").value.trim() || t.namn;
                 t.visaPagaende = document.getElementById("tmPagaende").checked;
-                const d = document.getElementById("tmStart").value;
-                if (d && d2iso(mandag(iso2d(d))) !== t.start) {
-                    t.start = d2iso(mandag(iso2d(d)));
-                    vyOffset = 0;
-                }
                 stangModal();
                 spara();
                 rita();
@@ -731,12 +682,11 @@ document.getElementById("bakat").addEventListener("click", () => { vyOffset--; r
 document.getElementById("framat").addEventListener("click", () => { vyOffset++; rita(); });
 
 document.getElementById("idagKnapp").addEventListener("click", () => {
-    vyOffset = Math.round((mandag(new Date()) - iso2d(T().start)) / 86400000 / 7);
+    vyOffset = 0;
     rita();
 });
 
 document.getElementById("tillPlanen").addEventListener("click", () => { vyOffset = 0; rita(); });
-document.getElementById("synkchip").addEventListener("click", () => document.getElementById("rullaFram").click());
 document.getElementById("angraKnapp").addEventListener("click", angraForeFlytt);
 document.getElementById("kedjechip").addEventListener("click", () => { valdKedja = null; rita(); });
 

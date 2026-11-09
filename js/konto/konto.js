@@ -763,6 +763,14 @@
         rita();
     }
     window.p4OppnaKonto = oppnaKontosida;
+    // Får användaren ändra i den här tavlan? (Används av Gantt-schemat, som kan lägga till i andra projekt än det öppna.)
+    window.p4KanRedigera = (pid, tid) => !anvandare || ["admin", "red"].includes(tavlaRatt(pid, tid));
+    // Är jag med i projektet? (Gantt-schemat visar bara de egna projekten, även för huvudadmin.)
+    window.p4ArMed = (pid) => {
+        if (!anvandare || arAdmin()) return true;
+        const m = projektMeta.get(pid), u = anvandare.uid;
+        return !m || m.medlemmar.includes(u) || m.lasare.includes(u) || m.projektAdmin.includes(u);
+    };
     // När projekten ändras (nytt projekt, synk från annan enhet) hålls siffror och lista aktuella.
     const ursRitaKonto = rita;
     rita = function () { markeraLasvy(); const r = ursRitaKonto.apply(this, arguments); if (kontoOppen()) ritaSynkkort(); return r; };

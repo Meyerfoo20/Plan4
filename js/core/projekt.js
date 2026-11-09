@@ -207,7 +207,7 @@ function kraverAtgard(p, tavlor, idag, vader) {
             });
         });
         t.kort.forEach(k => {
-            if (k.klar || k.typ === "franvaro" || franvaroPeriod(k).till >= t.start)
+            if (k.klar || k.typ === "franvaro" || franvaroPeriod(k).till >= tavlaStart())
                 return;
             rad("bakom_tavlan", "gul", t, k.text + " ligger kvar " + kortDatum(k.dag), "bakom tavlans fönster, ej avbockad", { typ: "kort", id: k.id, tavla: t.id, dag: k.dag });
         });

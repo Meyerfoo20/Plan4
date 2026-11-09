@@ -456,3 +456,253 @@ table.lista .kvitt {
   gap: 7px;
   align-items: center;
 }
+
+/* ---------- Projektöversikt: Gantt och kalender ---------- */
+.dashgantt h3 .antal {
+  margin-left: 0;
+}
+.dg-knappar {
+  margin-left: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.dg-knappar button {
+  font: 600 12px/1 var(--brod);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.dg-knappar button:hover {
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+.dg-knappar button.vald {
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+  color: var(--btn-text);
+}
+#dashGantt .g-schema {
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-m);
+  overflow: hidden;
+}
+#dashGantt .g-skroll {
+  max-height: 460px;
+  min-height: 0;
+}
+
+.dk-tavla + .dk-tavla {
+  margin-top: 22px;
+}
+.dk-topp {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dk-topp b {
+  font: 800 16px/1.2 var(--rubrik);
+  letter-spacing: -.01em;
+}
+.dk-topp span {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.dk-oppna {
+  margin-left: auto;
+  font: 600 12px/1 var(--brod);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  cursor: pointer;
+}
+.dk-oppna:hover {
+  border-color: var(--border-strong);
+}
+.dk-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(5, minmax(0, 1fr));
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-m);
+  overflow: hidden;
+  background: var(--bg-card);
+}
+.dk-horn,
+.dk-dag {
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
+  padding: 7px 8px;
+  font: 700 11px/1 var(--rubrik);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dk-vecka {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-main);
+}
+.dk-vecka b {
+  font: 800 15px/1 var(--rubrik);
+}
+.dk-vecka small {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.dk-ruta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 64px;
+  padding: 6px;
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  min-width: 0;
+}
+.dk-ruta:nth-child(6n) {
+  border-right: 0;
+}
+.dk-ruta:hover {
+  background: var(--bg-main);
+}
+.dk-ruta.idag {
+  background: rgba(56, 189, 248, .07);
+  box-shadow: inset 0 2px 0 #38bdf8;
+}
+.dk-ruta.forbi {
+  opacity: .72;
+}
+.dk-datum {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-align: right;
+}
+.dk-ruta.idag .dk-datum {
+  color: #0b7fae;
+}
+.dk-kort {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.3;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--mote-kant);
+  border-left: 2px solid var(--mote);
+  background: var(--mote-fyll);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-kort em {
+  font-style: normal;
+  font-weight: 700;
+}
+.dk-kort.t-produktion { background: var(--produktion-fyll); border-color: var(--produktion-kant); border-left-color: var(--produktion); }
+.dk-kort.t-avrop { background: var(--avrop-fyll); border-color: var(--avrop-kant); border-left-color: var(--avrop); }
+.dk-kort.t-leverans { background: var(--leverans-fyll); border-color: var(--leverans-kant); border-left-color: var(--leverans); }
+.dk-kort.t-ovrigt { background: var(--ovrigt-fyll); border-color: var(--ovrigt-kant); border-left-color: var(--ovrigt); }
+.dk-kort.t-franvaro { background: var(--franvaro-fyll); border-color: var(--franvaro-kant); border-left-color: var(--franvaro); }
+.dk-kort.klar {
+  opacity: .55;
+  text-decoration: line-through;
+}
+.dk-kort:hover {
+  filter: brightness(.97);
+}
+
+@media (max-width: 700px) {
+  .dk-grid {
+    grid-template-columns: 54px repeat(5, minmax(110px, 1fr));
+    overflow-x: auto;
+  }
+  .dg-knappar {
+    margin-left: 0;
+    width: 100%;
+  }
+  .dashgantt h3 {
+    flex-wrap: wrap;
+  }
+}
+@media print {
+  .dg-knappar,
+  .dk-oppna {
+    display: none !important;
+  }
+}
+
+/* Projektval i översiktens Gantt */
+.dg-projekt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.dg-projekt button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 12.5px/1 var(--brod);
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.dg-projekt button .g-ruta {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--gf);
+  opacity: .35;
+}
+.dg-projekt button.pa {
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+.dg-projekt button.pa .g-ruta {
+  opacity: 1;
+}
+.dg-projekt button.vald {
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+  color: var(--btn-text);
+}
+
+/* PP: översikten i fullskärm */
+body.dashtv .p4-header,
+body.dashtv .p4-sidebar,
+body.dashtv .p4-footer,
+body.dashtv #dashTavla,
+body.dashtv #dashSkrivUt,
+body.dashtv #dashStang {
+  display: none !important;
+}
+body.dashtv .p4-skal {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+}
+body.dashtv .p4-main {
+  padding: 18px 24px 24px;
+}
+body.dashtv {
+  --hh: 0px;
+}
+#dashTvKnapp.pp-pa {
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+  color: var(--btn-text);
+}

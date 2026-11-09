@@ -11,7 +11,7 @@ const HJALP_TANK = [
     ["Flytta med orsak", "Flyttar du en produktionspost som inte är klar frågar Wimo varför. Svara ärligt — samma orsak flera gånger är ett systemfel, inte otur."],
     ["Avropa i tid", "Backa avropet efter leverantörens ledtid. Gå igenom <b>Avropslistan</b> varje vecka så att inget med lång ledtid glöms."],
     ["Hinder ska ha vem och när", "Ett hinder utan ansvarig och datum blir sällan löst. Fler än tio öppna hinder betyder att ni ligger efter."],
-    ["Ny vecka på fredagen", "Tryck <b>Ny vecka +</b> på veckoplaneringen. Flytta först fram allt som inte är avbockat — annars försvinner det ur vyn."],
+    ["Flytta fram det som inte blev klart", "Tavlan går själv vidare till nästa vecka på måndagen. Flytta fram allt som inte är avbockat på fredagen — annars hamnar det bakom tavlan och syns under <b>Kräver åtgärd</b>."],
     ["Håll koll på vädret", "Rött väder = planera om. Ta ett jobb från <b>Back up</b> i stället för att låta laget stå still."],
     ["Kolla molnsynken", "Rutan <b>Molnsynk</b> i menyn ska vara grön innan du stänger efter större ändringar. Gjorde du fel? Tryck <b>Ångra</b> direkt."],
     ["Läsbehörighet", "Ser du <b>Bara läsbehörighet</b> kan du titta men inte ändra. Be en admin om du behöver redigera."]
@@ -31,7 +31,7 @@ const HJALP_SEKTIONER = [
     { id: "tavlan", ik: "ik-tavla", rubrik: "Tavlan", ingress: "Fyra veckor framåt, en rad per vecka och en ruta per dag.",
       html:
         '<div class="hj-grid">' +
-        '<div class="hj-ruta"><h4>Veckorna</h4><p>Översta raden är innevarande vecka, sedan nästa vecka, vecka +2 (avropa och boka) och vecka +3 (långa ledtider).</p></div>' +
+        '<div class="hj-ruta"><h4>Veckorna</h4><p>Översta raden är alltid innevarande vecka, sedan nästa vecka, vecka +2 (avropa och boka) och vecka +3 (långa ledtider). På måndagen flyttar tavlan själv fram en vecka — på alla tavlor.</p></div>' +
         '<div class="hj-ruta"><h4>Bläddra</h4><p><kbd>←</kbd> <kbd>→</kbd> bläddrar en vecka i taget och <i>Denna vecka</i> <kbd>T</kbd> tar dig tillbaka. Planen påverkas inte. Är du utanför planen står det <i>Du tittar utanför planen</i>.</p></div>' +
         '<div class="hj-ruta"><h4>1, 2 eller 4 veckor</h4><p>Välj hur många veckor som visas samtidigt. En vecka ger störst kort, bra på storskärm.</p></div>' +
         '<div class="hj-ruta"><h4>Filter</h4><p>Under <i>Visa</i> slår du av och på posttyper, t.ex. bara Produktion och Leverans. Sök med <kbd>/</kbd>.</p></div>' +
@@ -39,11 +39,9 @@ const HJALP_SEKTIONER = [
         '<div class="hj-ruta"><h4>Dagsläget</h4><p>Klicka på ringen i dagens hörn och välj 😀 😐 ☹️ — er egen känsla av hur planen höll. Räknas inte in i någon siffra.</p></div>' +
         "</div>" +
         "<h4>Flera tavlor i samma projekt</h4>" +
-        "<p>Gör en tavla per etapp, huskropp eller disciplin med <i>+ Ny tavla</i>. Byt tavla med flikarna ovanför. Tavlans namn, första vecka och pågående-visning ändrar du under <i>Projektinställningar → Tavlor</i>.</p>" +
-        "<h4>Ny vecka och kopiera vecka</h4>" +
-        "<p><i>Ny vecka +</i> flyttar hela planen ett steg: den äldsta veckan lämnar tavlan och en ny vecka kommer in längst ner. Har projektet flera tavlor på samma period rullas alla samtidigt. " +
-        "Vill du fylla den nya veckan med innehåll från en tidigare, använd <b>⧉</b> i veckohuvudet.</p>" +
-        '<div class="hj-tips"><b>Tänk på:</b> Står det <i>Tavlorna ligger på olika perioder</i> kan du klicka på det och synka alla tavlor till samma vecka.</div>' },
+        "<p>Gör en tavla per etapp, huskropp eller disciplin med <i>+ Ny tavla</i>. Byt tavla med flikarna ovanför. Tavlans namn och pågående-visning ändrar du under <i>Projektinställningar → Tavlor</i>.</p>" +
+        "<h4>Kopiera vecka</h4>" +
+        "<p>Vill du fylla en vecka med innehåll från en annan, använd <b>⧉</b> i veckohuvudet.</p>" },
 
     { id: "poster", ik: "ik-lista", rubrik: "Poster och kort", ingress: "Varje kort är ett moment, ett möte, ett avrop eller något annat som ska hända en viss dag.",
       html:
@@ -117,9 +115,9 @@ const HJALP_SEKTIONER = [
     { id: "oversikter", ik: "ik-dash", rubrik: "Översikter och Gantt", ingress: "Hela projektet på en sida.",
       html:
         '<div class="hj-grid">' +
-        '<div class="hj-ruta"><h4>Projektöversikt <kbd>O</kbd></h4><p>Det som kräver åtgärd, planpålitlighet sex veckor bakåt, vad som är på gång och läget per tavla.</p></div>' +
+        '<div class="hj-ruta"><h4>Projektöversikt <kbd>O</kbd></h4><p>Det viktigaste på en sida: planpålitlighet, hinder, försenade avrop, obekräftade datum och det som kräver åtgärd. Under det Gantt-schemat för dina valda projekt och kalendern med projektets alla tavlor under varandra. Välj vilka projekt som visas i schemat direkt i översikten, och tryck <b>PP</b> för att visa allt i fullskärm.</p></div>' +
         '<div class="hj-ruta"><h4>Att göra <kbd>A</kbd></h4><p>Projektets öppna punkter med ansvarig och datum. Punkter med datum syns också på tavlan.</p></div>' +
-        '<div class="hj-ruta"><h4>Gantt-schema <kbd>G</kbd></h4><p>Momenten som staplar över tid. Välj tavlor och exportera som <b>Excel</b>, <b>bild</b> eller <b>PDF</b> under <i>Exportera</i>.</p></div>' +
+        '<div class="hj-ruta"><h4>Gantt-schema <kbd>G</kbd></h4><p>Momenten som staplar över tid, för de projekt du är med i. Tryck <b>+</b> vid projektnamnet för att lägga till ett moment, avrop, leverans, möte eller annat direkt — det hamnar på tavlan med en gång. Exportera som <b>Excel</b>, <b>bild</b> eller <b>PDF</b> under <i>Exportera</i>.</p></div>' +
         "</div>" },
 
     { id: "uppfoljning", ik: "ik-utfall", rubrik: "Uppföljning", ingress: "Hur bra höll planen — och varför inte?",
@@ -139,14 +137,13 @@ const HJALP_SEKTIONER = [
         "<li>Nästa vecka: är varje aktivitet genomförbar? (15)</li>" +
         "<li>Vecka +2: vad måste avropas och bokas nu? (5)</li>" +
         "<li>Vecka +3: kommer något med lång ledtid? (5)</li></ol>" +
-        "<p>Avsluta med <i>Ny vecka +</i>.</p></div>" +
+        "</div>" +
         '<div class="hj-ruta"><h4>Morgonmötet · 10 min</h4><ol>' +
         "<li>Igår: blev det gjort? Om inte — varför, med ett ord.</li>" +
         "<li>Idag: vad kör vi, är något i vägen?</li>" +
         "<li>Imorgon: vad måste lösas idag för att imorgon ska funka?</li>" +
         "<li>Hinderlistan igenom. Inga problem löses här.</li></ol></div>" +
-        "</div>" +
-        "<p>Rutinerna finns också under <i>Mötesrutiner</i> till höger om tavlan.</p>" },
+        "</div>" },
 
     { id: "visning", ik: "ik-tv", rubrik: "Visningsläge och utskrift", ingress: "Tavlan på storskärm i bodan eller på papper.",
       html:
