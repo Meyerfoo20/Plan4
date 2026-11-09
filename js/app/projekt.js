@@ -326,7 +326,7 @@ function foretagDialog() {
         '<button type="button" class="mknapp" id="frLagg">Lägg till</button></div>' +
         '<div id="frFel"></div>' +
         (ej.length ? '<div class="rubrik2" style="margin-top:14px">Ej kopplade namn i projektet</div>' +
-            '<p class="hjalp">Fritext från tiden före registret. Plan4 kopplar aldrig automatiskt — öppna momentet eller ' +
+            '<p class="hjalp">Fritext från tiden före registret. Wimo kopplar aldrig automatiskt — öppna momentet eller ' +
             'avropet och välj företag. Samlad koppling kommer i nästa version.</p>' +
             '<ul class="radlista">' + ej.map(x => '<li>' + esc(x.namn) + ' · ' + x.antal + (x.antal === 1 ? " rad" : " rader") + '</li>').join("") + '</ul>' : "");
     modal("Företag", p.projekt, kropp, [{ txt: "Klar", primar: true, fn: () => { stangModal(); spara(); rita(); } }]);

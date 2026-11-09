@@ -809,7 +809,7 @@ function mailaAnteckning(k, t, text) {
     const MAX = 1800;
     if (encodeURIComponent(kropp).length > MAX) {
         while (kropp.length > 50 && encodeURIComponent(kropp + "…\r\n(förkortat)").length > MAX) kropp = kropp.slice(0, -20);
-        kropp += "…\r\n(förkortat – hela anteckningen finns i Plan4)";
+        kropp += "…\r\n(förkortat – hela anteckningen finns i Wimo)";
         status("Anteckningen är lång och kortades i mejlet");
     }
     const a = document.createElement("a");

@@ -1,7 +1,7 @@
 /* ======================================================================
-   Plan4 · Konto och molnsynk (Firebase Authentication + Cloud Firestore)
+   Wimo · Konto och molnsynk (Firebase Authentication + Cloud Firestore)
 
-   - Utan konto fungerar Plan4 som förut: allt sparas lokalt i webbläsaren.
+   - Utan konto fungerar Wimo som förut: allt sparas lokalt i webbläsaren.
    - Inloggad sparas varje projekt dessutom i Firestore, och ändringar från
      andra enheter hämtas automatiskt.
    - Den lokala lagringen ligger kvar som cache, så appen fungerar offline.
@@ -313,7 +313,7 @@
             (b.roll !== "admin" && t.includes("ingen") ? ' <span class="p4-ks-tagg">Vissa tavlor dolda</span>' : "");
     }
 
-    // Läser in molnets projekt som hela Plan4 (ersätter det lokala).
+    // Läser in molnets projekt som hela Wimo (ersätter det lokala).
     function anvandMolnet(dokument, aktivt) {
         moln = { uid: anvandare.uid, rev: {}, hash: {} };
         const projekt = dokument.map((d) => lasProjekt(d.data));
@@ -424,7 +424,7 @@
         pushPagar = false;
         if (fel) {
             lage = navigator.onLine === false || /unavailable|network|offline/i.test(String(fel.code || fel.message)) ? "offline" : "fel";
-            console.warn("Plan4 molnsynk:", fel);
+            console.warn("Wimo molnsynk:", fel);
             schemalaggPush(30000);
         } else lage = konflikter.size ? "konflikt" : "synkad";
         uppdateraUI();
@@ -485,7 +485,7 @@
                 else vantande.set(id, { data: d.data, rev: d.rev });
             });
             tillampaVantande();
-        }, (e) => { console.warn("Plan4 molnlyssnare:", e); lage = "offline"; uppdateraUI(); });
+        }, (e) => { console.warn("Wimo molnlyssnare:", e); lage = "offline"; uppdateraUI(); });
     }
     function tillampaVantande() {
         if (!vantande.size) return;
@@ -626,7 +626,7 @@
                         uppdaterad: fb.fs.serverTimestamp(), enhet: x.enhet || ENHET, medlemmar: [anvandare.uid] });
                 }
                 await fb.fs.deleteDoc(fb.fs.doc(fb.db, "anvandare", anvandare.uid, "projekt", d.id));
-            } catch (e) { console.warn("Plan4 flytt av projekt:", e); }
+            } catch (e) { console.warn("Wimo flytt av projekt:", e); }
         }
     }
 
@@ -669,13 +669,13 @@
     const feltext = (e) => FELTEXT[e && e.code] || "Något gick fel: " + ((e && (e.code || e.message)) || "okänt fel");
 
     // ---------- inloggningssidan ----------
-    // Plan4 kräver konto. Utan inloggning visas bara inloggningssidan (#p4Inloggning).
+    // Wimo kräver konto. Utan inloggning visas bara inloggningssidan (#p4Inloggning).
     function visaVy(vy, text) {
         document.body.classList.toggle("p4-laddar", vy === "laddar");
         document.body.classList.toggle("p4-utloggad", vy === "inloggning");
         document.body.classList.toggle("p4-vantar", vy === "vantar");
         if (vy === "vantar") ritaVantesida();
-        if (vy === "laddar") $("p4LaddningText").textContent = text || "Startar Plan4…";
+        if (vy === "laddar") $("p4LaddningText").textContent = text || "Startar Wimo…";
         if (vy === "inloggning") { visaFel(text || ""); setTimeout(() => $("kkEpost").focus(), 0); }
         if (vy === "app") rita();
     }
@@ -805,7 +805,7 @@
             ritaSynkkort();
             ritaAdmin();
         } catch (e) {
-            console.error("Plan4 kontosidan:", e);
+            console.error("Wimo kontosidan:", e);
             sida.innerHTML = '<div class="p4-ks-kort"><h2>Kontosidan kunde inte visas</h2>' +
                 '<p class="hjalp">Ladda om sidan (Ctrl + F5). Felet: ' + esc(e && e.message || e) + "</p></div>";
         }
@@ -1173,7 +1173,7 @@
 
     // ---------- roller och godkännande ----------
     // Varje konto har ett användardokument: anvandare/{uid} med roll ("user" | "admin")
-    // och status ("vantar" | "godkand" | "nekad"). Bara godkända konton kommer åt Plan4.
+    // och status ("vantar" | "godkand" | "nekad"). Bara godkända konton kommer åt Wimo.
     // Ett nytt konto skapas alltid som user med status vantar. Säkerhetsreglerna i
     // firestore.rules hindrar att någon godkänner sig själv eller gör sig till admin.
     const BEHNYCKEL = "plan4_behorighet";     // senast kända status, så att appen kan starta offline
@@ -1221,7 +1221,7 @@
         const kand = moln.uid === anvandare.uid;
         visaVy(kand ? "app" : "laddar", "Hämtar dina projekt…");
         forstaSynk().then(efterForstaSynk).catch((e) => {
-            console.warn("Plan4 första synk:", e);
+            console.warn("Wimo första synk:", e);
             lage = "offline"; uppdateraUI();
             if (!kand) visaVy("laddar", "Kunde inte hämta dina projekt. Kontrollera nätverket — försöker igen…");
             forsokIgen();
@@ -1260,8 +1260,8 @@
         }
         $("p4VantarRubrik").textContent = nekad ? "Ditt konto har inte godkänts" : "Ditt konto väntar på godkännande";
         $("p4VantarText").textContent = nekad
-            ? "En administratör har inte gett " + (anvandare.email || "kontot") + " tillgång till Plan4. Kontakta administratören om du tror att det är fel."
-            : "En administratör behöver godkänna " + (anvandare.email || "ditt konto") + " innan du kommer åt Plan4. Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
+            ? "En administratör har inte gett " + (anvandare.email || "kontot") + " tillgång till Wimo. Kontakta administratören om du tror att det är fel."
+            : "En administratör behöver godkänna " + (anvandare.email || "ditt konto") + " innan du kommer åt Wimo. Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
         $("p4Vantar").classList.toggle("nekad", nekad);
     }
 
@@ -1272,7 +1272,7 @@
             allaAnvandare = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
             uppdateraUI();
             if (kontoOppen()) ritaAdmin();
-        }, (e) => console.warn("Plan4 användarlista:", e));
+        }, (e) => console.warn("Wimo användarlista:", e));
     }
     // Användarlistan behövs för huvudadmin och för den som är admin för ett projekt eller en tavla.
     function startaAnvandarlista() {
@@ -1322,7 +1322,7 @@
                 '<button type="button" data-adminfilter="vantar"' + (filter === "vantar" ? ' class="vald"' : "") + ">Väntar (" + vantar.length + ")</button>" +
                 '<button type="button" data-adminfilter="alla"' + (filter === "alla" ? ' class="vald"' : "") + ">Alla (" + allaAnvandare.length + ")</button>" +
               "</span></div>" +
-            '<p class="hjalp">Nya konton kommer inte åt Plan4 förrän du godkänner dem och ger dem minst ett projekt. ' +
+            '<p class="hjalp">Nya konton kommer inte åt Wimo förrän du godkänner dem och ger dem minst ett projekt. ' +
               "Användare ser bara projekten de är medlemmar i. Under Projekt… väljer du roll per projekt (Kan redigera, Bara läsa eller Projektadmin), " +
               "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Huvudadmin har tillgång till allt.</p>" +
             (lista.length
@@ -1349,7 +1349,7 @@
             const txt = vad === "admin"
                 ? (a.namn || a.epost) + " blir huvudadmin med samma behörighet som du: tillgång till alla projekt, godkänna och spärra konton och dela ut alla roller. " +
                   "Vill du bara att personen ska styra ett projekt väljer du Projektadmin under Projekt… i stället."
-                : (a.namn || a.epost) + " stängs ute från Plan4 direkt. Projekten finns kvar i kontot och blir tillgängliga igen om du godkänner kontot på nytt.";
+                : (a.namn || a.epost) + " stängs ute från Wimo direkt. Projekten finns kvar i kontot och blir tillgängliga igen om du godkänner kontot på nytt.";
             return fraga(vad === "admin" ? "Gör till huvudadmin?" : "Spärra kontot?", txt,
                 [{ txt: "Avbryt", fn: stangModal },
                  { txt: vad === "admin" ? "Gör till huvudadmin" : "Spärra", primar: vad === "admin", fara: vad !== "admin", fn: () => { stangModal(); gor(); } }], false);
@@ -1624,16 +1624,16 @@
             const lyssnaPaKontot = () => sakerstallAnvandardok().then(() => {
                 if (anvandare !== u) return;
                 anvLyssnare = fb.fs.onSnapshot(anvDoc(), (snap) => hanteraBehorighet(snap.exists() ? snap.data() : null),
-                    (e) => console.warn("Plan4 behörighet:", e));
+                    (e) => console.warn("Wimo behörighet:", e));
             }).catch((e) => {
-                console.warn("Plan4 behörighet:", e);
+                console.warn("Wimo behörighet:", e);
                 if (!appStartad) visaVy("laddar", "Kunde inte kontrollera ditt konto. Kontrollera nätverket — försöker igen…");
                 setTimeout(() => { if (anvandare === u) lyssnaPaKontot(); }, 15000);
             });
             lyssnaPaKontot();
         });
     }).catch((e) => {
-        console.warn("Plan4: kunde inte ladda Firebase", e);
+        console.warn("Wimo: kunde inte ladda Firebase", e);
         lage = "offline"; uppdateraUI();
         // Utan kontakt med inloggningstjänsten får den som senast var inloggad och godkänd
         // på datorn arbeta vidare i den lokala kopian. Ändringarna synkas vid nästa start med nät.

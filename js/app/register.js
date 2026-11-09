@@ -142,7 +142,7 @@ function franvaroDialog(k, forval) {
     const manNamn = bas.personNamn || f.personNamn || "";
     const manuell = !valdPid && !!manNamn;
     const kropp = (aldre ? '<div class="notis" style="margin-top:0">Äldre frånvaropost utan koppling: <b>' + esc(k.text || "—") +
-        '</b>. Välj person nedan för att koppla den till resursbanken. Plan4 gissar aldrig vem det är.</div>' : "") +
+        '</b>. Välj person nedan för att koppla den till resursbanken. Wimo gissar aldrig vem det är.</div>' : "") +
         '<div class="falt"><label for="fvPerson">Person</label><select class="f" id="fvPerson">' +
         '<option value="">' + (aldre ? "Ej kopplad — välj person" : "Välj person") + '</option>' +
         aktiva.map(x => '<option value="' + x.id + '"' + (x.id === valdPid ? " selected" : "") + '>' + esc(x.namn) +

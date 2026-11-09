@@ -1,5 +1,5 @@
 /* ======================================================================
-   Datumväljare: ersätter webbläsarens datumruta med Plan4:s egen.
+   Datumväljare: ersätter webbläsarens datumruta med Wimos egen.
 
    Varje <input type="date"> får en knapp bredvid sig som visar datumet på
    svenska och öppnar en egen kalender. Själva fältet finns kvar (dolt) och

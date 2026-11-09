@@ -54,7 +54,7 @@ function ritaStart(markera) {
     const start = fAktiviteter(p).filter(a => a.fas === "start");
     let html = '<div class="dashtopp">' +
         (p.logotyp ? '<img class="logga" src="' + p.logotyp + '" alt="">' : "") +
-        '<b>Plan4</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
+        '<b>Wimo</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
         '<span class="dashrub">Att göra</span>' +
         '<div class="hoger">' +
         '<button class="navknapp" id="psNy">+ Att göra</button>' +
@@ -310,7 +310,7 @@ function ritaDash() {
     const diff = (u.procent !== null && fore.procent !== null) ? u.procent - fore.procent : null;
     let html = '<div class="dashtopp">' +
         (p.logotyp ? '<img class="logga" src="' + p.logotyp + '" alt="">' : "") +
-        '<b>Plan4</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
+        '<b>Wimo</b><span class="punkt">·</span><span class="dashprojekt">' + esc(p.projekt) + '</span>' +
         '<span class="dashrub">Projektöversikt</span>' +
         '<span class="dashvecka">v.' + veckonr(dv) + ' · ' + dagNamnKort(IDAG) + '</span>' +
         '<div class="hoger">' +
@@ -413,7 +413,7 @@ function ritaDash() {
                 '<td' + (th.forfallna.length ? ' class="rodtal"' : "") + '>' + th.forfallna.length + '</td>' +
                 '<td>' + flyttadeIVecka(t, sv) + '</td></tr>';
         }).join("") + '</tbody></table>' +
-        '<p class="hjalp">Emojin är arbetsledningens egen bedömning vid eftermiddagspulsen — inte en automatisk bedömning från Plan4.</p>' +
+        '<p class="hjalp">Emojin är arbetsledningens egen bedömning vid eftermiddagspulsen — inte en automatisk bedömning från Wimo.</p>' +
         '</div>';
     const vv = vaderVarningarPeriod(IDAG, 10);
     if (vv.length)

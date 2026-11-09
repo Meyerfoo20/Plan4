@@ -1,6 +1,6 @@
 /* ======================================================================
    Hjälp: en egen sida i vänstermenyn med "Tänk på" och en genomgång av
-   hur allt i Plan4 fungerar. Innehållsförteckning till vänster, sök i
+   hur allt i Wimo fungerar. Innehållsförteckning till vänster, sök i
    toppen och sektioner som kort.
    ====================================================================== */
 
@@ -8,7 +8,7 @@ const HJALP_TANK = [
     ["Skriv tydliga moment", "Verb + byggdel + del. Skriv <b>ÖK armering del 5</b>, inte bara \"armering\" — annars går det inte att se på fredagen om det blev gjort."],
     ["Lova bara det som går", "En produktionspost är ett löfte. Lägg bara in det laget faktiskt kan göra: handlingar, material och UE ska vara klara. Guiden <b>Planera moment</b> frågar efter det."],
     ["Bocka av samma dag", "Det som är gjort ska bockas av direkt, helst på eftermiddagspulsen. Det är avbockningarna som räknas i planpålitligheten."],
-    ["Flytta med orsak", "Flyttar du en produktionspost som inte är klar frågar Plan4 varför. Svara ärligt — samma orsak flera gånger är ett systemfel, inte otur."],
+    ["Flytta med orsak", "Flyttar du en produktionspost som inte är klar frågar Wimo varför. Svara ärligt — samma orsak flera gånger är ett systemfel, inte otur."],
     ["Avropa i tid", "Backa avropet efter leverantörens ledtid. Gå igenom <b>Avropslistan</b> varje vecka så att inget med lång ledtid glöms."],
     ["Hinder ska ha vem och när", "Ett hinder utan ansvarig och datum blir sällan löst. Fler än tio öppna hinder betyder att ni ligger efter."],
     ["Ny vecka på fredagen", "Tryck <b>Ny vecka +</b> på veckoplaneringen. Flytta först fram allt som inte är avbockat — annars försvinner det ur vyn."],
@@ -169,7 +169,7 @@ const HJALP_SEKTIONER = [
     { id: "data", ik: "ik-historik", rubrik: "Data och synk", ingress: "Var allt sparas och vad som händer utan nät.",
       html:
         "<ul>" +
-        "<li>Allt sparas <b>automatiskt i molnet</b> och synkas mellan datorer. En kopia ligger i webbläsaren, så Plan4 fungerar även utan nät och synkar när du är uppkopplad igen.</li>" +
+        "<li>Allt sparas <b>automatiskt i molnet</b> och synkas mellan datorer. En kopia ligger i webbläsaren, så Wimo fungerar även utan nät och synkar när du är uppkopplad igen.</li>" +
         "<li>Rutan <b>Molnsynk</b> längst ner i menyn visar om allt är sparat.</li>" +
         "<li>Efter att du flyttat eller tagit bort något visas <b>Ångra</b> längst ner en kort stund.</li>" +
         "<li>Bara projektets medlemmar och admin kommer åt ett projekt.</li>" +
@@ -188,9 +188,9 @@ const HJALP_SEKTIONER = [
         ["Jag ser fortfarande den gamla versionen", "Ladda om sidan med <kbd>Ctrl</kbd> + <kbd>F5</kbd> (eller <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> på Mac) så hämtas den senaste versionen."],
         ["Jag kan inte ändra något", "Du har troligen bara läsbehörighet, i hela projektet eller på just den tavlan. Det står <i>Bara läsbehörighet</i> under tavlans namn. Be en admin ändra din behörighet."],
         ["Ett kort har försvunnit", "Kontrollera att posttypen inte är avslagen under <i>Visa</i>, att sökfältet är tomt och att du tittar på rätt vecka och tavla. Kolla sedan <i>Historik</i> — där syns om någon flyttat eller tagit bort det."],
-        ["Varför frågar Plan4 efter en orsak när jag flyttar?", "Produktionsposter är löften. Orsaken sparas och visas i <i>Veckans utfall</i>, så att ni ser vad som oftast stoppar planen och kan åtgärda det."],
+        ["Varför frågar Wimo efter en orsak när jag flyttar?", "Produktionsposter är löften. Orsaken sparas och visas i <i>Veckans utfall</i>, så att ni ser vad som oftast stoppar planen och kan åtgärda det."],
         ["Hur byter jag ort för vädret?", "<i>Projektinställningar → Ort för väderprognos</i>. Gäller projektets alla tavlor."],
-        ["Kan jag använda Plan4 i mobilen?", "Ja. Menyn fälls ut med knappen uppe till vänster. För planering fungerar en dator eller surfplatta bäst."],
+        ["Kan jag använda Wimo i mobilen?", "Ja. Menyn fälls ut med knappen uppe till vänster. För planering fungerar en dator eller surfplatta bäst."],
         ["Vad händer om jag tappar nätet?", "Du kan fortsätta jobba. Ändringarna sparas i webbläsaren och skickas till molnet när du är uppkopplad igen."]
       ].map(x => '<details class="hj-fraga"><summary>' + x[0] + "</summary><p>" + x[1] + "</p></details>").join("") }
 ];
@@ -286,7 +286,7 @@ function ritaHjalp() {
     const box = document.getElementById("hjalp");
     box.dataset.ritad = "1";
     let html = '<div class="p4-hero hj-hero"><div class="p4-hero-text">' +
-        '<div class="p4-eyebrow"><span class="p4-pop"></span>Stöd · Plan4</div>' +
+        '<div class="p4-eyebrow"><span class="p4-pop"></span>Stöd · Wimo</div>' +
         '<h1 class="g-rubrik">Hjälp</h1>' +
         '<div class="g-meta">Hur allt fungerar — och vad du ska tänka på när du planerar.</div></div>' +
         '<div class="hj-sokruta"><label class="p4-sok hj-sok"><span class="p4-ik ik-sok" aria-hidden="true"></span>' +
@@ -295,7 +295,7 @@ function ritaHjalp() {
 
     html += '<section class="hj-tank" aria-labelledby="hjTankRubrik">' +
         '<div class="hj-tank-topp"><span class="hj-tank-ikon" aria-hidden="true">!</span><div>' +
-        '<h2 id="hjTankRubrik">Tänk på det här</h2><p>Tio saker som gör att planen håller — och att Plan4 gör nytta.</p></div></div>' +
+        '<h2 id="hjTankRubrik">Tänk på det här</h2><p>Tio saker som gör att planen håller — och att Wimo gör nytta.</p></div></div>' +
         '<div class="hj-tank-grid">' +
         HJALP_TANK.map((x, i) => '<div class="hj-tank-kort"><span class="hj-nr">' + (i + 1) + "</span><div><b>" + x[0] + "</b><p>" + x[1] + "</p></div></div>").join("") +
         "</div></section>";
@@ -307,7 +307,7 @@ function ritaHjalp() {
             '<header><span class="hj-sikon"><span class="p4-ik ' + s.ik + '" aria-hidden="true"></span></span><div>' +
             '<h2 id="hjr-' + s.id + '">' + s.rubrik + "</h2><p>" + s.ingress + "</p></div></header>" +
             '<div class="hj-text">' + s.html + "</div></section>").join("") +
-        '<div class="hj-slut">Hittar du inte svaret? Hör av dig till projektets admin eller till den som gav dig tillgång till Plan4.</div>' +
+        '<div class="hj-slut">Hittar du inte svaret? Hör av dig till projektets admin eller till den som gav dig tillgång till Wimo.</div>' +
         "</div></div>";
     box.innerHTML = html;
 
