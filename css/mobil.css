@@ -1,0 +1,232 @@
+/* ======================================================================
+   Plan4 · Mobil
+   Bara utseende för små skärmar. Allt här ligger inom @media-regler,
+   så datorläget (bredare än 700 px) påverkas inte.
+   ====================================================================== */
+
+/* Väderikonen för helgen som visas i fredagsrutan på mobil (döljs annars) */
+.helgvader-mobil {
+  display: none;
+}
+
+/* ---------- pekskärmar: visa "+ Post" utan hovring ---------- */
+@media screen and (hover: none) and (max-width: 960px) {
+  .ruta .plus {
+    opacity: 1;
+  }
+}
+
+/* ---------- mobil ---------- */
+@media screen and (max-width: 700px) {
+
+  /* iOS zoomar in på fält med mindre text än 16 px */
+  input.f,
+  select.f,
+  textarea.f,
+  .modal input:not([type="checkbox"]):not([type="radio"]),
+  .modal select,
+  .modal textarea,
+  .p4-sok input,
+  #hjSok {
+    font-size: 16px;
+  }
+
+  /* ---- verktygsraden ---- */
+  .p4-verktyg {
+    gap: 8px;
+  }
+  .p4-verktyg .p4-grupp {
+    width: 100%;
+  }
+  .p4-verktyg .p4-grupp .navknapp {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .p4-verktyg .p4-grupp #idagKnapp {
+    flex: 2;
+  }
+  .p4-verktyg-hoger {
+    width: 100%;
+    margin-left: 0;
+  }
+  .p4-verktyg-hoger .navknapp {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 10px;
+  }
+
+  /* filterchippen på en rad som går att svepa */
+  .p4-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 2px 16px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .p4-filter::-webkit-scrollbar {
+    display: none;
+  }
+  .p4-filter .p4-chip,
+  .p4-filter .p4-sokinfo {
+    flex: none;
+    white-space: nowrap;
+  }
+  .p4-filter .p4-chip {
+    position: relative;
+  }
+
+  /* ---- tavlan som lista: en vecka i taget, dagarna under varandra ---- */
+  body:not(.visning) .tavla {
+    overflow: hidden;
+  }
+  body:not(.visning) .rutnat {
+    display: block;
+    min-width: 0;
+  }
+  body:not(.visning) .rutnat .hornruta,
+  body:not(.visning) .rutnat .dagrubrik {
+    display: none;
+  }
+  body:not(.visning) .vhuvud {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-main);
+  }
+  body:not(.visning) .rutnat > .vhuvud:nth-child(7) {
+    border-top: 0;
+  }
+  body:not(.visning) .vhuvud .vnr {
+    font-size: 22px;
+  }
+  body:not(.visning) .vhuvud .vdatum {
+    font-size: 12.5px;
+  }
+  body:not(.visning) .vhuvud .kopieravecka {
+    position: static;
+    margin-left: auto;
+    align-self: center;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+  body:not(.visning) .vhuvud.granslinje {
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  body:not(.visning) .ruta {
+    min-height: 0;
+    padding: 36px 12px 10px;
+    border-right: 0;
+  }
+  body:not(.visning) .ruta.granslinje:not(:nth-child(6n)) {
+    border-bottom: 1px solid var(--border-light) !important;
+  }
+  body:not(.visning) .ruta:hover {
+    background: transparent;
+  }
+  body:not(.visning) .ruta.idag {
+    background: rgba(56,189,248,.055);
+  }
+  body:not(.visning) .dagnr {
+    top: 11px;
+    left: 12px;
+    right: 12px;
+    flex-direction: row-reverse;
+    font-size: 12px;
+  }
+  body:not(.visning) .dagnr > span:last-child::before {
+    font-family: var(--rubrik);
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-right: 8px;
+  }
+  body:not(.visning) .ruta.idag .dagnr > span:last-child::before {
+    color: #0b7fae;
+  }
+  body:not(.visning) .ruta:nth-child(6n+2) .dagnr > span:last-child::before { content: "Måndag"; }
+  body:not(.visning) .ruta:nth-child(6n+3) .dagnr > span:last-child::before { content: "Tisdag"; }
+  body:not(.visning) .ruta:nth-child(6n+4) .dagnr > span:last-child::before { content: "Onsdag"; }
+  body:not(.visning) .ruta:nth-child(6n+5) .dagnr > span:last-child::before { content: "Torsdag"; }
+  body:not(.visning) .ruta:nth-child(6n) .dagnr > span:last-child::before { content: "Fredag"; }
+
+  body:not(.visning) .ruta .kort {
+    margin-bottom: 8px;
+  }
+  body:not(.visning) .ruta .plus {
+    position: static;
+    opacity: 1;
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 12px;
+    margin-top: 2px;
+    font-size: 12.5px;
+  }
+
+  /* väderikonen för helgen i fredagsrutan */
+  body:not(.visning) .helgvader-mobil {
+    display: inline-flex;
+    pointer-events: auto;
+    margin: 0 0 0 8px;
+    vertical-align: middle;
+  }
+
+  /* ---- tabeller som är bredare än skärmen: svep i sidled ---- */
+  .modal table.lista,
+  #dash table.dashtabell,
+  #dash table.fatabell {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal table.lista th,
+  #dash table.dashtabell th,
+  #dash table.dashtabell td {
+    white-space: nowrap;
+  }
+  .modal table.lista td {
+    min-width: 6.5em;
+  }
+
+  /* ---- dialoger ---- */
+  .snabbtyp {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .snabbtyp button {
+    min-height: 36px;
+  }
+  .utfall .stor {
+    white-space: nowrap;
+  }
+  .modal footer {
+    flex-wrap: wrap;
+  }
+
+  /* ---- Back up: flikarna med antal ---- */
+  #backup .g-seg button {
+    white-space: nowrap;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 12.5px;
+  }
+
+  /* ---- Gantt: smalare namnkolumn så tidslinjen får plats ---- */
+  .p4-gantt {
+    --g-et: 140px;
+  }
+}
+
+@media print {
+  .helgvader-mobil {
+    display: none !important;
+  }
+}

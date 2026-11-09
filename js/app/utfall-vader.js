@@ -202,9 +202,7 @@ function ritaHelgvader() {
     const fre = document.querySelectorAll("#rutnat .dagrubrik")[4];
     if (!fre)
         return;
-    const gammal = fre.querySelector(".helgvader");
-    if (gammal)
-        gammal.remove();
+    document.querySelectorAll("#rutnat .helgvader").forEach(x => x.remove());
     if (typeof vaderBedomning !== "function" || !VADER || !VADER._idag)
         return;
     const daliga = helgDagar().filter(d => VADER[d]).map(d => ({ d, b: vaderBedomning(VADER[d]) }))
@@ -220,7 +218,7 @@ function ritaHelgvader() {
     const txt = "Dåligt väder i helgen: " + daliga.map(x => namn(x.d) + " " + x.b.status.toLowerCase() + " (" + x.b.rader.map(r => r.txt).join(", ") + ")").join(" · ");
     b.title = txt;
     b.setAttribute("aria-label", txt);
-    b.addEventListener("click", e => {
+    const klick = e => {
         e.stopPropagation();
         const panel = document.getElementById("varningspanel");
         if (panel && panel.classList.contains("stangd")) {
@@ -229,6 +227,16 @@ function ritaHelgvader() {
         }
         if (panel) panel.scrollIntoView({ behavior: "smooth", block: "center" });
         status(txt);
-    });
+    };
+    b.addEventListener("click", klick);
     fre.appendChild(b);
+    // Samma ikon i fredagsrutan, för mobilen där dagrubrikerna inte visas.
+    const fredag = plus(helgDagar()[0], -1);
+    const dnr = document.querySelector('#rutnat .ruta[data-dag="' + fredag + '"] .dagnr > span:last-child');
+    if (dnr) {
+        const m = b.cloneNode(true);
+        m.classList.add("helgvader-mobil");
+        m.addEventListener("click", klick);
+        dnr.appendChild(m);
+    }
 }
