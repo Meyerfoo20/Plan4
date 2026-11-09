@@ -59,7 +59,9 @@ function visaUtfall(vStart) {
         (u.utanTid || u.hUtanTid ? '<p class="hjalp" style="margin-top:14px">' +
             (u.utanTid ? u.utanTid + ' produktionsposter saknar tidsstämpel (skapade före 1.1) och räknas som planerade. ' : "") +
             (u.hUtanTid ? u.hUtanTid + ' hinder saknar tidsstämpel och kan inte dateras till en vecka.' : "") + '</p>' : "");
-    modal("Veckans utfall · v" + veckonr(vStart), kortDatum(vStart) + "–" + kortDatum(plus(vStart, 4)), kropp, [
+    // Veckans utfall gäller tavlan man står på; Projektöversikten räknar alla tavlor.
+    const tavlaText = state.tavlor.length > 1 ? " · tavla: " + T().namn + " (Projektöversikten visar alla tavlor)" : "";
+    modal("Veckans utfall · v" + veckonr(vStart), kortDatum(vStart) + "–" + kortDatum(plus(vStart, 4)) + tavlaText, kropp, [
         { txt: "Stäng", primar: true, fn: stangModal }
     ]);
     document.getElementById("uVecka").addEventListener("change", e => visaUtfall(e.target.value));

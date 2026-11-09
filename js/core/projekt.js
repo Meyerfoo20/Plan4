@@ -91,8 +91,11 @@ function veckoUtfall(vStart, tavla) {
     const t = tavla;
     const prod = t.kort.filter(k => arLofte(k.typ));
     const planerade = prod.filter(k => fanns(k, vStart) && iVeckan(dagVidVeckostart(k, vStart), vStart));
-    const genomforda = planerade.filter(k => k.klar);
-    const senaBockar = genomforda.filter(k => k.klarTid && new Date(k.klarTid) >= iso2d(plus(vStart, 7)));
+    // Genomförd i veckan: klar och antingen kvar i veckan eller avbockad innan veckan tog slut.
+    // Ett löfte som flyttades ut ur veckan och gjordes senare räknas inte som hållet den här veckan.
+    const veckoslut = iso2d(plus(vStart, 7));
+    const genomforda = planerade.filter(k => k.klar && (iVeckan(k.dag, vStart) || (k.klarTid && new Date(k.klarTid) < veckoslut)));
+    const senaBockar = genomforda.filter(k => k.klarTid && new Date(k.klarTid) >= veckoslut);
     const ejGjorda = planerade.filter(k => genomforda.indexOf(k) < 0);
     const tillkomna = prod.filter(k => k.skapad && !fanns(k, vStart) && new Date(k.skapad) < iso2d(plus(vStart, 7)) && lagIVeckan(k, vStart));
     const tillkomnaFlyttade = tillkomna.filter(k => !iVeckan(k.dag, vStart));

@@ -821,14 +821,14 @@ body.p4-dashvy .flik.aktiv {
   display: flex;
   gap: 6px;
   align-items: flex-start;
-  border: 1px solid var(--mote-kant);
+  border: 2px solid var(--mote-kant);
   background: var(--mote-fyll);
   cursor: grab;
   position: relative;
   border-radius: var(--r-s);
   padding: 7px 8px 7px 9px;
   margin-bottom: 6px;
-  border-left-width: 3px;
+  border-left-width: 2px;
   transition: transform .12s, box-shadow .12s;
 }
 .kort:hover {
@@ -1130,12 +1130,12 @@ details + details {
 }
 .notis {
   background: var(--varning-fyll);
-  border-left: 3px solid var(--accent-lofte);
+  border-left: 2px solid var(--accent-lofte);
   font-size: 13px;
   margin: 11px 0;
   line-height: 1.4;
   border-radius: var(--r-s);
-  border-left-width: 3px;
+  border-left-width: 2px;
   padding: 11px 14px;
 }
 .lage button {

@@ -494,7 +494,7 @@ body.visning .varningsremsa.har {
 }
 .gkontext {
   background: var(--avrop-fyll);
-  border-left: 3px solid var(--avrop);
+  border-left: 2px solid var(--avrop);
   color: #4a3470;
   border-radius: 0 3px 3px 0;
   padding: 6px 9px;

@@ -38,8 +38,8 @@
   width: 360px;
   max-width: calc(100vw - 32px);
   background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-left: 4px solid var(--varning-stark, #d9a21b);
+  border: 2px solid var(--border-color);
+  border-left: 2px solid var(--varning-stark, #d9a21b);
   border-radius: var(--r-m);
   box-shadow: 0 18px 44px rgba(17, 19, 21, .16), 0 3px 10px rgba(17, 19, 21, .06);
   padding: 14px 14px 12px 16px;

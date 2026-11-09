@@ -21,7 +21,24 @@ const TYPER = Object.keys(TYPNAMN);
 
 /* ---------- datum ---------- */
 
-const IDAG = d2iso(new Date());
+// Dagens datum. Uppdateras när datumet byts medan sidan står öppen (t.ex. på en TV i bodan),
+// så att Projektöversikten, Veckans utfall och tavlan inte fastnar på gårdagen.
+let IDAG = d2iso(new Date());
+
+function kollaNyDag() {
+    const d = d2iso(new Date());
+    if (d === IDAG)
+        return;
+    IDAG = d;
+    try { rita(); } catch (e) { }
+    try { if (typeof dashOppen === "function" && dashOppen()) ritaDash(); } catch (e) { }
+    try { if (typeof startOppen === "function" && startOppen()) ritaStart(); } catch (e) { }
+    try { if (typeof ganttOppen === "function" && ganttOppen()) ritaGantt(); } catch (e) { }
+    try { if (typeof backupOppen === "function" && backupOppen()) ritaBackup(); } catch (e) { }
+}
+setInterval(kollaNyDag, 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") kollaNyDag(); });
+window.addEventListener("focus", kollaNyDag);
 
 /* ---------- data ---------- */
 

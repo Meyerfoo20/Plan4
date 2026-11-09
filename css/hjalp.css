@@ -415,8 +415,8 @@ body.p4-kontovy #hjalp {
 .hj-tips {
   margin-top: 12px;
   background: var(--produktion-fyll);
-  border: 1px solid var(--produktion-kant);
-  border-left: 4px solid var(--produktion);
+  border: 2px solid var(--produktion-kant);
+  border-left: 2px solid var(--produktion);
   border-radius: var(--r-s);
   padding: 10px 14px;
   font-size: 13.5px;
