@@ -900,3 +900,23 @@ body.p4-projlas .flik.plus {
   height: 34px;
   align-self: flex-start;
 }
+
+/* ---------- projektkod och ansökningar ---------- */
+.p4-valfri { font-weight: 500; color: var(--text-muted); }
+.p4-kodfalt { text-transform: uppercase; letter-spacing: .12em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.p4-kodfalt::placeholder { letter-spacing: normal; text-transform: none; font-family: inherit; }
+#kkKodFalt small.hjalp { display: block; margin-top: 6px; font-size: 12.5px; line-height: 1.45; }
+.p4-vantar-kod { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; padding-top: 14px; border-top: 1px solid var(--border-color); }
+.p4-vantar-kod label { font-weight: 600; font-size: 14px; }
+.p4-vantar-kodrad { display: flex; gap: 8px; }
+.p4-vantar-kodrad .f { flex: 1; min-width: 0; }
+.p4-vantesida.nekad .p4-vantar-kod { display: none; }
+.p4-ks-kodruta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; margin: 0 0 12px;
+  border: 2px solid var(--border-color); border-radius: var(--r-m, 10px); background: var(--bg-subtle, var(--bg-card)); }
+.p4-ks-kodruta .et { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.p4-ks-kod { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 20px; font-weight: 800; letter-spacing: .16em; }
+.p4-ks-kodruta .p4-ks-knappar { margin: 0 0 0 auto; }
+.p4-ks-kodliten { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; }
+.p4-ks-gamed { display: flex; gap: 8px; }
+.p4-ks-gamed .f { flex: 1; min-width: 0; }
+.p4-ks-tabell .p4-ks-kodliten { font-weight: 700; font-size: 14px; }

@@ -128,12 +128,25 @@
         : fb.fs.query(projektSamling(), fb.fs.where("medlemmar", "array-contains", anvandare.uid));
     const projektDoc = (id) => fb.fs.doc(fb.db, "projekt", id);
     const gamlaProjekt = () => fb.fs.collection(fb.db, "anvandare", anvandare.uid, "projekt");   // före medlemskap
+    // Projektkoder: projektet har fältet kod och koder/{kod} pekar tillbaka på projektet.
+    // Den som skapar konto med koden ansöker i projekt/{id}/ansokningar/{uid}; projektadmin godkänner.
+    // projekt/{id}/personer/{uid} är projektets egen namnlista, så att projektadmin bara ser sina medlemmar.
+    const KODTECKEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    function nyKod() {
+        const a = new Uint32Array(6);
+        crypto.getRandomValues(a);
+        return Array.from(a, (n) => KODTECKEN[n % KODTECKEN.length]).join("");
+    }
+    const rensaKod = (k) => String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const kodDoc = (k) => fb.fs.doc(fb.db, "koder", k);
+    const ansokDoc = (pid, uid) => fb.fs.doc(fb.db, "projekt", pid, "ansokningar", uid);
+    const personDoc = (pid, uid) => fb.fs.doc(fb.db, "projekt", pid, "personer", uid);
     const projektMeta = new Map();   // id → { namn, arkiverad, medlemmar, lasare, projektAdmin, tavlaBeh, tavlor }
     function metaFran(x) {
         let tavlor = [];
         try { tavlor = (JSON.parse(x.data || "{}").tavlor || []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" })); } catch (e) { }
         return { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [], lasare: x.lasare || [],
-            projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, tavlor: tavlor };
+            projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, kod: x.kod || "", tavlor: tavlor };
     }
     function lasMeta(docs) {
         projektMeta.clear();
@@ -391,13 +404,18 @@
                         const molnRev = snap.exists() ? snap.data().rev || 0 : 0;
                         if (molnRev !== vantad) return { konflikt: true, snap };
                         const x = snap.exists() ? snap.data() : {};
-                        tx.set(ref, { namn: p.projekt, arkiverad: !!p.arkiverad, data: upp, rev: molnRev + 1,
+                        const nyttKod = snap.exists() ? "" : nyKod();
+                        const dok = { namn: p.projekt, arkiverad: !!p.arkiverad, data: upp, rev: molnRev + 1,
                             uppdaterad: fb.fs.serverTimestamp(), enhet: ENHET,
                             medlemmar: snap.exists() ? x.medlemmar || [] : [anvandare.uid],
                             lasare: x.lasare || [],
                             // den som skapar ett projekt utan att vara huvudadmin blir projektadmin i det
                             projektAdmin: snap.exists() ? x.projektAdmin || [] : (arAdmin() ? [] : [anvandare.uid]),
-                            tavlaBeh: x.tavlaBeh || {} });
+                            tavlaBeh: x.tavlaBeh || {} };
+                        if (x.kod || nyttKod) dok.kod = x.kod || nyttKod;
+                        tx.set(ref, dok);
+                        // ett nytt projekt får en projektkod direkt
+                        if (nyttKod) tx.set(kodDoc(nyttKod), { projekt: p.id, namn: p.projekt });
                         return { rev: molnRev + 1 };
                     });
                 } catch (e) {
@@ -417,6 +435,8 @@
             // projekt som admin raderat permanent här tas bort i molnet
             for (const id of Object.keys(moln.rev)) {
                 if (lokala.has(id) || konflikter.has(id) || !arAdmin()) continue;
+                const gammalKod = (projektMeta.get(id) || {}).kod;
+                if (gammalKod) await fb.fs.deleteDoc(kodDoc(gammalKod)).catch(() => { });
                 await fb.fs.deleteDoc(projektDoc(id));
                 delete moln.rev[id]; delete moln.hash[id]; sparaMoln();
             }
@@ -464,8 +484,9 @@
     function lyssna() {
         if (lyssnare) lyssnare();
         lyssnare = fb.fs.onSnapshot(projektFraga(), (snap) => {
-            if (arAdmin()) { lasMeta(snap.docs); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } }
+            if (arAdmin()) { lasMeta(snap.docs); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } if (gruppFel) startaAnsokningar(); if (synkKlar) skapaSaknadeKoder(); }
             else uppdateraBeh(snap.docs.map((d) => Object.assign({ id: d.id }, d.data())));
+            samlaAnsokningar();
             // molnets version av tavlor man inte ser, så att de följer med orörda vid uppladdning
             snap.docs.forEach((d) => { const x = d.data(); if ((x.rev || 0) >= (moln.rev[d.id] || 0)) uppdateraDolda(d.id, x.data); });
             snap.docChanges().forEach((c) => {
@@ -702,6 +723,8 @@
             : "Logga in för att öppna dina projekt.";
         $("kkLosen").setAttribute("autocomplete", skapaLage ? "new-password" : "current-password");
         $("kkLosen2Falt").classList.toggle("dold", !skapaLage);
+        $("kkNamnFalt").classList.toggle("dold", !skapaLage);
+        $("kkKodFalt").classList.toggle("dold", !skapaLage);
         $("kkGlomt").classList.toggle("dold", skapaLage);
         visaFel("");
     }
@@ -716,11 +739,24 @@
         knapp.disabled = true;
         try {
             await laddaFirebase();
-            if (skapaLage) await fb.auth.createUserWithEmailAndPassword(fb.authInst, epost, losen);
+            if (skapaLage) {
+                // Projektkoden kontrolleras innan kontot skapas, så att en felskriven kod inte ger ett konto utan ansökan.
+                const kod = rensaKod($("kkKod").value);
+                let ansokan = null;
+                if (kod) {
+                    ansokan = await slaUppKod(kod);
+                    if (!ansokan) { visaFel("Projektkoden " + kod + " finns inte. Kontrollera den med din projektadmin, eller lämna fältet tomt."); knapp.disabled = false; return; }
+                }
+                const namn = $("kkNamn").value.trim();
+                nyttKonto = { epost: epost.toLowerCase(), namn: namn, ansokan: ansokan };
+                const cred = await fb.auth.createUserWithEmailAndPassword(fb.authInst, epost, losen);
+                if (namn) await fb.auth.updateProfile(cred.user, { displayName: namn }).catch(() => { });
+                $("kkKod").value = "";
+            }
             else await fb.auth.signInWithEmailAndPassword(fb.authInst, epost, losen);
             $("kkLosen").value = "";
             $("kkLosen2").value = "";
-        } catch (err) { visaFel(feltext(err)); }
+        } catch (err) { nyttKonto = null; visaFel(feltext(err)); }
         knapp.disabled = false;
     }
     function kopplaFormular() {
@@ -815,6 +851,7 @@
         try {
             sida.innerHTML = anvandare ? kontosidaHtml() : utanKontoHtml();
             ritaSynkkort();
+            ritaAnsokningar();
             ritaAdmin();
         } catch (e) {
             console.error("Wimo kontosidan:", e);
@@ -849,6 +886,7 @@
             '<div class="p4-ks-siffror" id="ksSiffror"></div>' +
 
             '<section class="p4-ks-kort p4-ks-projekt" id="ksSynk"></section>' +
+            '<section class="p4-ks-kort p4-ks-projekt dold" id="ksAnsok"></section>' +
             '<section class="p4-ks-kort p4-ks-projekt dold" id="ksAdmin"></section>' +
 
             '<div class="p4-ks-rutnat">' +
@@ -873,6 +911,14 @@
                     '<button type="button" class="p4-konto-lank" data-ks="aterstall">Skicka en länk i stället</button></div>'
                   : '<p class="hjalp">Du loggar in med Google, så lösenordet hanteras av ditt Google-konto.</p>' +
                     '<div class="p4-ks-knappar"><a class="mknapp" href="https://myaccount.google.com/security" target="_blank" rel="noopener">Öppna Google-kontot</a></div>') +
+              "</section>" +
+
+              '<section class="p4-ks-kort">' +
+                "<h2>Gå med i ett projekt</h2>" +
+                '<p class="hjalp">Har du fått en projektkod? Skriv in den här så skickas en ansökan till projektadmin för projektet.</p>' +
+                '<div class="falt"><label for="ksKod">Projektkod</label><div class="p4-ks-gamed"><input class="f p4-kodfalt" id="ksKod" autocomplete="off" spellcheck="false" maxlength="12" placeholder="T.ex. K7M4QX">' +
+                '<button type="button" class="mknapp primar" data-ks="gamed">Skicka ansökan</button></div></div>' +
+                '<div class="notis dold" id="ksKodSvar"></div>' +
               "</section>" +
 
               '<section class="p4-ks-kort">' +
@@ -901,6 +947,14 @@
             "</div>";
     }
 
+    // Projektkoden i tabellen: huvudadmin ser den för alla projekt, projektadmin för sina.
+    function kodText(id) {
+        const m = projektMeta.get(id);
+        if (!m || !arProjektAdmin(id)) return "";
+        return m.kod
+            ? '<button type="button" class="p4-konto-lank p4-ks-kodliten" data-pkod="kopiera" data-pid="' + esc(id) + '" title="Kopiera koden">' + esc(m.kod) + "</button>"
+            : '<button type="button" class="mknapp" data-pkod="ny" data-pid="' + esc(id) + '">Skapa kod</button>';
+    }
     function medlemsText(id) {
         const m = projektMeta.get(id);
         if (!m) return '<span class="p4-ks-dampad">Sparas…</span>';
@@ -939,7 +993,7 @@
                 (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
                 rollTagg(p.id) + "</td>" +
                 "<td>" + p.tavlor.length + "</td><td>" + poster + "</td>" +
-                (harNagonAdminroll() ? "<td>" + (arProjektAdmin(p.id) ? medlemsText(p.id) : "") + "</td>" : "") +
+                (harNagonAdminroll() ? "<td>" + (arProjektAdmin(p.id) ? medlemsText(p.id) : "") + "</td><td>" + kodText(p.id) + "</td>" : "") +
                 "<td>" + esc(andrad ? new Date(andrad).toLocaleDateString("sv-SE") : "—") + "</td>" +
                 '<td><span class="p4-ks-status ' + klass + '">' + esc(lageTxt) + "</span>" +
                 (k ? '<span class="p4-konto-val">' +
@@ -957,7 +1011,7 @@
               '<span class="p4-ks-knappar p4-ks-hoger-knappar">' + (kanSkapaProjekt() ? '<button type="button" class="mknapp" data-ks="nyttprojekt">+ Nytt projekt</button>' : "") +
               '<button type="button" class="mknapp" data-ks="synka">Synka nu</button></span></div>' +
             (konflikter.size ? '<div class="notis">Välj vilken version som ska gälla för projekten som ändrats på två ställen.</div>' : "") +
-            '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Projekt</th><th>Tavlor</th><th>Poster</th>' + (harNagonAdminroll() ? "<th>Medlemmar</th>" : "") + '<th>Senast ändrat</th><th>Molnet</th><th></th></tr></thead>' +
+            '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Projekt</th><th>Tavlor</th><th>Poster</th>' + (harNagonAdminroll() ? "<th>Medlemmar</th><th>Projektkod</th>" : "") + '<th>Senast ändrat</th><th>Molnet</th><th></th></tr></thead>' +
             "<tbody>" + rader + "</tbody></table></div>";
     }
 
@@ -972,6 +1026,8 @@
         const namn = $("ksNamn").value.trim();
         try {
             await fb.auth.updateProfile(anvandare, { displayName: namn || null });
+            await fb.fs.setDoc(anvDoc(), { namn: namn }, { merge: true }).catch(() => { });
+            synkaPersoner();
             svar("ksNamnSvar", "Namnet är sparat.", true);
             uppdateraUI();
             document.querySelector(".p4-ks-avatar").textContent = initialer();
@@ -1055,6 +1111,7 @@
             else if (vad === "loggaut") loggaUt(false);
             else if (vad === "radera") raderaKontoDialog();
             else if (vad === "nyttprojekt") nyttProjektDialog();
+            else if (vad === "gamed") gaMedKod($("ksKod").value, "ksKodSvar");
         }
         const o = e.target.closest("#p4KontoSida [data-oppna]");
         if (o) { stangKontosida(); valjProjekt(o.dataset.oppna); }
@@ -1064,6 +1121,7 @@
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && kontoOppen() && !dialogOppen()) stangKontosida();
         if (e.key === "Enter" && e.target && e.target.id === "ksNamn") sparaNamn();
+        if (e.key === "Enter" && e.target && e.target.id === "ksKod") gaMedKod(e.target.value, "ksKodSvar");
     });
 
     // Utloggning laddar först upp det som återstår och tar sedan bort projektdatan från
@@ -1132,9 +1190,10 @@
         }
         if (typeof window.p4UppdateraBackup === "function") window.p4UppdateraBackup();
         if (kontoOppen()) ritaSynkkort();
-        const vantar = arAdmin() ? vantandeAnvandare().length : 0;
+        // huvudadmin: väntande konton och ansökningar; projektadmin: ansökningar till sina projekt
+        const vantar = new Set(ansokningar.map((a) => a.uid).concat(arAdmin() ? vantandeAnvandare().map((a) => a.uid) : [])).size;
         const badge = $("p4KontoBadge");
-        if (badge) { badge.textContent = String(vantar); badge.classList.toggle("dold", !vantar); badge.title = vantar + " konton väntar på godkännande"; }
+        if (badge) { badge.textContent = String(vantar); badge.classList.toggle("dold", !vantar); badge.title = vantar + (vantar === 1 ? " person väntar" : " personer väntar") + " på godkännande"; }
         if (knapp) knapp.classList.toggle("admin-vantar", !!vantar);
     }
 
@@ -1193,8 +1252,10 @@
     let appStartad = false;
     let anvLyssnare = null;      // användarens eget dokument
     let adminLyssnare = null;    // alla användare (bara för admin)
-    let allaAnvandare = [];
+    let allaAnvandare = [];      // huvudadmin: alla konton; övriga admins: personerna i sina projekt
     let adminFilter = null;      // null = Väntar om någon väntar, annars Alla
+    let nyttKonto = null;        // { epost, namn, ansokan } medan ett nytt konto skapas
+    let ansokningar = [];        // [{ uid, pid, namn, epost, kod, tid }] som jag får godkänna
     const arAdmin = () => behorighet.roll === "admin" && behorighet.status === "godkand";
     // Huvudadmin, eller en godkänd användare som fått "Får skapa projekt" av huvudadmin.
     const kanSkapaProjekt = () => arAdmin() || (behorighet.status === "godkand" && behorighet.skapa === true);
@@ -1203,9 +1264,13 @@
 
     async function sakerstallAnvandardok() {
         const ref = anvDoc(), snap = await fb.fs.getDoc(ref);
+        const ny = nyttKonto && nyttKonto.epost === String(anvandare.email || "").toLowerCase() ? nyttKonto : null;
+        nyttKonto = null;
         if (!snap.exists()) {
-            await fb.fs.setDoc(ref, { epost: anvandare.email || "", namn: anvandare.displayName || "",
-                roll: "user", status: "vantar", skapad: fb.fs.serverTimestamp() });
+            const namn = (ny && ny.namn) || anvandare.displayName || "";
+            await fb.fs.setDoc(ref, Object.assign({ epost: anvandare.email || "", namn: namn,
+                roll: "user", status: "vantar", skapad: fb.fs.serverTimestamp() }, ny && ny.ansokan ? ansokanFalt(ny.ansokan) : {}));
+            if (ny && ny.ansokan) await skickaAnsokan(ny.ansokan, namn).catch((e) => console.warn("Wimo ansökan:", e));
         } else if (!snap.data().status) {
             // konto från tiden före godkännandet: läggs i kön
             await fb.fs.setDoc(ref, { roll: "user", status: "vantar" }, { merge: true });
@@ -1214,7 +1279,8 @@
 
     function hanteraBehorighet(d) {
         const forraRoll = behorighet.roll;
-        behorighet = { roll: (d && d.roll) || "user", status: (d && d.status) || "vantar", skapa: !!(d && d.skapa === true) };
+        behorighet = { roll: (d && d.roll) || "user", status: (d && d.status) || "vantar", skapa: !!(d && d.skapa === true),
+            ansokan: (d && d.ansokan) || "", ansokanNamn: (d && d.ansokanNamn) || "" };
         skrivJson(BEHNYCKEL, { uid: anvandare.uid, roll: behorighet.roll, status: behorighet.status, skapa: behorighet.skapa });
         if (behorighet.status === "godkand") {
             // Ny roll ger andra projekt (admin ser alla): synka om från början.
@@ -1224,7 +1290,8 @@
             stoppaApp();
             visaVy("vantar");
         }
-        if (arAdmin()) startaAdmin(); else { stoppaAdmin(); startaAnvandarlista(); }
+        if (arAdmin()) startaAdmin(); else stoppaAdmin();
+        startaAnvandarlista();
         uppdateraUI();
     }
 
@@ -1261,14 +1328,38 @@
     }
 
     // Väntesidan: visas för konton som inte är godkända (än).
+    let ansokanKollad = "";      // ansökan vars status redan hämtats till väntesidan
+    let ansokanFinns = true;
     function ritaVantesida() {
         const nekad = behorighet.status === "nekad";
         const ingaProjekt = behorighet.status === "godkand";
+        const pnamn = behorighet.ansokanNamn;
         $("p4Vantar").classList.toggle("inga", ingaProjekt);
+        // Finns ansökan kvar? Projektadmin tar bort den när hen godkänner eller nekar.
+        if (behorighet.ansokan && !nekad) {
+            const nyckel = behorighet.ansokan + "/" + anvandare.uid;
+            if (ansokanKollad !== nyckel) {
+                ansokanKollad = nyckel; ansokanFinns = true;
+                fb.fs.getDoc(ansokDoc(behorighet.ansokan, anvandare.uid)).then((d) => {
+                    ansokanFinns = d.exists();
+                    if (!ansokanFinns && document.body.classList.contains("p4-vantar")) ritaVantesida();
+                }).catch(() => { });
+            }
+        }
+        const sokt = pnamn && !nekad ? (ansokanFinns
+            ? " Du har ansökt om att gå med i " + pnamn + ". Projektadmin för " + pnamn + " godkänner dig."
+            : " Din ansökan till " + pnamn + " är avslutad utan att du lagts till. Fråga projektadmin, eller skriv in en ny kod nedan.") : "";
         if (ingaProjekt) {
             $("p4VantarRubrik").textContent = "Du har inte tillgång till något projekt än";
-            $("p4VantarText").textContent = "Ditt konto är godkänt, men en administratör behöver lägga till dig i ett projekt. " +
-                "Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
+            $("p4VantarText").textContent = (pnamn && ansokanFinns ? "Ditt konto är godkänt." + sokt
+                : "Ditt konto är godkänt, men en administratör behöver lägga till dig i ett projekt." + (pnamn ? sokt : "")) +
+                " Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
+            $("p4Vantar").classList.remove("nekad");
+            return;
+        }
+        if (pnamn && !nekad) {
+            $("p4VantarRubrik").textContent = ansokanFinns ? "Din ansökan väntar på godkännande" : "Ditt konto väntar på godkännande";
+            $("p4VantarText").textContent = sokt.trim() + " Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
             $("p4Vantar").classList.remove("nekad");
             return;
         }
@@ -1280,23 +1371,271 @@
     }
 
     // ---------- admin: alla användare ----------
+    // Bara huvudadmin läser alla konton.
     function startaAdmin() {
         if (adminLyssnare) return;
+        stoppaPersoner();
         adminLyssnare = fb.fs.onSnapshot(fb.fs.collection(fb.db, "anvandare"), (snap) => {
             allaAnvandare = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
             uppdateraUI();
-            if (kontoOppen()) ritaAdmin();
+            if (kontoOppen()) { ritaAdmin(); ritaAnsokningar(); }
+            synkaPersoner();
         }, (e) => console.warn("Wimo användarlista:", e));
     }
-    // Användarlistan behövs för huvudadmin och för den som är admin för ett projekt eller en tavla.
+    // Projektadmin och tavla-admin ser bara personerna i sina egna projekt (projekt/{id}/personer).
     function startaAnvandarlista() {
         if (!anvandare || !synkKlar) return;
-        if (arAdmin() || harNagonAdminroll() || [...projektMeta.keys()].some((id) => harTavlaAdmin(id))) startaAdmin();
+        if (!arAdmin()) startaPersoner();
+        startaAnsokningar();
+        synkaPersoner();
+        skapaSaknadeKoder();
+    }
+    // Projekt från tiden före projektkoderna får en kod när huvudadmin eller projektadmin är inloggad.
+    let koderPagar = false;
+    const kodForsokt = new Set();
+    async function skapaSaknadeKoder() {
+        if (koderPagar || !anvandare || !synkKlar) return;
+        koderPagar = true;
+        try {
+            for (const [id, m] of [...projektMeta]) {
+                if (m.kod || kodForsokt.has(id) || !arProjektAdmin(id)) continue;
+                kodForsokt.add(id);
+                try { await nyProjektkod(id); } catch (e) { console.warn("Wimo projektkod:", e); }
+            }
+        } finally { koderPagar = false; }
+        if (kontoOppen()) ritaSynkkort();
     }
     function stoppaAdmin() {
-        if (adminLyssnare) { adminLyssnare(); adminLyssnare = null; }
-        allaAnvandare = [];
+        if (adminLyssnare) { adminLyssnare(); adminLyssnare = null; allaAnvandare = []; }
     }
+
+    // ---------- projektens namnlistor ----------
+    const persLyss = new Map(), persPer = new Map();     // projektId → avregistrering / [{ uid, namn, epost }]
+    function startaPersoner() {
+        const vill = new Set([...projektMeta.keys()].filter((id) => arProjektAdmin(id) || harTavlaAdmin(id)));
+        for (const [id, av] of persLyss) if (!vill.has(id)) { av(); persLyss.delete(id); persPer.delete(id); }
+        vill.forEach((id) => {
+            if (persLyss.has(id)) return;
+            persLyss.set(id, fb.fs.onSnapshot(fb.fs.collection(fb.db, "projekt", id, "personer"), (snap) => {
+                persPer.set(id, snap.docs.map((d) => Object.assign({ uid: d.id }, d.data())));
+                samlaPersoner();
+            }, (e) => console.warn("Wimo namnlista:", e)));
+        });
+        samlaPersoner();
+    }
+    function samlaPersoner() {
+        if (arAdmin()) return;
+        const alla = new Map();
+        persPer.forEach((lista) => lista.forEach((a) => {
+            if (!alla.has(a.uid)) alla.set(a.uid, { uid: a.uid, namn: a.namn || "", epost: a.epost || "", status: "godkand", roll: "user" });
+        }));
+        allaAnvandare = [...alla.values()];
+        if (kontoOppen()) ritaSynkkort();
+    }
+    function stoppaPersoner() {
+        persLyss.forEach((av) => av());
+        persLyss.clear(); persPer.clear();
+        if (!adminLyssnare) allaAnvandare = [];
+    }
+    // Var och en skriver sitt namn i projekten hen är med i; huvudadmin fyller i för alla medlemmar.
+    // Det som redan skrivits från den här datorn skrivs inte igen.
+    const PERSNYCKEL = "plan4_personer";
+    let persTimer = null;
+    function synkaPersoner() { clearTimeout(persTimer); persTimer = setTimeout(skrivPersoner, 2500); }
+    async function skrivPersoner() {
+        if (!anvandare || !synkKlar || !fb) return;
+        let cache = lasJson(PERSNYCKEL, null);
+        if (!cache || cache.uid !== anvandare.uid) cache = { uid: anvandare.uid, k: {} };
+        const info = (uid) => {
+            if (uid === anvandare.uid) return { namn: anvandare.displayName || "", epost: anvandare.email || "" };
+            const a = allaAnvandare.find((x) => x.uid === uid);
+            return a && arAdmin() ? { namn: a.namn || "", epost: a.epost || "" } : null;
+        };
+        const jobb = [];
+        for (const [pid, m] of projektMeta) {
+            (arAdmin() ? m.medlemmar : m.medlemmar.filter((u) => u === anvandare.uid)).forEach((uid) => {
+                const i = info(uid);
+                if (!i) return;
+                const nyckel = pid + "/" + uid, sig = i.namn + "|" + i.epost;
+                if (cache.k[nyckel] !== sig) jobb.push({ pid, uid, i, nyckel, sig });
+            });
+        }
+        for (let n = 0; n < jobb.length; n += 400) {
+            const del = jobb.slice(n, n + 400), b = fb.fs.writeBatch(fb.db);
+            del.forEach((j) => b.set(personDoc(j.pid, j.uid), j.i));
+            try { await b.commit(); del.forEach((j) => { cache.k[j.nyckel] = j.sig; }); }
+            catch (e) { console.warn("Wimo namnlista:", e); break; }
+        }
+        skrivJson(PERSNYCKEL, cache);
+    }
+
+    // ---------- projektkoder och ansökningar ----------
+    const ansokanFalt = (a) => ({ ansokan: a.pid, ansokanKod: a.kod, ansokanNamn: a.namn });
+    async function slaUppKod(kod) {
+        const d = await fb.fs.getDoc(kodDoc(kod));
+        return d.exists() && d.data().projekt ? { kod: kod, pid: d.data().projekt, namn: d.data().namn || "projektet" } : null;
+    }
+    function skickaAnsokan(a, namn) {
+        return fb.fs.setDoc(ansokDoc(a.pid, anvandare.uid), { namn: namn || anvandare.displayName || "",
+            epost: anvandare.email || "", kod: a.kod, tid: fb.fs.serverTimestamp() });
+    }
+    // Från väntesidan eller kontosidan: ansök till ett projekt med dess kod.
+    async function gaMedKod(rad, svarId) {
+        const kod = rensaKod(rad);
+        if (!kod) return svar(svarId, "Skriv projektkoden du fått.");
+        svar(svarId, "");
+        try {
+            const a = await slaUppKod(kod);
+            if (!a) return svar(svarId, "Projektkoden " + kod + " finns inte. Kontrollera den med din projektadmin.");
+            const m = projektMeta.get(a.pid);
+            if (arAdmin() || (m && m.medlemmar.includes(anvandare.uid))) return svar(svarId, "Du är redan med i " + a.namn + ".", true);
+            await fb.fs.setDoc(anvDoc(), ansokanFalt(a), { merge: true });
+            await skickaAnsokan(a);
+            ansokanKollad = "";
+            svar(svarId, "Ansökan är skickad. Projektadmin för " + a.namn + " godkänner dig, och projektet öppnas av sig självt när det är klart.", true);
+            ["ksKod", "p4VantarKod"].forEach((id) => { if ($(id)) $(id).value = ""; });
+        } catch (e) { svar(svarId, "Kunde inte skicka ansökan: " + (e.code || e.message)); }
+    }
+    document.addEventListener("submit", (e) => {
+        if (!e.target || e.target.id !== "p4VantarKodForm") return;
+        e.preventDefault();
+        gaMedKod($("p4VantarKod").value, "p4VantarKodSvar");
+    });
+
+    // Huvudadmin ser ansökningarna till alla projekt, projektadmin till sina egna.
+    const ansokLyss = new Map(), ansokPer = new Map();   // "*" eller projektId → avregistrering / ansökningar
+    let gruppFel = false;        // gick inte frågan över alla projekt läser huvudadmin projekt för projekt
+    function startaAnsokningar() {
+        if (!anvandare || !synkKlar) return;
+        const vill = new Set(arAdmin() ? (gruppFel ? [...projektMeta.keys()] : ["*"])
+            : [...projektMeta].filter(([, m]) => m.projektAdmin.includes(anvandare.uid)).map(([id]) => id));
+        for (const [k, av] of ansokLyss) if (!vill.has(k)) { av(); ansokLyss.delete(k); ansokPer.delete(k); }
+        vill.forEach((k) => {
+            if (ansokLyss.has(k)) return;
+            const fraga = k === "*" ? fb.fs.collectionGroup(fb.db, "ansokningar") : fb.fs.collection(fb.db, "projekt", k, "ansokningar");
+            ansokLyss.set(k, fb.fs.onSnapshot(fraga, (snap) => {
+                ansokPer.set(k, snap.docs.map((d) => Object.assign({ uid: d.id, pid: d.ref.parent.parent.id }, d.data())));
+                samlaAnsokningar();
+            }, (e) => {
+                console.warn("Wimo ansökningar:", e);
+                if (k === "*" && !gruppFel) { gruppFel = true; ansokLyss.delete("*"); ansokPer.delete("*"); startaAnsokningar(); }
+            }));
+        });
+        samlaAnsokningar();
+    }
+    function samlaAnsokningar() {
+        const alla = [];
+        ansokPer.forEach((lista) => lista.forEach((a) => { if (!alla.some((x) => x.uid === a.uid && x.pid === a.pid)) alla.push(a); }));
+        ansokningar = alla.filter((a) => projektMeta.has(a.pid)).sort((a, b) => (tidAv(a.tid) || 0) - (tidAv(b.tid) || 0));
+        uppdateraUI();
+        if (kontoOppen()) ritaAnsokningar();
+    }
+    function stoppaAnsokningar() {
+        ansokLyss.forEach((av) => av());
+        ansokLyss.clear(); ansokPer.clear(); ansokningar = [];
+    }
+
+    function ritaAnsokningar() {
+        const kort = $("ksAnsok");
+        if (!kort) return;
+        if (!ansokningar.length) { kort.classList.add("dold"); kort.innerHTML = ""; return; }
+        kort.classList.remove("dold");
+        const flera = new Set(ansokningar.map((a) => a.pid)).size > 1 || arAdmin();
+        const rader = ansokningar.map((a) => {
+            const m = projektMeta.get(a.pid), t = tidAv(a.tid), nyckel = a.pid + "/" + a.uid;
+            return "<tr><td><b>" + esc(a.namn || a.epost || "Okänd") + "</b>" + (a.namn && a.epost ? "<br><small>" + esc(a.epost) + "</small>" : "") + "</td>" +
+                "<td>" + esc(m ? m.namn : "") + "</td>" +
+                "<td>" + esc(t ? t.toLocaleDateString("sv-SE") : "—") + "</td>" +
+                "<td>" + rollval("data-arol", nyckel, "red", false) + "</td>" +
+                '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' +
+                  '<button type="button" class="mknapp primar" data-ansok="godkann" data-nyckel="' + esc(nyckel) + '">Godkänn</button>' +
+                  '<button type="button" class="mknapp fara" data-ansok="neka" data-nyckel="' + esc(nyckel) + '">Neka</button>' +
+                "</span></td></tr>";
+        }).join("");
+        kort.innerHTML =
+            '<div class="p4-ks-rubrikrad"><h2>Ansökningar</h2><span class="p4-ks-status vantar">' + ansokningar.length +
+              (ansokningar.length === 1 ? " person väntar" : " personer väntar") + "</span></div>" +
+            '<p class="hjalp">De här personerna har skrivit in projektkoden till ' + (flera ? "ett projekt" : "projektet") +
+              " du är admin för. Välj roll och godkänn, så får de tillgång direkt. Nekar du tas ansökan bort.</p>" +
+            '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Person</th><th>Projekt</th><th>Ansökte</th><th>Roll</th><th></th></tr></thead><tbody>' +
+            rader + "</tbody></table></div>";
+    }
+    async function besvaraAnsokan(nyckel, godkann) {
+        const a = ansokningar.find((x) => x.pid + "/" + x.uid === nyckel);
+        if (!a) return;
+        const m = projektMeta.get(a.pid), vem = a.namn || a.epost || "Personen";
+        const rollEl = document.querySelector('[data-arol="' + CSS.escape(nyckel) + '"]');
+        const roll = rollEl ? rollEl.value : "red";
+        try {
+            if (godkann && m) {
+                if (!m.medlemmar.includes(a.uid) || rollI(m, a.uid) !== roll) await sparaMeta(a.pid, m, medRoll(m, a.uid, roll), a);
+                // ett konto som väntar blir godkänt; ett konto som redan är godkänt lämnas som det är
+                const konto = allaAnvandare.find((x) => x.uid === a.uid);
+                if (!arAdmin() || !konto || konto.status !== "godkand") {
+                    try {
+                        await fb.fs.updateDoc(fb.fs.doc(fb.db, "anvandare", a.uid),
+                            { status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() });
+                    } catch (e) { if (!e || e.code !== "permission-denied") throw e; }
+                }
+            }
+            await fb.fs.deleteDoc(ansokDoc(a.pid, a.uid));
+            status(vem + (godkann ? " är med i " + (m ? m.namn : "projektet") + " som " + ROLLNAMN[roll].toLowerCase() : ": ansökan är nekad"));
+        } catch (e) { status("Kunde inte " + (godkann ? "godkänna" : "neka") + ": " + (e.code || e.message), true); }
+    }
+    document.addEventListener("click", (e) => {
+        const b = e.target.closest && e.target.closest("#ksAnsok [data-ansok]");
+        if (!b) return;
+        const vad = b.dataset.ansok, nyckel = b.dataset.nyckel;
+        if (vad === "godkann") return besvaraAnsokan(nyckel, true);
+        const a = ansokningar.find((x) => x.pid + "/" + x.uid === nyckel);
+        fraga("Neka ansökan?", (a ? a.namn || a.epost : "Personen") + " får inte tillgång till projektet. Hen kan ansöka igen med koden. Byt kod under Medlemmar… om koden inte ska användas mer.",
+            [{ txt: "Avbryt", fn: stangModal }, { txt: "Neka", fara: true, fn: () => { stangModal(); besvaraAnsokan(nyckel, false); } }], false);
+    });
+
+    // Ny projektkod: den gamla slutar gälla direkt.
+    async function nyProjektkod(pid) {
+        const m = projektMeta.get(pid);
+        if (!m) return "";
+        let kod = "";
+        for (let i = 0; i < 6 && !kod; i++) { const k = nyKod(); if (!(await fb.fs.getDoc(kodDoc(k))).exists()) kod = k; }
+        if (!kod) throw new Error("Kunde inte skapa en ledig kod");
+        const b = fb.fs.writeBatch(fb.db);
+        b.update(projektDoc(pid), { kod: kod });
+        b.set(kodDoc(kod), { projekt: pid, namn: m.namn });
+        if (m.kod) b.delete(kodDoc(m.kod));
+        await b.commit();
+        m.kod = kod;
+        return kod;
+    }
+    function kodrutaHtml(pid, m) {
+        return '<div class="p4-ks-kodruta"><span class="et">Projektkod</span><b class="p4-ks-kod" id="mdKod">' + esc(m.kod || "—") + "</b>" +
+            '<span class="p4-ks-knappar">' +
+              (m.kod ? '<button type="button" class="mknapp" data-pkod="kopiera" data-pid="' + esc(pid) + '">Kopiera</button>' : "") +
+              '<button type="button" class="mknapp" data-pkod="ny" data-pid="' + esc(pid) + '">' + (m.kod ? "Byt kod" : "Skapa kod") + "</button>" +
+            "</span></div>" +
+            '<p class="hjalp" style="margin-top:0">Ge koden till den som ska vara med. Hen skriver in den när hen skapar konto (eller under Gå med i ett projekt på kontosidan), ' +
+              "och du godkänner hen under Ansökningar på kontosidan. Byter du kod slutar den gamla att gälla.</p>";
+    }
+    document.addEventListener("click", async (e) => {
+        const b = e.target.closest && e.target.closest("[data-pkod]");
+        if (!b) return;
+        const pid = b.dataset.pid, m = projektMeta.get(pid);
+        if (!m) return;
+        if (b.dataset.pkod === "kopiera") {
+            try { await navigator.clipboard.writeText(m.kod); status("Projektkoden " + m.kod + " är kopierad"); }
+            catch (err) { status("Projektkoden är " + m.kod); }
+            return;
+        }
+        b.disabled = true;
+        try {
+            const kod = await nyProjektkod(pid);
+            const ruta = b.closest(".p4-ks-kodruta");
+            if (ruta) ruta.outerHTML = kodrutaHtml(pid, m).replace(/<p class="hjalp"[\s\S]*$/, "");
+            else b.disabled = false;
+            status("Ny projektkod för " + m.namn + ": " + kod);
+            if (kontoOppen()) ritaSynkkort();
+        } catch (err) { b.disabled = false; status("Kunde inte skapa koden: " + (err.code || err.message), true); }
+    });
     const vantandeAnvandare = () => allaAnvandare.filter((a) => (a.status || "vantar") === "vantar");
 
     const STATUSNAMN = { vantar: "Väntar", godkand: "Godkänd", nekad: "Nekad" };
@@ -1327,7 +1666,7 @@
                 "<td>" + esc(skapad ? skapad.toLocaleDateString("sv-SE") : "—") + "</td>" +
                 "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Huvudadmin</span>' : "Användare" +
                     (a.skapa === true ? '<br><span class="p4-ks-tagg oppet">Får skapa projekt</span>' : "")) + "</td>" +
-                "<td>" + projektFor(a) + "</td>" +
+                "<td>" + projektFor(a) + (st === "vantar" && a.ansokanNamn ? '<br><span class="p4-ks-tagg">Ansöker till ' + esc(a.ansokanNamn) + "</span>" : "") + "</td>" +
                 '<td><span class="p4-ks-status ' + (st === "godkand" ? "ok" : st === "nekad" ? "konflikt" : "vantar") + '">' + STATUSNAMN[st] + "</span></td>" +
                 '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' + atgard + "</span></td></tr>";
         }).join("");
@@ -1340,7 +1679,8 @@
               "</span></div>" +
             '<p class="hjalp">Nya konton kommer inte åt Wimo förrän du godkänner dem och ger dem minst ett projekt. ' +
               "Användare ser bara projekten de är medlemmar i. Under Projekt… väljer du roll per projekt (Kan redigera, Bara läsa eller Projektadmin), " +
-              "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Med Får skapa projekt kan en användare starta egna projekt och blir projektadmin i dem. Huvudadmin har tillgång till allt.</p>" +
+              "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Med Får skapa projekt kan en användare starta egna projekt och blir projektadmin i dem. " +
+              "Den som skapar konto med ett projekts kod godkänns av projektadmin under Ansökningar. Huvudadmin har tillgång till allt och är den enda som ser alla användare.</p>" +
             (lista.length
               ? '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Användare</th><th>Skapad</th><th>Roll</th><th>Projekt</th><th>Status</th><th></th></tr></thead><tbody>' +
                 rader + "</tbody></table></div>"
@@ -1441,7 +1781,7 @@
                 : "Bocka i projekten " + esc(a.namn || a.epost) + " ska vara med i och välj roll. Utan projekt kommer personen inte åt något.") +
             " En projektadmin bestämmer själv vilka som är med i projektet. Behörighet per tavla väljer du under Medlemmar… på projektet.</p>" +
             '<ul class="p4-ks-valista">' + lista.map((p) => {
-                const med = p.medlemmar.includes(a.uid);
+                const med = p.medlemmar.includes(a.uid) || (godkann && (a.ansokan === p.id || ansokningar.some((x) => x.uid === a.uid && x.pid === p.id)));
                 return '<li class="p4-ks-medbeh"><label><input type="checkbox" data-pval="' + esc(p.id) + '"' + (med ? " checked" : "") + "> " +
                     "<span><b>" + esc(p.namn) + "</b>" + (p.arkiverad ? ' <span class="p4-ks-tagg">Arkiverat</span>' : "") +
                     "<small>" + (p.medlemmar.filter((u) => u !== a.uid).length) + " andra medlemmar</small></span></label>" +
@@ -1461,6 +1801,9 @@
                         await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", a.uid),
                             { status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }, { merge: true });
                     }
+                    // ansökningar till projekten personen nu är med i är klara
+                    for (const x of ansokningar.filter((x) => x.uid === a.uid && valda.includes(x.pid)))
+                        await fb.fs.deleteDoc(ansokDoc(x.pid, x.uid)).catch(() => { });
                     status((a.namn || a.epost) + (godkann ? " är godkänd" : ": projekten är sparade"));
                 } catch (e) { status("Kunde inte spara: " + (e.code || e.message), true); }
             } },
@@ -1479,9 +1822,21 @@
             tavlaBeh: tb
         };
     }
-    async function sparaMeta(pid, m, ny) {
+    async function sparaMeta(pid, m, ny, kalla) {
+        const fore = m.medlemmar.slice();
         await fb.fs.updateDoc(projektDoc(pid), ny);
         Object.assign(m, ny);
+        if (!ny.medlemmar) return;
+        // projektets namnlista följer medlemmarna: nya läggs till, borttagna tas bort
+        const info = (uid) => {
+            const a = (kalla && kalla.uid === uid ? kalla : null) || allaAnvandare.find((x) => x.uid === uid) || ansokningar.find((x) => x.uid === uid);
+            return a ? { namn: a.namn || "", epost: a.epost || "" } : null;
+        };
+        const b = fb.fs.writeBatch(fb.db);
+        let n = 0;
+        ny.medlemmar.filter((u) => !fore.includes(u)).forEach((u) => { const i = info(u); if (i) { b.set(personDoc(pid, u), i); n++; } });
+        fore.filter((u) => !ny.medlemmar.includes(u)).forEach((u) => { b.delete(personDoc(pid, u)); n++; });
+        if (n) await b.commit().catch((e) => console.warn("Wimo namnlista:", e));
     }
 
     // Lägger till och tar bort en användare ur projekt så att hen är med i exakt de valda, med vald roll.
@@ -1534,15 +1889,16 @@
                 (!full ? "<small>" + ROLLNAMN[roll] + " i projektet</small>" : "") + "</span></label>" +
                 (full ? rollval("data-mbeh", a.uid, roll, !med || jag) : "") + tavelrutor + "</li>";
         };
-        const kropp =
+        const kropp = (full ? kodrutaHtml(pid, m) : "") +
             '<p class="hjalp" style="margin-top:0">' + (full
-                ? "Bocka i vilka som ska vara med i projektet och välj roll. <b>Projektadmin</b> får allt i projektet och väljer själv vilka som är med. " +
+                ? (arAdmin() ? "" : "Listan visar personerna i projekten du är admin för. Nya personer kommer in med projektkoden ovan. ") +
+                  "Bocka i vilka som ska vara med i projektet och välj roll. <b>Projektadmin</b> får allt i projektet och väljer själv vilka som är med. " +
                   "Under varje person kan du ge en egen behörighet per tavla: <b>Admin</b> för tavlan, <b>Redigera</b>, <b>Läsa</b> eller <b>Ingen åtkomst</b> (tavlan syns inte alls)."
                 : "Du är admin för " + mina.map((t) => "<b>" + esc(t.namn) + "</b>").join(", ") + ". Välj vilka av projektets medlemmar som ska komma åt " +
                   (mina.length === 1 ? "tavlan" : "tavlorna") + " och vad de får göra där.") + "</p>" +
             (godkanda.length || !full ? (lista.length ? '<ul class="p4-ks-valista p4-ks-medlista">' + lista.map(rad).join("") + "</ul>"
                 : '<p class="listtom">Inga andra medlemmar i projektet.</p>')
-                : '<p class="listtom">Användarlistan hämtas… Stäng och öppna igen om en stund.</p>') +
+                : '<p class="listtom">' + (arAdmin() ? "Användarlistan hämtas… Stäng och öppna igen om en stund." : "Inga personer ännu. Ge projektkoden till dem som ska vara med.") + "</p>") +
             '<div class="notis rod dold" id="mdFel"></div>';
         modal((full ? "Medlemmar i " : "Behörigheter i ") + m.namn, full ? "" : "Tavlor du är admin för", kropp, [
             { txt: "Avbryt", fn: stangModal },
@@ -1628,6 +1984,9 @@
         fb.auth.onAuthStateChanged(fb.authInst, (u) => {
             if (anvLyssnare) { anvLyssnare(); anvLyssnare = null; }
             stoppaAdmin();
+            stoppaPersoner();
+            stoppaAnsokningar();
+            ansokanKollad = "";
             stoppaApp();
             anvandare = u;
             konflikter.clear(); vantande.clear();

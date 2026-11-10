@@ -155,13 +155,18 @@ const HJALP_SEKTIONER = [
     { id: "behorighet", ik: "ik-konto", rubrik: "Projekt, konto och behörighet", ingress: "Vem som ser och får ändra vad.",
       html:
         '<table class="hj-tabell"><thead><tr><th>Roll</th><th>Kan</th></tr></thead><tbody>' +
-        "<tr><td>Huvudadmin</td><td>Allt i alla projekt. Bestämmer vilka som ser vilka projekt och vem som är admin.</td></tr>" +
+        "<tr><td>Huvudadmin</td><td>Allt i alla projekt. Den enda som ser alla användare i Wimo. Bestämmer vilka som ser vilka projekt och vem som är admin.</td></tr>" +
         "<tr><td>Får skapa projekt</td><td>Ett tillägg som huvudadmin ger en användare: kan starta egna projekt och blir projektadmin i dem. Ser bara sina egna projekt och de hen bjuds in till.</td></tr>" +
-        "<tr><td>Projektadmin</td><td>Allt i sitt projekt, inklusive medlemmar och behörighet per tavla.</td></tr>" +
+        "<tr><td>Projektadmin</td><td>Allt i sitt projekt, inklusive medlemmar, projektkod och behörighet per tavla. Godkänner dem som ansöker med projektkoden. Ser bara personerna i sina egna projekt.</td></tr>" +
         "<tr><td>Redigera</td><td>Lägga till, ändra och flytta poster.</td></tr>" +
         "<tr><td>Läsa</td><td>Se allt men inte ändra något.</td></tr>" +
         "</tbody></table>" +
         "<p>Behörighet kan också sättas per tavla: <b>admin</b>, <b>redigera</b>, <b>läsa</b> eller <b>ingen åtkomst</b>. Det görs under <i>Mitt konto → Medlemmar…</i> på projektet.</p>" +
+        '<div class="hj-ruta"><h4>Bjuda in med projektkod</h4><ol>' +
+        "<li>Projektadmin öppnar <i>Mitt konto → Medlemmar…</i> på projektet och kopierar <b>projektkoden</b> (sex tecken).</li>" +
+        "<li>Den nya personen väljer <i>Skapa konto</i> och skriver in koden. Har hen redan ett konto skrivs koden in under <i>Gå med i ett projekt</i> på kontosidan.</li>" +
+        "<li>Projektadmin ser personen under <b>Ansökningar</b> på kontosidan, väljer roll och trycker <i>Godkänn</i>. Projektet öppnas direkt för personen.</li>" +
+        "<li>Utan kod hamnar nya konton hos huvudadmin. Med <i>Byt kod</i> slutar den gamla koden att gälla.</li></ol></div>" +
         "<p>Projekt som är klara kan arkiveras under <i>Mina projekt</i>. Arkiverade projekt kan tas fram igen; radering är permanent.</p>" },
 
     { id: "data", ik: "ik-historik", rubrik: "Data och synk", ingress: "Var allt sparas och vad som händer utan nät.",

@@ -14,18 +14,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261110d">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261110d">
-  <link rel="stylesheet" href="css/vyer.css?v=20261110d">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261110d">
-  <link rel="stylesheet" href="css/skal.css?v=20261110d">
-  <link rel="stylesheet" href="css/konto.css?v=20261110d">
-  <link rel="stylesheet" href="css/datumval.css?v=20261110d">
-  <link rel="stylesheet" href="css/gantt.css?v=20261110d">
-  <link rel="stylesheet" href="css/backup.css?v=20261110d">
-  <link rel="stylesheet" href="css/hjalp.css?v=20261110d">
-  <link rel="stylesheet" href="css/hindernotis.css?v=20261110d">
-  <link rel="stylesheet" href="css/mobil.css?v=20261110d">
+  <link rel="stylesheet" href="css/bas.css?v=20261110f">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261110f">
+  <link rel="stylesheet" href="css/vyer.css?v=20261110f">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261110f">
+  <link rel="stylesheet" href="css/skal.css?v=20261110f">
+  <link rel="stylesheet" href="css/konto.css?v=20261110f">
+  <link rel="stylesheet" href="css/datumval.css?v=20261110f">
+  <link rel="stylesheet" href="css/gantt.css?v=20261110f">
+  <link rel="stylesheet" href="css/backup.css?v=20261110f">
+  <link rel="stylesheet" href="css/hjalp.css?v=20261110f">
+  <link rel="stylesheet" href="css/hindernotis.css?v=20261110f">
+  <link rel="stylesheet" href="css/mobil.css?v=20261110f">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -42,6 +42,11 @@
       <span class="p4-vantar-ikon" aria-hidden="true"></span>
       <h1 id="p4VantarRubrik">Ditt konto väntar på godkännande</h1>
       <p id="p4VantarText"></p>
+      <form class="p4-vantar-kod" id="p4VantarKodForm" novalidate>
+        <label for="p4VantarKod">Har du fått en projektkod?</label>
+        <div class="p4-vantar-kodrad"><input class="f p4-kodfalt" id="p4VantarKod" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="T.ex. K7M4QX"><button type="submit" class="mknapp primar">Skicka ansökan</button></div>
+        <div class="notis dold" id="p4VantarKodSvar" role="status"></div>
+      </form>
       <button type="button" class="mknapp" id="p4VantarLoggaUt">Logga ut</button>
     </div>
   </div>
@@ -66,9 +71,11 @@
       <h2 id="kkRubrik">Välkommen tillbaka</h2>
       <p class="hjalp" id="kkHjalp"></p>
       <form id="kkFormular" novalidate>
+        <div class="falt dold" id="kkNamnFalt"><label for="kkNamn">Namn</label><input class="f" id="kkNamn" autocomplete="name" placeholder="Förnamn Efternamn"></div>
         <div class="falt"><label for="kkEpost">E-post</label><input class="f" id="kkEpost" type="email" autocomplete="email" required></div>
         <div class="falt"><label for="kkLosen">Lösenord</label><input class="f" id="kkLosen" type="password" autocomplete="current-password" required></div>
         <div class="falt dold" id="kkLosen2Falt"><label for="kkLosen2">Upprepa lösenordet</label><input class="f" id="kkLosen2" type="password" autocomplete="new-password"></div>
+        <div class="falt dold" id="kkKodFalt"><label for="kkKod">Projektkod <span class="p4-valfri">(om du har fått en)</span></label><input class="f p4-kodfalt" id="kkKod" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="T.ex. K7M4QX"><small class="hjalp">Koden får du av projektadmin. Då är det projektadmin som godkänner dig. Utan kod godkänns kontot av huvudadmin.</small></div>
         <div class="notis rod dold" id="kkFel" role="alert"></div>
         <button type="submit" class="p4-btn p4-btn-primar p4-in-skicka" id="kkSkicka">Logga in</button>
       </form>
@@ -265,40 +272,40 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261110d"></script>
-  <script src="js/core/datum.js?v=20261110d"></script>
-  <script src="js/core/kort.js?v=20261110d"></script>
-  <script src="js/core/operationer.js?v=20261110d"></script>
-  <script src="js/core/avrop.js?v=20261110d"></script>
-  <script src="js/core/resurser.js?v=20261110d"></script>
-  <script src="js/core/franvaro.js?v=20261110d"></script>
-  <script src="js/core/foretag.js?v=20261110d"></script>
-  <script src="js/core/projekt.js?v=20261110d"></script>
+  <script src="js/core/konstanter.js?v=20261110f"></script>
+  <script src="js/core/datum.js?v=20261110f"></script>
+  <script src="js/core/kort.js?v=20261110f"></script>
+  <script src="js/core/operationer.js?v=20261110f"></script>
+  <script src="js/core/avrop.js?v=20261110f"></script>
+  <script src="js/core/resurser.js?v=20261110f"></script>
+  <script src="js/core/franvaro.js?v=20261110f"></script>
+  <script src="js/core/foretag.js?v=20261110f"></script>
+  <script src="js/core/projekt.js?v=20261110f"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261110d"></script>
-  <script src="js/app/tavla.js?v=20261110d"></script>
-  <script src="js/app/flytt.js?v=20261110d"></script>
-  <script src="js/app/guide.js?v=20261110d"></script>
-  <script src="js/app/redigera.js?v=20261110d"></script>
-  <script src="js/app/utfall-vader.js?v=20261110d"></script>
-  <script src="js/app/utskrift.js?v=20261110d"></script>
-  <script src="js/app/register.js?v=20261110d"></script>
-  <script src="js/app/oversikt.js?v=20261110d"></script>
-  <script src="js/app/projekt.js?v=20261110d"></script>
-  <script src="js/app/gantt.js?v=20261110d"></script>
-  <script src="js/app/backup.js?v=20261110d"></script>
-  <script src="js/app/hjalp.js?v=20261110d"></script>
-  <script src="js/app/hindernotis.js?v=20261110d"></script>
+  <script src="js/app/grund.js?v=20261110f"></script>
+  <script src="js/app/tavla.js?v=20261110f"></script>
+  <script src="js/app/flytt.js?v=20261110f"></script>
+  <script src="js/app/guide.js?v=20261110f"></script>
+  <script src="js/app/redigera.js?v=20261110f"></script>
+  <script src="js/app/utfall-vader.js?v=20261110f"></script>
+  <script src="js/app/utskrift.js?v=20261110f"></script>
+  <script src="js/app/register.js?v=20261110f"></script>
+  <script src="js/app/oversikt.js?v=20261110f"></script>
+  <script src="js/app/projekt.js?v=20261110f"></script>
+  <script src="js/app/gantt.js?v=20261110f"></script>
+  <script src="js/app/backup.js?v=20261110f"></script>
+  <script src="js/app/hjalp.js?v=20261110f"></script>
+  <script src="js/app/hindernotis.js?v=20261110f"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261110d"></script>
+  <script src="js/skal.js?v=20261110f"></script>
 
   <!-- Egen datumväljare för alla datumfält -->
-  <script src="js/app/datumval.js?v=20261110d"></script>
+  <script src="js/app/datumval.js?v=20261110f"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261110d"></script>
-  <script src="js/konto/konto.js?v=20261110d"></script>
+  <script src="js/konto/firebase-config.js?v=20261110f"></script>
+  <script src="js/konto/konto.js?v=20261110f"></script>
 </body>
 </html>
