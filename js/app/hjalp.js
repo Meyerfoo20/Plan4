@@ -173,6 +173,7 @@ const HJALP_SEKTIONER = [
       html:
         "<ul>" +
         "<li>Allt sparas <b>automatiskt i molnet</b> och synkas mellan datorer. En kopia ligger i webbläsaren, så Wimo fungerar även utan nät och synkar när du är uppkopplad igen.</li>" +
+        "<li>Varje kort, hinder och tavla sparas för sig. Ändrar två personer <b>olika kort</b> samtidigt går båda ändringarna igenom. Bara om samma kort ändrats på två ställen får du välja vilken version som gäller.</li>" +
         "<li>Rutan <b>Molnsynk</b> längst ner i menyn visar om allt är sparat.</li>" +
         "<li>Efter att du flyttat eller tagit bort något visas <b>Ångra</b> längst ner en kort stund.</li>" +
         "<li>Bara projektets medlemmar och admin kommer åt ett projekt.</li>" +

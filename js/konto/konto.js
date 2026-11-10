@@ -10,11 +10,15 @@
      får användaren välja vilken version som gäller.
 
    Datamodell i Firestore:
-     anvandare/{uid}                 { epost, aktivtProjekt, uppdaterad }
-     projekt/{id}                    { namn, arkiverad, data, rev, uppdaterad, enhet, medlemmar, lasare }
-   där data är hela projektet som JSON-text och rev ökar med ett per sparning.
-   medlemmar är alla som har tillgång (uid). lasare är de medlemmar som bara
-   får läsa: de ser projektet men deras ändringar sparas aldrig.
+     anvandare/{uid}                 { epost, roll, status, aktivtProjekt, … }
+     projekt/{id}                    metadata: { namn, arkiverad, version: 2, tavlor, medlemmar, lasare,
+                                     projektAdmin, tavlaBeh, kod }
+     projekt/{id}/delar/…            projektets egna delar
+     projekt/{id}/tavlor/{tid}/poster/…  varje kort, hinder, historikrad och återkommande post för sig
+   Bara det som ändrats laddas upp och hämtas, så två personer som ändrar olika kort
+   krockar aldrig, och inget projekt blir för stort för molnet. Projekt i det gamla
+   formatet (hela projektet som JSON i fältet data) flyttas av projektadmin eller
+   huvudadmin första gången de öppnar Wimo. Se "molnformatet" nedan.
 
    Skriptet är ett vanligt skript som laddar Firebase med dynamisk import, så
    att det fungerar även när index.html öppnas direkt från disken.
@@ -23,9 +27,8 @@
     "use strict";
 
     const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
-    const MOLNNYCKEL = "plan4_moln";          // { uid, rev: {id: rev}, hash: {id: hash} }
+    const MOLNNYCKEL = "plan4_moln";          // { uid, v: 2, delar, tid, meta, v1 } (se molnformatet nedan)
     const ENHETNYCKEL = "plan4_enhet";
-    const MAX_PROJEKT_TECKEN = 900000;        // Firestore tillåter högst 1 MiB per dokument
     const $ = (id) => document.getElementById(id);
 
     const konfig = window.PLAN4_FIREBASE || {};
@@ -55,8 +58,18 @@
         return id;
     }
     const ENHET = enhetsId();
-    let moln = lasJson(MOLNNYCKEL, { uid: null, rev: {}, hash: {} });
-    function sparaMoln() { skrivJson(MOLNNYCKEL, moln); }
+    // Molnets baslinje på den här datorn:
+    //   delar[projekt][del] = [rev, kontrollsumma | null]   senast synkade version av varje del
+    //   tid[projekt][samling] = ms                         senaste ändringstid som hämtats
+    //   meta[projekt] = { n, a, o }                        namn, arkiverad och tavelordning vid senaste synk
+    //   v1[projekt] = rev                                  projekt som ännu ligger i det gamla formatet
+    function lasMolnet() {
+        const m = lasJson(MOLNNYCKEL, null) || {};
+        if (m.v === 2) return Object.assign({ delar: {}, tid: {}, meta: {}, v1: {} }, m);
+        return { uid: m.uid || null, v: 2, delar: {}, tid: {}, meta: {}, v1: Object.assign({}, m.rev || {}) };
+    }
+    let moln = lasMolnet();
+    function sparaMoln() { basVersion++; skrivJson(MOLNNYCKEL, moln); }
 
     // Kort, stabil kontrollsumma (FNV-1a) för att se om ett projekt ändrats sedan senaste synk.
     function hash(txt) {
@@ -65,8 +78,13 @@
         return (h >>> 0).toString(36) + ":" + txt.length;
     }
     const projektJson = (p) => JSON.stringify(p);
-    // Den som inte får ändra något har aldrig något eget att ladda upp.
-    const arAndrad = (p) => kanSkriva(p) && moln.hash[p.id] !== hash(projektJson(p));
+    // Den som inte får ändra något har aldrig något eget att ladda upp. Ett projekt som inte finns
+    // i molnet än räknas som ändrat om jag får skapa projekt.
+    function arAndrad(p) {
+        if (!anvandare || !kanSkriva(p)) return false;
+        if (!moln.delar[p.id]) return !projektMeta.has(p.id) && !kanda(p.id) && kanSkapaProjekt();
+        return andringar(p).length > 0 || !!metaAndring(p);
+    }
 
     // ---------- behörigheter ----------
     // Huvudadmin (roll "admin" på kontot) har full åtkomst till allt. Övriga har en roll per projekt:
@@ -83,6 +101,12 @@
         if (!anvandare) return { roll: "red", tavlor: {} };
         if (arAdmin()) return { roll: "huvud", tavlor: {} };
         const m = projektMeta.get(pid);
+        // gamla formatet: bara läsa tills projektadmin flyttat projektet (det sker av sig självt)
+        if (m && m.version !== 2 && !m.projektAdmin.includes(anvandare.uid)) {
+            const egna = (m.tavlaBeh && m.tavlaBeh[anvandare.uid]) || {}, ingen = {};
+            Object.keys(egna).forEach((tid) => { if (egna[tid] === "ingen") ingen[tid] = "ingen"; });
+            return { roll: "las", tavlor: ingen };
+        }
         if (m) return { roll: m.projektAdmin.includes(anvandare.uid) ? "admin" : m.lasare.includes(anvandare.uid) ? "las" : "red",
             tavlor: (m.tavlaBeh && m.tavlaBeh[anvandare.uid]) || {} };
         return behCache[pid] || { roll: "red", tavlor: {} };
@@ -109,7 +133,6 @@
     const innehall = (p) => JSON.stringify(Object.assign({}, p, { aktiv: undefined }));
     const lasBasis = new Map();               // id → innehållet senast det synkades med molnet
     // Tavlor man saknar åtkomst till tas bort ur den lokala kopian och läggs tillbaka orörda vid uppladdning.
-    const doldaTavlor = new Map();            // projektId → { ordning: [tavlaId], dolda: [tavla] } ur senaste molnversionen
 
     // ---------- Firebase ----------
     async function laddaFirebase() {
@@ -144,8 +167,9 @@
     const projektMeta = new Map();   // id → { namn, arkiverad, medlemmar, lasare, projektAdmin, tavlaBeh, tavlor }
     function metaFran(x) {
         let tavlor = [];
-        try { tavlor = (JSON.parse(x.data || "{}").tavlor || []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" })); } catch (e) { }
-        return { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, medlemmar: x.medlemmar || [], lasare: x.lasare || [],
+        if (x.version === 2) tavlor = (Array.isArray(x.tavlor) ? x.tavlor : []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" }));
+        else try { tavlor = (JSON.parse(x.data || "{}").tavlor || []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" })); } catch (e) { }
+        return { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, version: x.version === 2 ? 2 : 1, medlemmar: x.medlemmar || [], lasare: x.lasare || [],
             projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, kod: x.kod || "", tavlor: tavlor };
     }
     function lasMeta(docs) {
@@ -161,15 +185,15 @@
         return !poster && !fAktiviteter(p).length && !p.resurser.personer.length && !p.resurser.kategorier.length && !p.foretag.length;
     }
     function dialogOppen() { return !!$("overlay"); }
+    // Projekt i det gamla formatet (hela projektet i ett dokument). Läses bara, tills
+    // projektadmin eller huvudadmin har flyttat det till det nya formatet.
     function lasProjekt(data, lokal) {
         const p = JSON.parse(data);
         rustaProjekt(p, IDAG);
         if (lokal) return p;
         // tavlor utan åtkomst plockas bort (men minst en tavla blir kvar, som bara går att läsa)
-        const ordning = p.tavlor.map((t) => t.id);
         let dolda = p.tavlor.filter((t) => tavlaRatt(p.id, t.id) === "ingen");
         if (dolda.length === p.tavlor.length) dolda = dolda.slice(1);
-        doldaTavlor.set(p.id, { ordning: ordning, dolda: JSON.parse(JSON.stringify(dolda)) });
         if (dolda.length) {
             const bort = new Set(dolda.map((t) => t.id));
             p.tavlor = p.tavlor.filter((t) => !bort.has(t.id));
@@ -177,24 +201,195 @@
         }
         return p;
     }
-    // Det som laddas upp: den lokala kopian med de dolda tavlorna tillbaka på sina platser.
-    function uppladdningsJson(p, json) {
-        const d = doldaTavlor.get(p.id);
-        if (!d || !d.dolda.length) return json;
-        const q = JSON.parse(json), egna = new Map(q.tavlor.map((t) => [t.id, t])), dolda = new Map(d.dolda.map((t) => [t.id, t]));
+    function markeraSynkad(p) { lasBasis.set(p.id, innehall(p)); }
+
+    // ---------- molnformatet: projektet i små delar ----------
+    //   projekt/{id}                                  metadata: namn, arkiverad, medlemmar, behörigheter, kod,
+    //                                                 tavlor [{ id, namn }] i ordning och version 2
+    //   projekt/{id}/delar/bas                        projektets egna delar (inställningar, register, resurser …)
+    //   projekt/{id}/delar/logo                       logotypen
+    //   projekt/{id}/tavlor/{tid}/poster/_tavla       tavlans egna delar (namn, dagsläge …)
+    //   projekt/{id}/tavlor/{tid}/poster/kort_{id}    ett kort (likadant för hinder, historik och aterkom)
+    // Varje del har { data, pos, rev, andrad, borttagen }. rev ökar med ett per ändring och reglerna
+    // kräver det, så två samtidiga ändringar av samma del upptäcks. Borttagna delar ligger kvar med
+    // borttagen = true, så att den som bara hämtar det som ändrats sedan sist ser borttagningen.
+    // En tavla med Ingen åtkomst går inte att läsa alls: reglerna stoppar det.
+    const SAMLINGAR = ["kort", "hinder", "historik", "aterkom"];
+    const MAX_DEL = 900000;                   // Firestore tillåter högst 1 MiB per dokument
+    const MARGINAL = 60000;                   // ms: "ändrat sedan" hämtar lite extra bakåt
+    const arV2 = (pid) => { const m = projektMeta.get(pid); return !!(m && m.version === 2); };
+    const kanda = (pid) => !!(moln.delar[pid] || pid in moln.v1);
+    const docNamn = (id) => String(id).replace(/[\/\s.]/g, "_");
+    function delRef(pid, key) {
+        if (key.indexOf("/") < 0) return fb.fs.doc(fb.db, "projekt", pid, "delar", key);
+        const i = key.indexOf("/");
+        return fb.fs.doc(fb.db, "projekt", pid, "tavlor", key.slice(0, i), "poster", key.slice(i + 1));
+    }
+    const delSamling = (pid, coll) => coll === "delar" ? fb.fs.collection(fb.db, "projekt", pid, "delar")
+        : fb.fs.collection(fb.db, "projekt", pid, "tavlor", coll, "poster");
+    const kopiaDoc = (pid) => fb.fs.doc(fb.db, "projektkopior", pid);
+    const msAv = (t) => t && typeof t.toMillis === "function" ? t.toMillis() : 0;
+
+    // Varje post behöver ett eget id för att bli ett eget dokument.
+    function sakerstallIds(p) {
+        p.tavlor.forEach((t) => SAMLINGAR.forEach((s) => {
+            const sedda = new Set();
+            (t[s] || []).forEach((x) => {
+                if (!x || typeof x !== "object") return;
+                if (x.id === undefined || x.id === null || x.id === "" || sedda.has(docNamn(x.id))) x.id = uid();
+                sedda.add(docNamn(x.id));
+            });
+        }));
+    }
+    // Hela projektet → delar (nyckel → JSON-text) och deras position i listan.
+    function dela(p) {
+        const delar = new Map(), pos = new Map();
+        const x = JSON.parse(innehall(p));
+        const logo = x.logotyp, tavlor = x.tavlor || [];
+        delete x.logotyp; delete x.tavlor;
+        delar.set("bas", JSON.stringify(x));
+        if (logo) delar.set("logo", JSON.stringify(logo));
+        tavlor.forEach((t, i) => {
+            SAMLINGAR.forEach((s) => {
+                (t[s] || []).forEach((it, j) => {
+                    if (!it || typeof it !== "object") return;
+                    const key = t.id + "/" + s + "_" + docNamn(it.id);
+                    delar.set(key, JSON.stringify(it)); pos.set(key, j);
+                });
+                delete t[s];
+            });
+            delar.set(t.id + "/_tavla", JSON.stringify(t)); pos.set(t.id + "/_tavla", i);
+        });
+        return { delar, pos };
+    }
+    // Delar → hela projektet. Ordningen följer den lokala kopian (gammal) så långt det går,
+    // tavlorna följer projektets tavellista och nya poster hamnar efter sin position.
+    function bygg(pid, L, gammal, pos) {
+        if (!L.has("bas")) return null;
+        let p;
+        try { p = JSON.parse(L.get("bas")); } catch (e) { return null; }
+        p.id = pid;
+        try { p.logotyp = L.has("logo") ? JSON.parse(L.get("logo")) : null; } catch (e) { p.logotyp = null; }
+        const tav = new Map();
+        for (const [key, data] of L) {
+            const i = key.indexOf("/");
+            if (i < 0) continue;
+            const tid = key.slice(0, i), namn = key.slice(i + 1);
+            if (!tav.has(tid)) tav.set(tid, { t: null, s: {} });
+            const e = tav.get(tid);
+            if (namn === "_tavla") { e.t = data; continue; }
+            const s = namn.slice(0, namn.indexOf("_"));
+            if (SAMLINGAR.includes(s)) (e.s[s] = e.s[s] || []).push({ key, data });
+        }
+        const meta = projektMeta.get(pid);
+        const gt = new Map(((gammal && gammal.tavlor) || []).map((t, i) => [t.id, { t, i }]));
+        const mo = new Map(((meta && meta.tavlor) || []).map((t, i) => [t.id, i]));
+        const plats = (tid) => mo.has(tid) ? mo.get(tid) : gt.has(tid) ? 1e6 + gt.get(tid).i : 2e6 + (pos.get(tid + "/_tavla") || 0);
+        const ordning = [...tav.keys()].filter((tid) => tav.get(tid).t).sort((a, b) => plats(a) - plats(b));
+        const tavlor = [];
+        ordning.forEach((tid) => {
+            const e = tav.get(tid), g = gt.has(tid) ? gt.get(tid).t : null;
+            let t;
+            try { t = JSON.parse(e.t); } catch (err) { return; }
+            t.id = tid;
+            SAMLINGAR.forEach((s) => {
+                const lista = [];
+                (e.s[s] || []).forEach((x) => { try { lista.push({ obj: JSON.parse(x.data), key: x.key }); } catch (err) { } });
+                const gi = new Map(((g && g[s]) || []).map((it, i) => [it && it.id, i]));
+                const nyForst = s === "historik";           // historiken har de nyaste raderna först
+                const idx = (x) => gi.has(x.obj.id) ? gi.get(x.obj.id) : null;
+                lista.sort((a, b) => {
+                    const ia = idx(a), ib = idx(b);
+                    if (ia !== null && ib !== null) return ia - ib;
+                    if (ia === null && ib === null) {
+                        if (nyForst) { const d = String(b.obj.tid || "").localeCompare(String(a.obj.tid || "")); if (d) return d; }
+                        return (pos.get(a.key) || 0) - (pos.get(b.key) || 0);
+                    }
+                    return (ia === null) === nyForst ? -1 : 1;
+                });
+                t[s] = lista.map((x) => x.obj);
+            });
+            tavlor.push(t);
+        });
+        if (!tavlor.length) return null;
+        p.tavlor = tavlor;
+        p.aktiv = gammal && tavlor.some((t) => t.id === gammal.aktiv) ? gammal.aktiv : tavlor[0].id;
+        rustaProjekt(p, IDAG);
+        return p;
+    }
+    // Får jag ändra den här delen? Reglerna kontrollerar samma sak.
+    function tillat(pid, key) {
+        if (arAdmin()) return true;
+        if (key.indexOf("/") < 0) return !arLas(pid);
+        const r = tavlaRatt(pid, key.slice(0, key.indexOf("/")));
+        return r === "admin" || r === "red";
+    }
+    // De delar som ändrats lokalt sedan senaste synk (som jag får spara).
+    const andCache = new Map();
+    let basVersion = 0;                       // ökas när molnets baslinje ändras
+    function andringar(p) {
+        const b = moln.delar[p.id];
+        if (!b) return [];
+        sakerstallIds(p);
+        const j = projektJson(p), c = andCache.get(p.id);
+        if (c && c.j === j && c.v === basVersion) return c.ut;
+        const k = konflikter.get(p.id), iKonflikt = (key) => !!(k && k.delar && k.delar.has(key));
+        const { delar: L, pos } = dela(p), ut = [];
+        for (const [key, data] of L) {
+            const bb = b[key], h = hash(data);
+            if (bb && bb[1] === h) continue;
+            if (iKonflikt(key) || !tillat(p.id, key)) continue;
+            ut.push({ key, rev: (bb ? bb[0] : 0) + 1, h, falt: { data, pos: pos.get(key) || 0, borttagen: false } });
+        }
+        Object.keys(b).forEach((key) => {
+            if (b[key][1] === null || L.has(key) || iKonflikt(key) || !tillat(p.id, key)) return;
+            ut.push({ key, rev: b[key][0] + 1, h: null, falt: { data: "", pos: 0, borttagen: true } });
+        });
+        andCache.set(p.id, { j, v: basVersion, ut });
+        return ut;
+    }
+    // Tavellistan i metadata: mina tavlor i min ordning, tavlor jag inte ser (eller inte hämtat än) på sina platser.
+    function tavelLista(pid, p) {
+        const m = projektMeta.get(pid), b = moln.delar[pid] || {};
+        const lokala = p.tavlor.map((t) => ({ id: t.id, namn: t.namn || "Tavla" }));
+        const lok = new Set(lokala.map((t) => t.id));
         const ut = [];
-        d.ordning.forEach((id) => { if (egna.has(id)) { ut.push(egna.get(id)); egna.delete(id); } else if (dolda.has(id)) ut.push(dolda.get(id)); });
-        egna.forEach((t) => ut.push(t));
-        q.tavlor = ut;
-        return JSON.stringify(q);
+        let i = 0;
+        ((m && m.tavlor) || []).forEach((e) => {
+            if (lok.has(e.id)) { if (i < lokala.length) ut.push(lokala[i++]); }
+            else if (!(b[e.id + "/_tavla"] !== undefined && tavlaRatt(pid, e.id) !== "ingen")) ut.push({ id: e.id, namn: e.namn || "Tavla" });
+        });
+        while (i < lokala.length) ut.push(lokala[i++]);
+        return ut;
     }
-    // Saknar vi en dold tavla som borde finnas med? Då väntar uppladdningen tills molnet är inläst.
-    function saknarDolda(p) {
-        const b = minBeh(p.id);
-        if (b.roll === "huvud" || b.roll === "admin") return false;
-        return Object.values(b.tavlor).includes("ingen") && !doldaTavlor.has(p.id);
+    const tavelnamn = (p) => JSON.stringify(p.tavlor.map((t) => t.namn || "Tavla"));
+    const metaBas = (p) => ({ n: p.projekt, a: !!p.arkiverad, o: JSON.stringify(p.tavlor.map((t) => t.id)), t: tavelnamn(p) });
+    // Ändrat namn, arkivering eller tavellista som ska upp i metadata.
+    function metaAndring(p) {
+        const m = projektMeta.get(p.id);
+        if (!m || m.version !== 2 || arLas(p.id)) return null;
+        const bas = moln.meta[p.id] || {}, ny = metaBas(p);
+        if (bas.n === ny.n && bas.a === ny.a && bas.o === ny.o && bas.t === ny.t) return null;
+        const falt = {}, lista = tavelLista(p.id, p);
+        if (m.namn !== p.projekt) falt.namn = p.projekt;
+        if (!!m.arkiverad !== !!p.arkiverad) falt.arkiverad = !!p.arkiverad;
+        if (JSON.stringify(m.tavlor || []) !== JSON.stringify(lista)) falt.tavlor = lista;
+        return { falt, bas: ny };
     }
-    function markeraSynkad(p, rev) { moln.rev[p.id] = rev; moln.hash[p.id] = hash(projektJson(p)); lasBasis.set(p.id, innehall(p)); }
+    // Någon annan har ändrat tavlornas ordning: följ den om jag inte själv ändrat ordningen.
+    function foljTavelordning(pid) {
+        const p = plan4.projekt.find((x) => x.id === pid), m = projektMeta.get(pid), bas = moln.meta[pid];
+        if (!p || !m || m.version !== 2 || !bas) return false;
+        const har = new Set(p.tavlor.map((t) => t.id));
+        const rem = (m.tavlor || []).map((t) => t.id).filter((id) => har.has(id));
+        const lok = JSON.stringify(p.tavlor.map((t) => t.id));
+        if (lok !== bas.o || JSON.stringify(rem) === JSON.stringify([...har].filter((id) => rem.includes(id)))) return false;
+        const idx = new Map(rem.map((id, i) => [id, i]));
+        const fore = lok;
+        p.tavlor.sort((a, b) => (idx.has(a.id) ? idx.get(a.id) : 1e6) - (idx.has(b.id) ? idx.get(b.id) : 1e6));
+        bas.o = JSON.stringify(p.tavlor.map((t) => t.id));
+        return bas.o !== fore;
+    }
 
     // Läser behörigheterna ur projektdokumenten. Ändras vilka tavlor som syns läses projektet om.
     function uppdateraBeh(dokument) {
@@ -212,18 +407,6 @@
         });
         behCache = nyCache;
         skrivJson(LASNYCKEL, { uid: anvandare.uid, beh: nyCache });
-        // tavlor som blivit dolda eller synliga: läs om projektet från molnet (om inget lokalt väntar)
-        dokument.forEach((d) => {
-            const p = plan4.projekt.find((x) => x.id === d.id);
-            if (!p || !d.data) return;
-            let moln0;
-            try { moln0 = JSON.parse(d.data).tavlor || []; } catch (e) { return; }
-            const ska = new Set(moln0.filter((t) => tavlaRatt(d.id, t.id) !== "ingen").map((t) => t.id));
-            if (!ska.size && moln0.length) ska.add(moln0[0].id);
-            const har = new Set(p.tavlor.map((t) => t.id));
-            const fel = [...har].some((id) => moln0.some((t) => t.id === id) && !ska.has(id)) || [...ska].some((id) => !har.has(id));
-            if (fel && (d.rev || 0) === (moln.rev[d.id] || 0) && !arAndrad(p)) vantande.set(d.id, { data: d.data, rev: d.rev });
-        });
         if (andrat) { markeraLasvy(); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } startaAnvandarlista(); }
     }
     // Innehållet ett läsbehörigt projekt ska ha: senaste synk, annars den sparade kopian på datorn.
@@ -306,16 +489,6 @@
         if (namn) namn.readOnly = las;
     }
 
-    // Molnets version av de tavlor jag inte ser (läggs tillbaka orörda vid uppladdning).
-    function uppdateraDolda(pid, data) {
-        if (!data || !anvandare || arAdmin()) return;
-        try {
-            const p = JSON.parse(data), tav = p.tavlor || [];
-            let dolda = tav.filter((t) => tavlaRatt(pid, t.id) === "ingen");
-            if (dolda.length === tav.length) dolda = dolda.slice(1);
-            doldaTavlor.set(pid, { ordning: tav.map((t) => t.id), dolda: dolda });
-        } catch (e) { }
-    }
     const harNagonAdminroll = () => arAdmin() || [...projektMeta.keys()].some((id) => arProjektAdmin(id));
     function rollTagg(pid) {
         const b = minBeh(pid);
@@ -326,42 +499,98 @@
             (b.roll !== "admin" && t.includes("ingen") ? ' <span class="p4-ks-tagg">Vissa tavlor dolda</span>' : "");
     }
 
+    // ---------- hämta från molnet ----------
+    // Läser alla delar i ett projekt (de tavlor jag ser). Används första gången projektet hämtas till datorn.
+    async function hamtaDelar(pid) {
+        const delar = new Map(), pos = new Map(), tid = {}, b = {};
+        const las = async (coll) => {
+            const s = await fb.fs.getDocs(delSamling(pid, coll));
+            let max = 0;
+            s.docs.forEach((d) => {
+                const x = d.data(), key = coll === "delar" ? d.id : coll + "/" + d.id;
+                b[key] = [x.rev || 0, x.borttagen ? null : hash(x.data || "")];
+                if (!x.borttagen) { delar.set(key, x.data || ""); pos.set(key, x.pos || 0); }
+                max = Math.max(max, msAv(x.andrad));
+            });
+            tid[coll] = max;
+        };
+        await Promise.all([las("delar")].concat(synligaTavlor(pid).map(las)));
+        return { delar, pos, tid, b };
+    }
+    // Ett hämtat projekt blir den lokala kopian.
+    function anvandHamtat(pid, h, gammal) {
+        const p = bygg(pid, h.delar, gammal, h.pos);
+        if (!p) return null;
+        moln.delar[pid] = h.b;
+        moln.tid[pid] = h.tid;
+        moln.meta[pid] = metaBas(p);
+        delete moln.v1[pid];
+        markeraSynkad(p);
+        return p;
+    }
+    // Hämtar alla projekt i listan (nya formatet delvis, gamla formatet ur dokumentet).
+    async function hamtaAlla(dokument) {
+        const ut = [];
+        for (const d of dokument) {
+            if (d.version === 2) {
+                const h = await hamtaDelar(d.id);
+                const p = anvandHamtat(d.id, h, null);
+                if (p) ut.push(p);
+            } else if (typeof d.data === "string") {
+                try { const p = lasProjekt(d.data); moln.v1[d.id] = d.rev || 0; markeraSynkad(p); ut.push(p); }
+                catch (e) { console.warn("Wimo: kunde inte läsa " + d.id, e); }
+            }
+        }
+        return ut;
+    }
+
     // Läser in molnets projekt som hela Wimo (ersätter det lokala).
-    function anvandMolnet(dokument, aktivt) {
-        moln = { uid: anvandare.uid, rev: {}, hash: {} };
-        const projekt = dokument.map((d) => lasProjekt(d.data));
+    function anvandMolnet(projekt, aktivt) {
         if (!projekt.length) return false;
         angraForeAvbryt();
         laddaRot({ version: VERSION, aktivtProjekt: aktivt || null, projekt: projekt });
-        dokument.forEach((d, i) => markeraSynkad(projekt[i], d.rev));
         sparaMoln();
         vyOffset = 0; valdKedja = null; VADER = {};
         ursSparaNu();
         rita();
         return true;
     }
-
-    // Byter ut ett enskilt projekt mot molnets version.
-    function ersattProjekt(id, data, rev) {
-        const ny = lasProjekt(data);
-        const i = plan4.projekt.findIndex((p) => p.id === id);
+    // Sätter in ett projekt (nytt eller ersätter den lokala kopian).
+    function sattIn(ny) {
+        const id = ny.id, i = plan4.projekt.findIndex((p) => p.id === id);
+        const gammal = i >= 0 ? plan4.projekt[i] : null;
         if (i >= 0) plan4.projekt[i] = ny; else plan4.projekt.push(ny);
-        if (state.id === id) { angraForeAvbryt(); state = ny; valdKedja = null; }
-        markeraSynkad(ny, rev);
+        if (state === gammal || state.id === id) { angraForeAvbryt(); state = ny; valdKedja = null; }
         // ett tomt reservprojekt (när användaren saknade projekt) behövs inte längre
-        const reserv = plan4.projekt.findIndex((p) => p.id !== id && !(p.id in moln.rev) && !arAdmin());
+        const reserv = plan4.projekt.findIndex((p) => p.id !== id && !kanda(p.id) && !projektMeta.has(p.id) && !arAdmin() && arTomt(p));
         if (reserv >= 0) { const r = plan4.projekt[reserv]; plan4.projekt.splice(reserv, 1); if (state.id === r.id) state = ny; }
+    }
+    function arTomt(p) {
+        const poster = p.tavlor.reduce((n, t) => n + t.kort.length + t.hinder.length + t.aterkom.length, 0);
+        return !poster && !fAktiviteter(p).length && !p.resurser.personer.length && !p.resurser.kategorier.length && !p.foretag.length;
+    }
+    // Projekt i gamla formatet: byt ut den lokala kopian mot molnets.
+    function ersattV1(id, data, rev) {
+        let ny;
+        try { ny = lasProjekt(data); } catch (e) { return; }
+        sattIn(ny);
+        moln.v1[id] = rev;
+        markeraSynkad(ny);
         sparaMoln();
         ursSparaNu();
         rita();
         kontrolleraTillgang();
     }
-
+    function glomProjekt(id) {
+        delete moln.delar[id]; delete moln.tid[id]; delete moln.meta[id]; delete moln.v1[id];
+        andCache.delete(id); lasBasis.delete(id);
+        sparaMoln();
+    }
     function taBortLokalt(id) {
         const i = plan4.projekt.findIndex((p) => p.id === id);
+        glomProjekt(id);
         if (i < 0) return;
         plan4.projekt.splice(i, 1);
-        delete moln.rev[id]; delete moln.hash[id]; sparaMoln();
         if (!plan4.projekt.length) {
             const p = nyttProjekt("Projekt", "Produktion", IDAG);
             rustaProjekt(p, IDAG);
@@ -378,6 +607,8 @@
         clearTimeout(pushTimer);
         pushTimer = setTimeout(push, ms == null ? 1500 : ms);
     }
+    const skickat = new Map();     // "projekt|del" → rev som skickats (ekot från molnet hoppas över)
+    let aktivtSkrivet;             // senast sparade aktiva projekt i användardokumentet
 
     async function push() {
         if (!anvandare || !synkKlar) return;
@@ -385,63 +616,20 @@
         pushPagar = true;
         let fel = null;
         try {
-            const lokala = new Set();
-            for (const p of plan4.projekt) {
-                lokala.add(p.id);
-                if (konflikter.has(p.id) || !arAndrad(p)) continue;
-                if (!(p.id in moln.rev) && !kanSkapaProjekt()) continue;    // bara den som får skapa projekt lägger till nya
-                if (saknarDolda(p)) continue;                          // väntar på molnets version av de dolda tavlorna
-                const json = projektJson(p), upp = uppladdningsJson(p, json);
-                if (upp.length > MAX_PROJEKT_TECKEN) {
-                    status("Projektet " + p.projekt + " är för stort för molnet och kan inte sparas där", true);
-                    continue;
-                }
-                const ref = projektDoc(p.id), vantad = moln.rev[p.id] || 0;
-                let utfall;
-                try {
-                    utfall = await fb.fs.runTransaction(fb.db, async (tx) => {
-                        const snap = await tx.get(ref);
-                        const molnRev = snap.exists() ? snap.data().rev || 0 : 0;
-                        if (molnRev !== vantad) return { konflikt: true, snap };
-                        const x = snap.exists() ? snap.data() : {};
-                        const nyttKod = snap.exists() ? "" : nyKod();
-                        const dok = { namn: p.projekt, arkiverad: !!p.arkiverad, data: upp, rev: molnRev + 1,
-                            uppdaterad: fb.fs.serverTimestamp(), enhet: ENHET,
-                            medlemmar: snap.exists() ? x.medlemmar || [] : [anvandare.uid],
-                            lasare: x.lasare || [],
-                            // den som skapar ett projekt utan att vara huvudadmin blir projektadmin i det
-                            projektAdmin: snap.exists() ? x.projektAdmin || [] : (arAdmin() ? [] : [anvandare.uid]),
-                            tavlaBeh: x.tavlaBeh || {} };
-                        if (x.kod || nyttKod) dok.kod = x.kod || nyttKod;
-                        tx.set(ref, dok);
-                        // ett nytt projekt får en projektkod direkt
-                        if (nyttKod) tx.set(kodDoc(nyttKod), { projekt: p.id, namn: p.projekt });
-                        return { rev: molnRev + 1 };
-                    });
-                } catch (e) {
-                    if (e && e.code === "permission-denied") continue;   // inte längre medlem — lyssnaren tar bort projektet
-                    throw e;
-                }
-                if (utfall.konflikt) {
-                    const d = utfall.snap.exists() ? utfall.snap.data() : null;
-                    registreraKonflikt(p.id, p.projekt, d);
-                } else {
-                    moln.rev[p.id] = utfall.rev;
-                    moln.hash[p.id] = hash(json);
-                    lasBasis.set(p.id, innehall(JSON.parse(json)));
-                    sparaMoln();
-                }
-            }
+            for (const p of plan4.projekt.slice()) await pushProjekt(p);
             // projekt som admin raderat permanent här tas bort i molnet
-            for (const id of Object.keys(moln.rev)) {
-                if (lokala.has(id) || konflikter.has(id) || !arAdmin()) continue;
-                const gammalKod = (projektMeta.get(id) || {}).kod;
-                if (gammalKod) await fb.fs.deleteDoc(kodDoc(gammalKod)).catch(() => { });
-                await fb.fs.deleteDoc(projektDoc(id));
-                delete moln.rev[id]; delete moln.hash[id]; sparaMoln();
+            if (arAdmin()) {
+                const lokala = new Set(plan4.projekt.map((p) => p.id));
+                for (const id of Object.keys(moln.delar).concat(Object.keys(moln.v1))) {
+                    if (lokala.has(id) || konflikter.has(id)) continue;
+                    await raderaIMolnet(id);
+                }
             }
-            await fb.fs.setDoc(anvDoc(), { epost: anvandare.email || "", aktivtProjekt: plan4.aktivtProjekt || null,
-                uppdaterad: fb.fs.serverTimestamp() }, { merge: true });
+            const aktivt = plan4.aktivtProjekt || null;
+            if (aktivt !== aktivtSkrivet) {
+                await fb.fs.setDoc(anvDoc(), { epost: anvandare.email || "", aktivtProjekt: aktivt, uppdaterad: fb.fs.serverTimestamp() }, { merge: true });
+                aktivtSkrivet = aktivt;
+            }
             senastSynkad = new Date();
         } catch (e) { fel = e; }
         pushPagar = false;
@@ -454,10 +642,109 @@
         if (pushIgen) { pushIgen = false; schemalaggPush(200); }
     }
 
+    // Laddar upp de delar av ett projekt som ändrats. Ett nytt projekt skapas med metadata,
+    // projektkod och alla delar; det första paketet skrivs i ett svep.
+    async function pushProjekt(p) {
+        const pid = p.id, m = projektMeta.get(pid);
+        if (!kanSkriva(p)) return;
+        const ny = !m && !moln.delar[pid] && !kanda(pid);
+        if (ny && !kanSkapaProjekt()) return;                     // bara den som får skapa projekt lägger till nya
+        if (!ny && (!m || m.version !== 2 || !moln.delar[pid])) return;   // gamla formatet: flyttas av projektadmin först
+        let ops;
+        if (ny) {
+            sakerstallIds(p);
+            const { delar: L, pos } = dela(p);
+            ops = [...L].map(([key, data]) => ({ key, rev: 1, h: hash(data), falt: { data, pos: pos.get(key) || 0, borttagen: false } }));
+        } else ops = andringar(p).slice();
+        const stor = ops.filter((o) => o.falt.data.length > MAX_DEL);
+        if (stor.length) {
+            status("En del av " + p.projekt + " är för stor för molnet och sparas bara på den här datorn", true);
+            ops = ops.filter((o) => o.falt.data.length <= MAX_DEL);
+        }
+        const metaOp = ny ? null : metaAndring(p);
+        if (!ops.length && !metaOp) return;
+        const b = ny ? {} : moln.delar[pid];
+        const skriv = (bt, o) => bt.set(delRef(pid, o.key), Object.assign({ rev: o.rev, andrad: fb.fs.serverTimestamp() }, o.falt));
+        for (let i = 0; i < ops.length || (ny && i === 0); i += 400) {
+            const del = ops.slice(i, i + 400), bt = fb.fs.writeBatch(fb.db);
+            if (ny && i === 0) {
+                const kod = nyKod();
+                bt.set(projektDoc(pid), { namn: p.projekt, arkiverad: !!p.arkiverad, version: 2, enhet: ENHET,
+                    tavlor: p.tavlor.map((t) => ({ id: t.id, namn: t.namn || "Tavla" })),
+                    medlemmar: [anvandare.uid], lasare: [], tavlaBeh: {}, kod: kod,
+                    // den som skapar ett projekt utan att vara huvudadmin blir projektadmin i det
+                    projektAdmin: arAdmin() ? [] : [anvandare.uid], andrad: fb.fs.serverTimestamp() });
+                bt.set(kodDoc(kod), { projekt: pid, namn: p.projekt });
+            }
+            del.forEach((o) => { skriv(bt, o); skickat.set(pid + "|" + o.key, o.rev); });
+            try {
+                await bt.commit();
+                del.forEach((o) => { b[o.key] = [o.rev, o.h]; });
+                if (ny && i === 0) { moln.delar[pid] = b; moln.tid[pid] = {}; moln.meta[pid] = metaBas(p); moln.uid = anvandare.uid; }
+            } catch (e) {
+                if (!e || e.code !== "permission-denied") { sparaMoln(); throw e; }
+                del.forEach((o) => skickat.delete(pid + "|" + o.key));
+                if (ny && i === 0) return;                         // fick inte skapa projektet
+                await enOchEn(pid, del, b);
+            }
+            sparaMoln();
+        }
+        if (metaOp) {
+            try {
+                if (Object.keys(metaOp.falt).length)
+                    await fb.fs.updateDoc(projektDoc(pid), Object.assign({ andrad: fb.fs.serverTimestamp(), enhet: ENHET }, metaOp.falt));
+                moln.meta[pid] = metaOp.bas;
+                sparaMoln();
+            } catch (e) { if (!e || e.code !== "permission-denied") throw e; }
+        }
+    }
+    // Ett paket nekades: skriv delarna en och en och se vilka som ändrats av någon annan.
+    async function enOchEn(pid, ops, b) {
+        const krockar = [];
+        for (const o of ops) {
+            try {
+                skickat.set(pid + "|" + o.key, o.rev);
+                await fb.fs.setDoc(delRef(pid, o.key), Object.assign({ rev: o.rev, andrad: fb.fs.serverTimestamp() }, o.falt));
+                b[o.key] = [o.rev, o.h];
+            } catch (e) {
+                skickat.delete(pid + "|" + o.key);
+                if (!e || e.code !== "permission-denied") throw e;
+                let d;
+                try { d = await fb.fs.getDoc(delRef(pid, o.key)); } catch (e2) { continue; }   // ingen åtkomst längre
+                if (!d.exists()) { delete b[o.key]; continue; }      // finns inte: skapas på nytt nästa gång
+                const x = d.data(), mh = x.borttagen ? null : hash(x.data || "");
+                if (mh === o.h) { b[o.key] = [x.rev || 0, mh]; continue; }   // samma innehåll
+                krockar.push({ key: o.key, rev: x.rev || 0, data: x.data || "", pos: x.pos || 0, borttagen: !!x.borttagen });
+            }
+        }
+        if (krockar.length) registreraKonflikter(pid, krockar);
+    }
+    // Huvudadmin har raderat projektet: ta bort det och alla dess delar i molnet.
+    async function raderaIMolnet(id) {
+        const keys = Object.keys(moln.delar[id] || {});
+        const kod = (projektMeta.get(id) || {}).kod;
+        for (let i = 0; i < keys.length; i += 400) {
+            const bt = fb.fs.writeBatch(fb.db);
+            keys.slice(i, i + 400).forEach((key) => bt.delete(delRef(id, key)));
+            await bt.commit();
+        }
+        if (kod) await fb.fs.deleteDoc(kodDoc(kod)).catch(() => { });
+        await fb.fs.deleteDoc(projektDoc(id));
+        glomProjekt(id);
+    }
+
     // ---------- konflikter ----------
-    function registreraKonflikt(id, namn, molnDok) {
-        konflikter.set(id, { namn: namn, molnData: molnDok ? molnDok.data : null, molnRev: molnDok ? molnDok.rev : 0,
-            borttagen: !molnDok });
+    // Samma del (ett kort, ett hinder …) har ändrats både här och någon annanstans.
+    function registreraKonflikter(id, lista) {
+        const p = plan4.projekt.find((x) => x.id === id);
+        const k = konflikter.get(id) || { namn: p ? p.projekt : "", delar: new Map(), borttagen: false };
+        lista.forEach((r) => k.delar.set(r.key, r));
+        konflikter.set(id, k);
+        lage = "konflikt";
+        uppdateraUI();
+    }
+    function registreraBorttaget(id, namn) {
+        konflikter.set(id, { namn: namn, delar: new Map(), borttagen: true });
         lage = "konflikt";
         uppdateraUI();
     }
@@ -465,14 +752,20 @@
         const k = konflikter.get(id);
         if (!k) return;
         konflikter.delete(id);
-        if (behallMin) {
-            moln.rev[id] = k.molnRev;      // nästa uppladdning skriver över molnets version
-            moln.hash[id] = "";
+        if (k.borttagen) {
+            if (behallMin) glomProjekt(id);              // laddas upp som ett nytt projekt
+            else taBortLokalt(id);
+        } else if (behallMin) {
+            // nästa uppladdning skriver över molnets version av just de delarna
+            const b = moln.delar[id] || {};
+            k.delar.forEach((r, key) => { b[key] = [r.rev, "konflikt"]; });
+            moln.delar[id] = b;
             sparaMoln();
-        } else if (k.borttagen) {
-            taBortLokalt(id);
         } else {
-            ersattProjekt(id, k.molnData, k.molnRev);
+            const ink = inkFor(id);
+            ink.tvinga = true;
+            k.delar.forEach((r, key) => ink.delar.set(key, r));
+            tillampaVantande();
         }
         lage = konflikter.size ? "konflikt" : "synkad";
         uppdateraUI();
@@ -480,52 +773,254 @@
     }
 
     // ---------- ändringar från andra enheter ----------
-    const vantande = new Map();   // ändringar som väntar på att en dialog stängs
+    // Metadata för projekten lyssnas på som förut. För varje projekt i nya formatet lyssnar vi
+    // dessutom på delar och på varje tavla jag ser, men bara på det som ändrats sedan sist.
+    const inkommande = new Map();     // projektId → { delar: Map(nyckel → del), tider: { samling: ms }, rensa: Set(tid) }
+    const vantandeBort = new Map();   // projektId → namn (åtkomsten är borta)
+    const vantandeV1 = new Map();     // projektId → { data, rev } i gamla formatet
+    const vantandeHela = new Map();   // projektId → hämtat projekt som ska sättas in
+    const v1Data = new Map();         // projektId → { data, rev } för flytten till nya formatet
+    const delLyss = new Map();        // "projekt|samling" → avregistrering
+    const vantande = { get size() { return inkommande.size + vantandeBort.size + vantandeV1.size + vantandeHela.size; } };
+    function rensaVantande() { inkommande.clear(); vantandeBort.clear(); vantandeV1.clear(); vantandeHela.clear(); skickat.clear(); }
+    function inkFor(pid) {
+        if (!inkommande.has(pid)) inkommande.set(pid, { delar: new Map(), tider: {}, rensa: new Set() });
+        return inkommande.get(pid);
+    }
+    function synligaTavlor(pid) {
+        const m = projektMeta.get(pid);
+        return ((m && m.tavlor) || []).map((t) => t.id).filter((tid) => arAdmin() || tavlaRatt(pid, tid) !== "ingen");
+    }
     function lyssna() {
         if (lyssnare) lyssnare();
         lyssnare = fb.fs.onSnapshot(projektFraga(), (snap) => {
             if (arAdmin()) { lasMeta(snap.docs); if (kontoOppen()) { ritaSynkkort(); ritaAdmin(); } if (gruppFel) startaAnsokningar(); if (synkKlar) skapaSaknadeKoder(); }
             else uppdateraBeh(snap.docs.map((d) => Object.assign({ id: d.id }, d.data())));
             samlaAnsokningar();
-            // molnets version av tavlor man inte ser, så att de följer med orörda vid uppladdning
-            snap.docs.forEach((d) => { const x = d.data(); if ((x.rev || 0) >= (moln.rev[d.id] || 0)) uppdateraDolda(d.id, x.data); });
             snap.docChanges().forEach((c) => {
                 const id = c.doc.id, d = c.doc.data();
                 if (c.type === "removed") {
-                    if (!(id in moln.rev)) return;
+                    v1Data.delete(id);
+                    if (!kanda(id)) return;
                     const p = plan4.projekt.find((x) => x.id === id);
-                    if (!arAdmin()) {
-                        // borttagen ur projektet (eller projektet raderat): åtkomsten är borta
-                        vantande.set(id, { borttagen: true, namn: p ? p.projekt : "" });
-                        return;
-                    }
-                    if (p && arAndrad(p)) registreraKonflikt(id, p.projekt, null);
-                    else vantande.set(id, { borttagen: true });
+                    // borttagen ur projektet (eller projektet raderat): åtkomsten är borta
+                    if (arAdmin() && p && arAndrad(p)) registreraBorttaget(id, p.projekt);
+                    else vantandeBort.set(id, p ? p.projekt : "");
                     return;
                 }
-                if ((d.rev || 0) <= (moln.rev[id] || 0)) return;          // eget eko eller redan inläst
-                const p = plan4.projekt.find((x) => x.id === id);
-                if (p && arAndrad(p)) registreraKonflikt(id, p.projekt, d);
-                else vantande.set(id, { data: d.data, rev: d.rev });
+                if (d.version !== 2) {
+                    if (typeof d.data !== "string") return;
+                    v1Data.set(id, { data: d.data, rev: d.rev || 0 });
+                    if ((d.rev || 0) > (moln.v1[id] || 0) || !plan4.projekt.some((x) => x.id === id)) {
+                        const p = plan4.projekt.find((x) => x.id === id);
+                        if (!(p && arProjektAdmin(id) && arAndrad(p))) vantandeV1.set(id, { data: d.data, rev: d.rev || 0 });
+                    }
+                    return;
+                }
+                v1Data.delete(id);
             });
+            let omordnat = false;
+            projektMeta.forEach((m, id) => { if (foljTavelordning(id)) omordnat = true; });
+            if (omordnat) { sparaMoln(); ursSparaNu(); rita(); }
+            synkaDelLyssnare();
+            hamtaNya();
             tillampaVantande();
+            flyttaTillV2();
         }, (e) => { console.warn("Wimo molnlyssnare:", e); lage = "offline"; uppdateraUI(); });
+    }
+    // Startar och stoppar lyssnarna på delarna så att de följer projekten och tavlorna jag ser.
+    function synkaDelLyssnare() {
+        if (!anvandare || !fb) return;
+        const vill = new Map();
+        projektMeta.forEach((m, pid) => {
+            if (m.version !== 2 || !moln.delar[pid]) return;
+            vill.set(pid + "|delar", [pid, "delar"]);
+            synligaTavlor(pid).forEach((tid) => vill.set(pid + "|" + tid, [pid, tid]));
+        });
+        for (const [k, av] of delLyss) {
+            if (vill.has(k)) continue;
+            av(); delLyss.delete(k);
+            const [pid, coll] = k.split("|");
+            // tavlan syns inte längre för mig: den tas bort från datorn
+            if (coll !== "delar" && projektMeta.has(pid) && moln.delar[pid]) inkFor(pid).rensa.add(coll);
+        }
+        for (const [k, [pid, coll]] of vill) if (!delLyss.has(k)) startaDelLyss(pid, coll);
+    }
+    function stoppaDelLyssnare() {
+        delLyss.forEach((av) => av());
+        delLyss.clear();
+    }
+    function startaDelLyss(pid, coll) {
+        const T = (moln.tid[pid] || {})[coll] || 0;
+        const samling = delSamling(pid, coll);
+        const q = T ? fb.fs.query(samling, fb.fs.where("andrad", ">", fb.fs.Timestamp.fromMillis(Math.max(0, T - MARGINAL)))) : samling;
+        delLyss.set(pid + "|" + coll, fb.fs.onSnapshot(q, (snap) => {
+            const ink = inkFor(pid);
+            snap.docChanges().forEach((c) => {
+                if (c.type === "removed" || c.doc.metadata.hasPendingWrites) return;
+                const x = c.doc.data(), key = coll === "delar" ? c.doc.id : coll + "/" + c.doc.id;
+                const fore = ink.delar.get(key), rev = x.rev || 0;
+                if (!fore || rev > fore.rev) ink.delar.set(key, { key, rev, data: x.data || "", pos: x.pos || 0, borttagen: !!x.borttagen });
+                ink.tider[coll] = Math.max(ink.tider[coll] || 0, msAv(x.andrad));
+            });
+            if (!ink.delar.size && !ink.rensa.size && !Object.keys(ink.tider).length) inkommande.delete(pid);
+            tillampaVantande();
+        }, (e) => { console.warn("Wimo molnlyssnare (" + coll + "):", e); delLyss.delete(pid + "|" + coll); }));
+    }
+    // Projekt jag nyss fått tillgång till (eller som just flyttats till nya formatet) hämtas i sin helhet.
+    const hamtas = new Set();
+    function hamtaNya() {
+        projektMeta.forEach((m, pid) => {
+            if (m.version !== 2 || moln.delar[pid] || hamtas.has(pid)) return;
+            if (plan4.projekt.some((p) => p.id === pid) && !kanda(pid)) return;   // mitt nya projekt som just skapas
+            hamtas.add(pid);
+            hamtaDelar(pid).then((h) => {
+                hamtas.delete(pid);
+                if (!anvandare || !projektMeta.has(pid) || moln.delar[pid]) return;
+                vantandeHela.set(pid, h);
+                tillampaVantande();
+            }).catch((e) => { hamtas.delete(pid); console.warn("Wimo hämtning:", e); });
+        });
     }
     function tillampaVantande() {
         if (!vantande.size) return;
         if (dialogOppen()) { uppdateraUI(); return; }
         const borta = [];
-        for (const [id, v] of vantande) {
-            if (v.borttagen) { taBortLokalt(id); if (v.namn) borta.push(v.namn); }
-            else ersattProjekt(id, v.data, v.rev);
+        let andrat = false;
+        for (const [id, namn] of vantandeBort) { taBortLokalt(id); if (namn) borta.push(namn); }
+        vantandeBort.clear();
+        for (const [id, v] of vantandeV1) ersattV1(id, v.data, v.rev);
+        vantandeV1.clear();
+        for (const [id, h] of vantandeHela) {
+            const gammal = plan4.projekt.find((p) => p.id === id) || null;
+            const p = anvandHamtat(id, h, gammal);
+            if (p) { sattIn(p); andrat = true; }
         }
-        vantande.clear();
-        status(borta.length ? "Du har inte längre tillgång till " + borta.join(", ") : "Uppdaterat");
+        vantandeHela.clear();
+        for (const [id, ink] of [...inkommande]) {
+            inkommande.delete(id);
+            if (tillampaDelar(id, ink)) andrat = true;
+        }
+        if (andrat) {
+            moln.uid = anvandare.uid;
+            sparaMoln();
+            ursSparaNu();
+            rita();
+            kontrolleraTillgang();
+            status(borta.length ? "Du har inte längre tillgång till " + borta.join(", ") : "Uppdaterat");
+            schemalaggPush();
+        } else if (borta.length) status("Du har inte längre tillgång till " + borta.join(", "));
+        synkaDelLyssnare();
         uppdateraUI();
+    }
+    // För in andras ändringar i den lokala kopian. Det jag själv ändrat och inte laddat upp
+    // ligger kvar; har samma del ändrats på båda ställena blir det en konflikt för just den delen.
+    function tillampaDelar(pid, ink) {
+        const m = projektMeta.get(pid), b = moln.delar[pid];
+        if (!m || m.version !== 2 || !b) return false;
+        const i0 = plan4.projekt.findIndex((x) => x.id === pid);
+        if (i0 < 0) return false;
+        const gammal = plan4.projekt[i0];
+        sakerstallIds(gammal);
+        const { delar: L, pos } = dela(gammal);
+        let andrat = false;
+        ink.rensa.forEach((tid) => {
+            for (const key of [...L.keys()]) if (key.startsWith(tid + "/")) { L.delete(key); andrat = true; }
+            Object.keys(b).forEach((key) => { if (key.startsWith(tid + "/")) delete b[key]; });
+            if (moln.tid[pid]) delete moln.tid[pid][tid];
+        });
+        const krockar = [];
+        for (const [key, r] of ink.delar) {
+            if (ink.rensa.has(key.split("/")[0]) && key.indexOf("/") > 0) continue;
+            const bb = b[key], brev = bb ? bb[0] : 0;
+            if (!ink.tvinga && (r.rev <= brev || (skickat.get(pid + "|" + key) || 0) >= r.rev)) continue;
+            const lokal = L.has(key) ? hash(L.get(key)) : null, bas = bb ? bb[1] : null, mh = r.borttagen ? null : hash(r.data);
+            if (!ink.tvinga && lokal !== bas && lokal !== mh) { krockar.push(r); continue; }
+            if (r.borttagen) L.delete(key); else { L.set(key, r.data); pos.set(key, r.pos); }
+            b[key] = [r.rev, mh];
+            if (lokal !== mh) andrat = true;
+        }
+        if (krockar.length) registreraKonflikter(pid, krockar);
+        else if (ink.tvinga) { const k = konflikter.get(pid); if (k && !k.delar.size) konflikter.delete(pid); }
+        const tider = moln.tid[pid] = moln.tid[pid] || {};
+        Object.keys(ink.tider).forEach((c) => { if (!ink.rensa.has(c)) tider[c] = Math.max(tider[c] || 0, ink.tider[c]); });
+        if (!andrat) { sparaMoln(); return false; }
+        const ny = bygg(pid, L, gammal, pos);
+        if (!ny) {
+            // inga tavlor kvar som jag ser: projektet tas bort från datorn
+            vantandeBort.set(pid, gammal.projekt);
+            return false;
+        }
+        sattIn(ny);
+        const bas = moln.meta[pid];
+        if (bas && bas.o === JSON.stringify(gammal.tavlor.map((t) => t.id))) bas.o = JSON.stringify(ny.tavlor.map((t) => t.id));
+        if (bas && bas.n === gammal.projekt) bas.n = ny.projekt;
+        if (bas && bas.a === !!gammal.arkiverad) bas.a = !!ny.arkiverad;
+        if (bas && bas.t === tavelnamn(gammal)) bas.t = tavelnamn(ny);
+        markeraSynkad(ny);
+        return true;
     }
     // en väntande uppdatering tillämpas när dialogen stängs
     const ursStangModal = stangModal;
     stangModal = function () { ursStangModal.apply(this, arguments); setTimeout(tillampaVantande, 0); };
+
+    // ---------- flytt till nya formatet ----------
+    // Projektadmin eller huvudadmin delar upp ett projekt i gamla formatet i små delar.
+    // Hela gamla versionen sparas som kopia i projektkopior/{id}.
+    let flyttPagar = false;
+    async function flyttaTillV2() {
+        if (flyttPagar || !synkKlar || !anvandare) return;
+        const lista = [...v1Data.keys()].filter((id) => projektMeta.has(id) && !arV2(id) && arProjektAdmin(id));
+        if (!lista.length) return;
+        flyttPagar = true;
+        try { for (const id of lista) await flyttaProjekt(id).catch((e) => console.warn("Wimo flytt av " + id + ":", e)); }
+        finally { flyttPagar = false; }
+    }
+    async function flyttaProjekt(pid) {
+        const v = v1Data.get(pid);
+        if (!v) return;
+        const full = JSON.parse(v.data);
+        full.id = pid;
+        rustaProjekt(full, IDAG);
+        sakerstallIds(full);
+        const { delar: L, pos } = dela(full);
+        const keys = [...L.keys()];
+        for (let i = 0; i < keys.length; i += 400) {
+            const bt = fb.fs.writeBatch(fb.db);
+            keys.slice(i, i + 400).forEach((key) => bt.set(delRef(pid, key),
+                { data: L.get(key), pos: pos.get(key) || 0, rev: 1, andrad: fb.fs.serverTimestamp(), borttagen: false }));
+            await bt.commit();
+        }
+        const lista = full.tavlor.map((t) => ({ id: t.id, namn: t.namn || "Tavla" }));
+        const klart = await fb.fs.runTransaction(fb.db, async (tx) => {
+            const s = await tx.get(projektDoc(pid));
+            if (!s.exists()) return false;
+            const x = s.data();
+            if (x.version === 2 || (x.rev || 0) !== v.rev) return false;      // ändrat under tiden: görs om
+            tx.set(kopiaDoc(pid), { data: x.data, rev: x.rev || 0, namn: x.namn || "", tid: fb.fs.serverTimestamp(), av: anvandare.uid });
+            tx.update(projektDoc(pid), { version: 2, tavlor: lista, data: fb.fs.deleteField(), rev: fb.fs.deleteField(),
+                andrad: fb.fs.serverTimestamp(), enhet: ENHET });
+            return true;
+        });
+        if (!klart) return;
+        v1Data.delete(pid);
+        const b = {};
+        L.forEach((data, key) => { b[key] = [1, hash(data)]; });
+        moln.delar[pid] = b;
+        moln.tid[pid] = {};
+        delete moln.v1[pid];
+        const m = projektMeta.get(pid);
+        if (m) { m.version = 2; m.tavlor = lista; }
+        const lokal = plan4.projekt.find((p) => p.id === pid);
+        if (lokal) moln.meta[pid] = metaBas(full);
+        else {
+            const p = bygg(pid, L, null, pos);
+            if (p) { moln.meta[pid] = metaBas(p); markeraSynkad(p); sattIn(p); ursSparaNu(); rita(); }
+        }
+        sparaMoln();
+        synkaDelLyssnare();
+        schemalaggPush();
+    }
 
     // ---------- första synken efter inloggning ----------
     async function forstaSynk() {
@@ -535,40 +1030,56 @@
         if (arAdmin()) lasMeta(snap.docs);
         const dokument = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
         if (!arAdmin()) uppdateraBeh(dokument); else markeraLasvy();
-        dokument.forEach((d) => uppdateraDolda(d.id, d.data));
+        v1Data.clear();
+        dokument.forEach((d) => { if (d.version !== 2 && typeof d.data === "string") v1Data.set(d.id, { data: d.data, rev: d.rev || 0 }); });
         const aktivt = anvSnap.exists() ? anvSnap.data().aktivtProjekt : null;
+        aktivtSkrivet = aktivt;
         const agare = moln.uid;
 
         if (agare === anvandare.uid) {
-            // Samma konto som förut på den här datorn: molnet gäller, utom där det finns
-            // lokala ändringar som inte hunnit laddas upp.
+            // Samma konto som förut på den här datorn: det som redan finns här synkas med
+            // det som ändrats sedan sist; projekt som saknas här hämtas i sin helhet.
             for (const d of dokument) {
                 const p = plan4.projekt.find((x) => x.id === d.id);
-                const kandRev = moln.rev[d.id] || 0;
-                if (!p) { if (!(d.id in moln.rev)) ersattProjekt(d.id, d.data, d.rev); continue; }
-                if (d.rev === kandRev) continue;                          // lokala ändringar laddas upp nedan
-                if (arAndrad(p)) registreraKonflikt(d.id, p.projekt, d);
-                else ersattProjekt(d.id, d.data, d.rev);
+                if (d.version === 2) {
+                    if (moln.delar[d.id] && p) continue;              // lyssnarna hämtar det som ändrats
+                    const h = await hamtaDelar(d.id);
+                    const ny = anvandHamtat(d.id, h, p || null);
+                    if (ny) sattIn(ny);
+                    continue;
+                }
+                if (typeof d.data !== "string") continue;
+                if (p && (d.rev || 0) === (moln.v1[d.id] || 0)) continue;
+                ersattV1(d.id, d.data, d.rev || 0);
             }
             const iMolnet = new Set(dokument.map((d) => d.id));
-            for (const id of Object.keys(moln.rev)) {
+            for (const id of Object.keys(moln.delar).concat(Object.keys(moln.v1))) {
                 if (iMolnet.has(id)) continue;
                 const p = plan4.projekt.find((x) => x.id === id);
-                if (p && arAndrad(p)) registreraKonflikt(id, p.projekt, null);
+                if (p && arAdmin() && arAndrad(p)) registreraBorttaget(id, p.projekt);
                 else if (p) taBortLokalt(id);
+                else glomProjekt(id);
             }
+            sparaMoln(); ursSparaNu(); rita();
             return klar();
         }
         if (agare && agare !== anvandare.uid) {
             // Datan på datorn tillhör ett annat konto och visas aldrig för den här användaren.
-            if (dokument.length) anvandMolnet(dokument, aktivt);
-            else nollstallLokalt();
+            moln = tomtMoln();
+            const projekt = await hamtaAlla(dokument);
+            if (projekt.length) anvandMolnet(projekt, aktivt); else nollstallLokalt();
             return klar();
         }
         if (!arAdmin()) {
             // Användare: bara projekten man är medlem i. Projekt som redan fanns på datorn
             // kan inte läggas till (det gör admin).
-            const fortsatt = () => { stangModal(); if (dokument.length) anvandMolnet(dokument, aktivt); else nollstallLokalt(); klar(); };
+            const fortsatt = async () => {
+                stangModal();
+                moln = tomtMoln();
+                const projekt = await hamtaAlla(dokument);
+                if (projekt.length) anvandMolnet(projekt, aktivt); else nollstallLokalt();
+                klar();
+            };
             if (tomtStandardprojekt()) return fortsatt();
             return fraga("Projekten på den här datorn läggs inte till i ditt konto",
                 "Du kommer åt de projekt som en admin har gett dig tillgång till. " +
@@ -578,11 +1089,15 @@
         }
         if (!dokument.length) {
             // Admin utan projekt i molnet: ladda upp det som finns på den här datorn.
-            moln = { uid: anvandare.uid, rev: {}, hash: {} };
+            moln = tomtMoln();
             sparaMoln();
             return klar();
         }
-        if (tomtStandardprojekt()) { anvandMolnet(dokument, aktivt); return klar(); }
+        if (tomtStandardprojekt()) {
+            moln = tomtMoln();
+            anvandMolnet(await hamtaAlla(dokument), aktivt);
+            return klar();
+        }
 
         // Både den här datorn och kontot har projekt sedan tidigare.
         const lokala = plan4.projekt.map((p) => p.projekt).join(", ");
@@ -590,9 +1105,10 @@
         fraga("Det finns projekt både här och i ditt konto",
             "På den här datorn: " + lokala + ".\nI kontot: " + iKontot + ".",
             [{ txt: "Använd bara kontots projekt", fara: true, vanster: true,
-               fn: () => { stangModal(); anvandMolnet(dokument, aktivt); klar(); } },
-             { txt: "Slå ihop", primar: true, fn: () => { stangModal(); slaIhop(dokument, aktivt); klar(); } }]);
+               fn: async () => { stangModal(); moln = tomtMoln(); anvandMolnet(await hamtaAlla(dokument), aktivt); klar(); } },
+             { txt: "Slå ihop", primar: true, fn: async () => { stangModal(); await slaIhop(dokument, aktivt); klar(); } }]);
     }
+    function tomtMoln() { return { uid: anvandare.uid, v: 2, delar: {}, tid: {}, meta: {}, v1: {} }; }
 
     function nollstallLokalt() {
         angraForeAvbryt();
@@ -600,7 +1116,7 @@
         rustaProjekt(p, IDAG);
         plan4 = { version: VERSION, aktivtProjekt: p.id, projekt: [p] };
         state = p;
-        moln = { uid: anvandare.uid, rev: {}, hash: {} };
+        moln = tomtMoln();
         sparaMoln();
         vyOffset = 0; valdKedja = null; VADER = {};
         ursSparaNu();
@@ -608,9 +1124,10 @@
 
     // Kontots projekt läses in och de lokala läggs till. Ett lokalt projekt med samma id
     // som ett i kontot behålls som kopia, så att ingenting försvinner.
-    function slaIhop(dokument, aktivt) {
+    async function slaIhop(dokument, aktivt) {
         const lokala = plan4.projekt.slice();
-        anvandMolnet(dokument, aktivt);
+        moln = tomtMoln();
+        anvandMolnet(await hamtaAlla(dokument), aktivt);
         const ids = new Set(plan4.projekt.map((p) => p.id));
         lokala.forEach((p) => {
             if (ids.has(p.id)) {
@@ -626,7 +1143,10 @@
 
     function klar() {
         synkKlar = true;
+        moln.uid = anvandare.uid;
+        sparaMoln();
         lyssna();
+        synkaDelLyssnare();
         tillampaVantande();
         startaAnvandarlista();
         lage = konflikter.size ? "konflikt" : "synkad";
@@ -634,6 +1154,7 @@
         uppdateraUI();
         kontrolleraTillgang();
         schemalaggPush(50);
+        flyttaTillV2();
     }
 
     // Projekt som sparades per användare innan projekten blev gemensamma flyttas till
@@ -655,7 +1176,7 @@
     }
 
     // Har användaren något att arbeta i? Admin alltid; andra bara med minst ett projekt.
-    function harTillgang() { return arAdmin() || Object.keys(moln.rev).length > 0; }
+    function harTillgang() { return arAdmin() || Object.keys(moln.delar).length + Object.keys(moln.v1).length > 0; }
     function kontrolleraTillgang() {
         if (!appStartad || !synkKlar) return;
         if (!harTillgang()) visaVy("vantar");
@@ -1318,6 +1839,7 @@
         synkKlar = false;
         clearTimeout(pushTimer);
         if (lyssnare) { lyssnare(); lyssnare = null; }
+        stoppaDelLyssnare();
         document.body.classList.remove("p4-kontovy");
     }
     function forsokIgen() {
@@ -1989,10 +2511,10 @@
             ansokanKollad = "";
             stoppaApp();
             anvandare = u;
-            konflikter.clear(); vantande.clear();
+            konflikter.clear(); rensaVantande();
             const lasCache = u ? lasJson(LASNYCKEL, null) : null;
             behCache = lasCache && lasCache.uid === u.uid && lasCache.beh ? lasCache.beh : {};
-            projektMeta.clear(); doldaTavlor.clear();
+            projektMeta.clear(); v1Data.clear();
             markeraLasvy();
             if (!u) {
                 lage = "utloggad"; uppdateraUI();
