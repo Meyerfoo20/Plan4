@@ -156,6 +156,7 @@ const HJALP_SEKTIONER = [
       html:
         '<table class="hj-tabell"><thead><tr><th>Roll</th><th>Kan</th></tr></thead><tbody>' +
         "<tr><td>Huvudadmin</td><td>Allt i alla projekt. Bestämmer vilka som ser vilka projekt och vem som är admin.</td></tr>" +
+        "<tr><td>Får skapa projekt</td><td>Ett tillägg som huvudadmin ger en användare: kan starta egna projekt och blir projektadmin i dem. Ser bara sina egna projekt och de hen bjuds in till.</td></tr>" +
         "<tr><td>Projektadmin</td><td>Allt i sitt projekt, inklusive medlemmar och behörighet per tavla.</td></tr>" +
         "<tr><td>Redigera</td><td>Lägga till, ändra och flytta poster.</td></tr>" +
         "<tr><td>Läsa</td><td>Se allt men inte ändra något.</td></tr>" +

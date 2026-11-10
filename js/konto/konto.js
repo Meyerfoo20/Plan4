@@ -376,7 +376,7 @@
             for (const p of plan4.projekt) {
                 lokala.add(p.id);
                 if (konflikter.has(p.id) || !arAndrad(p)) continue;
-                if (!arAdmin() && !(p.id in moln.rev)) continue;    // bara admin lägger till nya projekt
+                if (!(p.id in moln.rev) && !kanSkapaProjekt()) continue;    // bara den som får skapa projekt lägger till nya
                 if (saknarDolda(p)) continue;                          // väntar på molnets version av de dolda tavlorna
                 const json = projektJson(p), upp = uppladdningsJson(p, json);
                 if (upp.length > MAX_PROJEKT_TECKEN) {
@@ -394,7 +394,10 @@
                         tx.set(ref, { namn: p.projekt, arkiverad: !!p.arkiverad, data: upp, rev: molnRev + 1,
                             uppdaterad: fb.fs.serverTimestamp(), enhet: ENHET,
                             medlemmar: snap.exists() ? x.medlemmar || [] : [anvandare.uid],
-                            lasare: x.lasare || [], projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {} });
+                            lasare: x.lasare || [],
+                            // den som skapar ett projekt utan att vara huvudadmin blir projektadmin i det
+                            projektAdmin: snap.exists() ? x.projektAdmin || [] : (arAdmin() ? [] : [anvandare.uid]),
+                            tavlaBeh: x.tavlaBeh || {} });
                         return { rev: molnRev + 1 };
                     });
                 } catch (e) {
@@ -951,7 +954,7 @@
             '<div class="p4-ks-rubrikrad"><h2>' + (arAdmin() ? "Alla projekt" : "Dina projekt") + "</h2>" +
               '<span class="p4-ks-status ' + (lage === "synkad" ? "ok" : lage === "konflikt" || lage === "fel" ? "konflikt" : "vantar") + '">' +
               esc(lagesText()) + "</span>" +
-              '<span class="p4-ks-knappar p4-ks-hoger-knappar">' + (arAdmin() ? '<button type="button" class="mknapp" data-ks="nyttprojekt">+ Nytt projekt</button>' : "") +
+              '<span class="p4-ks-knappar p4-ks-hoger-knappar">' + (kanSkapaProjekt() ? '<button type="button" class="mknapp" data-ks="nyttprojekt">+ Nytt projekt</button>' : "") +
               '<button type="button" class="mknapp" data-ks="synka">Synka nu</button></span></div>' +
             (konflikter.size ? '<div class="notis">Välj vilken version som ska gälla för projekten som ändrats på två ställen.</div>' : "") +
             '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Projekt</th><th>Tavlor</th><th>Poster</th>' + (harNagonAdminroll() ? "<th>Medlemmar</th>" : "") + '<th>Senast ändrat</th><th>Molnet</th><th></th></tr></thead>' +
@@ -1186,13 +1189,15 @@
     // Ett nytt konto skapas alltid som user med status vantar. Säkerhetsreglerna i
     // firestore.rules hindrar att någon godkänner sig själv eller gör sig till admin.
     const BEHNYCKEL = "plan4_behorighet";     // senast kända status, så att appen kan starta offline
-    let behorighet = { roll: "user", status: "vantar" };
+    let behorighet = { roll: "user", status: "vantar", skapa: false };
     let appStartad = false;
     let anvLyssnare = null;      // användarens eget dokument
     let adminLyssnare = null;    // alla användare (bara för admin)
     let allaAnvandare = [];
     let adminFilter = null;      // null = Väntar om någon väntar, annars Alla
     const arAdmin = () => behorighet.roll === "admin" && behorighet.status === "godkand";
+    // Huvudadmin, eller en godkänd användare som fått "Får skapa projekt" av huvudadmin.
+    const kanSkapaProjekt = () => arAdmin() || (behorighet.status === "godkand" && behorighet.skapa === true);
     const tidAv = (v) => v && typeof v.toDate === "function" ? v.toDate()
         : typeof v === "string" && !isNaN(Date.parse(v)) ? new Date(v) : null;
 
@@ -1209,8 +1214,8 @@
 
     function hanteraBehorighet(d) {
         const forraRoll = behorighet.roll;
-        behorighet = { roll: (d && d.roll) || "user", status: (d && d.status) || "vantar" };
-        skrivJson(BEHNYCKEL, { uid: anvandare.uid, roll: behorighet.roll, status: behorighet.status });
+        behorighet = { roll: (d && d.roll) || "user", status: (d && d.status) || "vantar", skapa: !!(d && d.skapa === true) };
+        skrivJson(BEHNYCKEL, { uid: anvandare.uid, roll: behorighet.roll, status: behorighet.status, skapa: behorighet.skapa });
         if (behorighet.status === "godkand") {
             // Ny roll ger andra projekt (admin ser alla): synka om från början.
             if (appStartad && forraRoll !== behorighet.roll) stoppaApp();
@@ -1314,12 +1319,14 @@
                 if (st !== "godkand") atgard += knapp("godkann", a.uid, "Godkänn…", "primar");
                 if (st === "godkand" && roll !== "admin") atgard += knapp("projekt", a.uid, "Projekt…");
                 if (st !== "nekad") atgard += knapp("neka", a.uid, st === "godkand" ? "Spärra" : "Neka", "fara");
+                if (st === "godkand" && roll !== "admin") atgard += a.skapa === true ? knapp("ejskapa", a.uid, "Ta bort skapa projekt") : knapp("skapa", a.uid, "Får skapa projekt");
                 if (st === "godkand") atgard += roll === "admin" ? knapp("user", a.uid, "Ta bort huvudadmin") : knapp("admin", a.uid, "Gör till huvudadmin");
             }
             return "<tr><td><b>" + esc(a.namn || a.epost || a.uid) + "</b>" + (jag ? ' <span class="p4-ks-tagg oppet">Du</span>' : "") +
                 (a.namn ? "<br><small>" + esc(a.epost || "") + "</small>" : "") + "</td>" +
                 "<td>" + esc(skapad ? skapad.toLocaleDateString("sv-SE") : "—") + "</td>" +
-                "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Huvudadmin</span>' : "Användare") + "</td>" +
+                "<td>" + (roll === "admin" ? '<span class="p4-ks-tagg admin">Huvudadmin</span>' : "Användare" +
+                    (a.skapa === true ? '<br><span class="p4-ks-tagg oppet">Får skapa projekt</span>' : "")) + "</td>" +
                 "<td>" + projektFor(a) + "</td>" +
                 '<td><span class="p4-ks-status ' + (st === "godkand" ? "ok" : st === "nekad" ? "konflikt" : "vantar") + '">' + STATUSNAMN[st] + "</span></td>" +
                 '<td class="p4-ks-hoger"><span class="p4-ks-atgarder">' + atgard + "</span></td></tr>";
@@ -1333,7 +1340,7 @@
               "</span></div>" +
             '<p class="hjalp">Nya konton kommer inte åt Wimo förrän du godkänner dem och ger dem minst ett projekt. ' +
               "Användare ser bara projekten de är medlemmar i. Under Projekt… väljer du roll per projekt (Kan redigera, Bara läsa eller Projektadmin), " +
-              "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Huvudadmin har tillgång till allt.</p>" +
+              "och under Medlemmar… på ett projekt kan du dessutom ge behörighet per tavla. Med Får skapa projekt kan en användare starta egna projekt och blir projektadmin i dem. Huvudadmin har tillgång till allt.</p>" +
             (lista.length
               ? '<div class="p4-ks-tabellram"><table class="lista p4-ks-tabell"><thead><tr><th>Användare</th><th>Skapad</th><th>Roll</th><th>Projekt</th><th>Status</th><th></th></tr></thead><tbody>' +
                 rader + "</tbody></table></div>"
@@ -1344,12 +1351,14 @@
         const a = allaAnvandare.find((x) => x.uid === uid);
         if (!a || uid === anvandare.uid) return;
         const andring = vad === "godkann" ? { status: "godkand" } : vad === "neka" ? { status: "nekad" }
+            : vad === "skapa" ? { skapa: true } : vad === "ejskapa" ? { skapa: false }
             : vad === "admin" ? { roll: "admin" } : { roll: "user" };
         const gor = async () => {
             try {
                 await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", uid),
                     Object.assign(andring, { behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }), { merge: true });
-                status((a.namn || a.epost) + ": " + ({ godkann: "godkänd", neka: "nekad", admin: "är nu huvudadmin", user: "är inte längre huvudadmin" })[vad]);
+                status((a.namn || a.epost) + ": " + ({ godkann: "godkänd", neka: "nekad", admin: "är nu huvudadmin", user: "är inte längre huvudadmin",
+                    skapa: "får nu skapa egna projekt", ejskapa: "får inte längre skapa projekt" })[vad]);
             } catch (e) { status("Kunde inte ändra användaren: " + (e.code || e.message), true); }
         };
         if (vad === "godkann") return projektvalDialog(a, true);
@@ -1587,7 +1596,16 @@
         if (b) medlemmarDialog(b.dataset.medlemmar);
     });
 
-    // Bara admin skapar, raderar och importerar projekt.
+    // Bara den som får skapa projekt skapar nya; bara huvudadmin raderar och importerar.
+    function barSkapare(fn) {
+        return function () {
+            if (aktiverat && anvandare && !kanSkapaProjekt()) {
+                return fraga("Du kan inte skapa projekt", "Du arbetar i de projekt du har fått tillgång till. Be huvudadmin om rätten att skapa projekt, eller om ett nytt projekt.",
+                    [{ txt: "OK", primar: true, fn: stangModal }], false);
+            }
+            return fn.apply(this, arguments);
+        };
+    }
     function barAdmin(fn, vad) {
         return function () {
             if (aktiverat && anvandare && !arAdmin()) {
@@ -1597,7 +1615,7 @@
             return fn.apply(this, arguments);
         };
     }
-    nyttProjektDialog = barAdmin(nyttProjektDialog, "skapa projekt");
+    nyttProjektDialog = barSkapare(nyttProjektDialog);
     raderaProjektDialog = barAdmin(raderaProjektDialog, "radera projekt");
 
     // ---------- start ----------
@@ -1625,7 +1643,7 @@
             // behörigheten kontrolleras i bakgrunden. Annars väntar vi på svaret.
             const cache = lasJson(BEHNYCKEL, null);
             if (cache && cache.uid === u.uid && cache.status === "godkand") {
-                behorighet = { roll: cache.roll || "user", status: "godkand" };
+                behorighet = { roll: cache.roll || "user", status: "godkand", skapa: !!cache.skapa };
                 startaApp();
             } else {
                 visaVy("laddar", "Kontrollerar ditt konto…");
