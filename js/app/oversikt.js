@@ -12,6 +12,7 @@ let startSort = "deadline";
 
 function oppnaStart(markera) {
     stangDash();
+    try { if (ganttOppen()) stangGantt(); } catch (e) { }
     document.body.classList.add("dashlage");
     document.getElementById("pstart").classList.remove("dold");
     ritaStart(markera);
@@ -277,6 +278,9 @@ function overforDialog(a) {
 let dashTavlaId = null, dashVeckor = 2, dashTV = false;
 
 function oppnaDash() {
+    // stäng de andra sidorna först, annars ligger t.ex. Att göra kvar och menyn markerar fel sida
+    try { if (startOppen()) stangStart(); } catch (e) { }
+    try { if (ganttOppen()) stangGantt(); } catch (e) { }
     dashTavlaId = null;
     dashTV = false;
     document.body.classList.add("dashlage");
