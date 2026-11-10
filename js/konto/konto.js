@@ -734,7 +734,8 @@
                 visaFel("Vi har skickat en länk för nytt lösenord till " + epost + ".", true);
             } catch (err) { visaFel(feltext(err)); }
         });
-        $("kkGoogle").addEventListener("click", async () => {
+        // Knappen "Fortsätt med Google" är borttagen från inloggningen; koden finns kvar om den läggs tillbaka.
+        if ($("kkGoogle")) $("kkGoogle").addEventListener("click", async () => {
             visaFel("");
             try {
                 await laddaFirebase();
