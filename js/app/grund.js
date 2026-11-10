@@ -5,7 +5,8 @@
 /* ---------- konstanter ---------- */
 
 const NYCKEL = "fyraveckorstavlan_v2";
-const VERSION = "1.6.2a";
+const VERSION = "1.6.2a";      // dataformatets version (sparas med projekten)
+const VISAD_VERSION = "1.0";    // versionen som visas i sidfoten
 const DAGNAMN = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag"];
 
 const ORSAKSORD = ["Material", "Bemanning", "Föregående ej klart", "Handling", "Beslut/besked",

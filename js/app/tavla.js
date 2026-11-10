@@ -966,7 +966,12 @@ function kortEl(k) {
         fl.textContent = "Flyttad";
         const sen = k.flyttar[k.flyttar.length - 1];
         fl.title = "Senast flyttad " + kortDatum(sen.fran) + " → " + kortDatum(sen.till);
-        el.appendChild(fl);
+        // Ligger i etikettraden överst på kortet, precis som "Gör idag".
+        const etikett = txt.querySelector(".kortetikett");
+        if (etikett)
+            etikett.appendChild(fl);
+        else
+            el.appendChild(fl);
     }
     if (k.not) {
         const d = document.createElement("span");

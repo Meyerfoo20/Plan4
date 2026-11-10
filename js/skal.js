@@ -6,7 +6,7 @@
     "use strict";
     var $ = function (id) { return document.getElementById(id); };
     try {
-        $("p4Version").textContent = VERSION;
+        $("p4Version").textContent = VISAD_VERSION;
     }
     catch (e) { }
     document.addEventListener("click", function (e) {

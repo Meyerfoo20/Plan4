@@ -1081,3 +1081,14 @@ body.visning.v1 .helgvader {
 @media print {
   .helgvader { display: none; }
 }
+
+/* "Flyttad" i etikettraden, samma placering och form som "Gör idag" */
+.kort .kortetikett .flyttmark {
+  font-size: .95em;
+  letter-spacing: .02em;
+  text-transform: none;
+  line-height: 1.5;
+  padding: 0 6px;
+  margin-top: 0;
+  border-radius: 999px;
+}
