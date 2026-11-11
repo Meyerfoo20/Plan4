@@ -1660,3 +1660,21 @@ img.p4-logotyp {
   height: 20px;
   width: auto;
 }
+
+/* ---------- länk till skärm ---------- */
+body:not(.visning) #skarmLank { display: none; }
+/* Skärmen (öppnad med ?skarm=…): bara tavlan, inga knappar och inget som går att ändra */
+body.p4-skarm #visning,
+body.p4-skarm #skarmLank,
+body.p4-skarm .p4-verktyg,
+body.p4-skarm .vychip,
+body.p4-skarm .kedjechip,
+body.p4-skarm .p4-laschip,
+body.p4-skarm #angrarad,
+body.p4-skarm .p4-status { display: none !important; }
+body.p4-skarm .p4-main { pointer-events: none; }
+body.p4-skarm .tavlanamn { pointer-events: none; }
+body.p4-skarm { cursor: none; }
+body.p4-skarm #status,
+body.p4-skarm .p4-hnotis,
+body.p4-skarm .notis-stack { display: none !important; }

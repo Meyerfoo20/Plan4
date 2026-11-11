@@ -69,6 +69,7 @@
         return { uid: m.uid || null, v: 2, delar: {}, tid: {}, meta: {}, v1: Object.assign({}, m.rev || {}) };
     }
     let moln = lasMolnet();
+    const SKARM = (new URLSearchParams(location.search).get("skarm") || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40);
     function sparaMoln() { basVersion++; skrivJson(MOLNNYCKEL, moln); }
 
     // Kort, stabil kontrollsumma (FNV-1a) för att se om ett projekt ändrats sedan senaste synk.
@@ -170,7 +171,7 @@
         if (x.version === 2) tavlor = (Array.isArray(x.tavlor) ? x.tavlor : []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" }));
         else try { tavlor = (JSON.parse(x.data || "{}").tavlor || []).map((t) => ({ id: t.id, namn: t.namn || "Tavla" })); } catch (e) { }
         return { namn: x.namn || "Projekt", arkiverad: !!x.arkiverad, version: x.version === 2 ? 2 : 1, medlemmar: x.medlemmar || [], lasare: x.lasare || [],
-            projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, kod: x.kod || "", tavlor: tavlor };
+            projektAdmin: x.projektAdmin || [], tavlaBeh: x.tavlaBeh || {}, kod: x.kod || "", visning: x.visning || {}, tavlor: tavlor };
     }
     function lasMeta(docs) {
         projektMeta.clear();
@@ -617,6 +618,7 @@
         let fel = null;
         try {
             for (const p of plan4.projekt.slice()) await pushProjekt(p);
+            planeraSkarmar();
             // projekt som admin raderat permanent här tas bort i molnet
             if (arAdmin()) {
                 const lokala = new Set(plan4.projekt.map((p) => p.id));
@@ -2493,10 +2495,175 @@
             return fn.apply(this, arguments);
         };
     }
+    // ---------- länk till skärm (Yodeck och liknande) ----------
+    // visning/{token} = { projekt, tavla, namn, data, uppdaterad }: en kopia av en tavla som alla med
+    // länken kan läsa utan att logga in. Den skrivs av den som ändrar i tavlan (högst var 20:e sekund),
+    // och skärmen uppdateras av sig själv. Projektadmin skapar, byter och tar bort länken.
+    const SKARMNYCKEL = "plan4_skarm";       // token → { h: kontrollsumma, t: ms } senast skrivet härifrån
+    const visningDoc = (tok) => fb.fs.doc(fb.db, "visning", tok);
+    function nyToken() {
+        const tecken = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", a = new Uint32Array(24);
+        crypto.getRandomValues(a);
+        return Array.from(a, (n) => tecken[n % tecken.length]).join("");
+    }
+    const kanSkapaSkarm = (pid, tid) => arAdmin() || arProjektAdmin(pid) || tavlaRatt(pid, tid) === "admin";
+    function skarmData(p, tid) {
+        const t = p.tavlor.find((x) => x.id === tid);
+        if (!t) return null;
+        const fran = plus(tavlaStart(), -60);
+        const x = JSON.parse(innehall(p)), tk = x.tavlor.find((y) => y.id === tid);
+        tk.kort = tk.kort.filter((k) => !k.dag || k.dag >= fran || !k.klar);
+        tk.historik = [];
+        tk.hinder = tk.hinder.filter((h) => h.status !== "lost" || !h.lostTid || String(h.lostTid).slice(0, 10) >= fran);
+        x.tavlor = [tk];
+        x.aktiv = tid;
+        let txt = JSON.stringify(x);
+        if (txt.length > 900000) { x.logotyp = null; txt = JSON.stringify(x); }
+        return txt.length > 950000 ? null : txt;
+    }
+    let skarmTimer = null;
+    function planeraSkarmar() {
+        clearTimeout(skarmTimer);
+        skarmTimer = setTimeout(() => skrivSkarmar().catch((e) => console.warn("Wimo skärmlänk:", e)), 20000);
+    }
+    async function skrivSkarmar(tvinga) {
+        if (!anvandare || !synkKlar) return;
+        const cache = lasJson(SKARMNYCKEL, {});
+        for (const p of plan4.projekt) {
+            const m = projektMeta.get(p.id);
+            if (!m || !m.visning) continue;
+            for (const tid of Object.keys(m.visning)) {
+                const tok = m.visning[tid], r = tavlaRatt(p.id, tid);
+                if (!tok || !p.tavlor.some((t) => t.id === tid) || !(arAdmin() || r === "admin" || r === "red")) continue;
+                const txt = skarmData(p, tid);
+                if (!txt) continue;
+                const h = hash(txt), c = cache[tok];
+                if (!tvinga && c && c.h === h && Date.now() - c.t < 12 * 3600000) continue;
+                const t = p.tavlor.find((x) => x.id === tid);
+                try {
+                    await fb.fs.setDoc(visningDoc(tok), { projekt: p.id, tavla: tid, namn: p.projekt + " · " + (t.namn || "Tavla"),
+                        data: txt, uppdaterad: fb.fs.serverTimestamp() });
+                    cache[tok] = { h, t: Date.now() };
+                } catch (e) { console.warn("Wimo skärmlänk:", e); }
+            }
+        }
+        skrivJson(SKARMNYCKEL, cache);
+    }
+    const skarmUrl = (tok, v) => location.origin + location.pathname + "?skarm=" + tok + (v && v !== 4 ? "&veckor=" + v : "");
+    async function andraSkarmLank(pid, tid, ny) {
+        const m = projektMeta.get(pid), gammal = m && m.visning && m.visning[tid];
+        await fb.fs.updateDoc(projektDoc(pid), { ["visning." + tid]: ny || fb.fs.deleteField() });
+        if (m) { m.visning = Object.assign({}, m.visning); if (ny) m.visning[tid] = ny; else delete m.visning[tid]; }
+        if (ny) {
+            const p = plan4.projekt.find((x) => x.id === pid), t = p && p.tavlor.find((x) => x.id === tid);
+            await fb.fs.setDoc(visningDoc(ny), { projekt: pid, tavla: tid, namn: p.projekt + " · " + (t.namn || "Tavla"),
+                data: skarmData(p, tid) || "{}", uppdaterad: fb.fs.serverTimestamp() });
+        }
+        if (gammal) await fb.fs.deleteDoc(visningDoc(gammal)).catch(() => { });
+    }
+    function skarmDialog() {
+        if (!anvandare || !synkKlar) return status("Logga in för att skapa en länk till en skärm", true);
+        const p = state, t = T(), m = projektMeta.get(p.id);
+        if (!m || m.version !== 2) return status("Projektet sparas inte i molnet än", true);
+        const tok = m.visning && m.visning[t.id], kan = kanSkapaSkarm(p.id, t.id);
+        let veckor = 4;
+        const kropp = () => tok
+            ? '<p class="hjalp" style="margin-top:0">Lägg in länken som en <b>webbsida</b> i Yodeck (eller en annan skärmtjänst) så visas ' +
+                esc(t.namn) + " i visningsläge. Skärmen uppdateras av sig själv när någon ändrar i tavlan, och dagen byts vid midnatt.</p>" +
+              '<div class="falt"><label for="skVeckor">Visa</label><span class="veckoval" id="skVeckor">' +
+                [1, 2, 4].map((v) => '<button type="button" data-skv="' + v + '" class="' + (v === veckor ? "vald" : "") + '">' + v + (v === 1 ? " vecka" : " veckor") + "</button>").join("") + "</span></div>" +
+              '<div class="falt"><label for="skLank">Länk</label><input class="f" id="skLank" readonly value="' + esc(skarmUrl(tok, veckor)) + '"></div>' +
+              '<p class="hjalp">Alla som har länken kan se tavlan utan att logga in. Byt länk om den har kommit på villovägar: den gamla slutar då att fungera.</p>'
+            : '<p class="hjalp" style="margin-top:0">' + (kan
+                ? "Skapa en länk som visar " + esc(t.namn) + " i visningsläge på en skärm, till exempel i Yodeck. Skärmen behöver inte logga in och uppdateras av sig själv."
+                : "Det finns ingen skärmlänk för " + esc(t.namn) + " än. Be projektadmin skapa en.") + "</p>";
+        const knappar = tok
+            ? [].concat(kan ? [{ txt: "Ta bort länk", fara: true, vanster: true, fn: () => kor(null, "Skärmlänken är borttagen") },
+                               { txt: "Byt länk", fn: () => kor(nyToken(), "Ny skärmlänk skapad. Den gamla fungerar inte längre.") }] : [])
+                .concat([{ txt: "Öppna", fn: () => window.open(skarmUrl(tok, veckor), "_blank") },
+                         { txt: "Kopiera länk", primar: true, fn: () => kopiera() }])
+            : (kan ? [{ txt: "Avbryt", fn: stangModal }, { txt: "Skapa länk", primar: true, fn: () => kor(nyToken(), "Skärmlänken är skapad") }]
+                   : [{ txt: "Stäng", primar: true, fn: stangModal }]);
+        modal("Länk till skärm", p.projekt + " · " + t.namn, kropp(), knappar);
+        const kopiera = async () => {
+            const url = skarmUrl(tok, veckor);
+            try { await navigator.clipboard.writeText(url); status("Länken är kopierad"); }
+            catch (e) { const f = $("skLank"); if (f) { f.select(); document.execCommand && document.execCommand("copy"); } status("Länken är kopierad"); }
+        };
+        const kor = async (ny, txt) => {
+            try { await andraSkarmLank(p.id, t.id, ny); stangModal(); status(txt); if (ny) skarmDialog(); }
+            catch (e) { status("Kunde inte ändra länken: " + (e.code || e.message), true); }
+        };
+        const val = $("skVeckor");
+        if (val) val.addEventListener("click", (e) => {
+            const b = e.target.closest("[data-skv]");
+            if (!b) return;
+            veckor = +b.dataset.skv;
+            val.querySelectorAll("[data-skv]").forEach((x) => x.classList.toggle("vald", x === b));
+            $("skLank").value = skarmUrl(tok, veckor);
+        });
+    }
+    document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#skarmLank")) skarmDialog(); });
+    function visaSkarmKnapp() {
+        const b = $("skarmLank");
+        if (!b) return;
+        const m = anvandare && synkKlar ? projektMeta.get(state.id) : null;
+        const ok = !!(m && m.version === 2 && ((m.visning && m.visning[T().id]) || kanSkapaSkarm(state.id, T().id)));
+        b.classList.toggle("dold", !ok);
+    }
+    const ursRitaSkarm = rita;
+    rita = function () { const r = ursRitaSkarm.apply(this, arguments); try { visaSkarmKnapp(); } catch (e) { } return r; };
+
+    // Skärmen: öppnad med ?skarm=… visar bara tavlan, uppdateras av sig själv och sparar ingenting på datorn.
+    async function startaSkarm() {
+        document.body.classList.add("p4-skarm");
+        spara = function () { };
+        sparaNu = async function () { return true; };
+        const veckor = [1, 2, 4].includes(+new URLSearchParams(location.search).get("veckor")) ? +new URLSearchParams(location.search).get("veckor") : 4;
+        visaVy("laddar", "Hämtar tavlan…");
+        // skärmen kan inte ändra något
+        ["keydown", "dragstart", "dblclick", "contextmenu"].forEach((typ) => window.addEventListener(typ, (e) => { e.stopImmediatePropagation(); if (typ !== "keydown") e.preventDefault(); }, true));
+        let forsok = 0;
+        const koppla = async () => {
+            try {
+                await laddaFirebase();
+                fb.fs.onSnapshot(visningDoc(SKARM), (snap) => {
+                    if (!snap.exists()) return visaVy("laddar", "Länken gäller inte längre. Be projektadmin om en ny länk.");
+                    const x = snap.data();
+                    let p;
+                    try { p = JSON.parse(x.data); } catch (e) { return; }
+                    if (!p || !Array.isArray(p.tavlor) || !p.tavlor.length) return visaVy("laddar", "Tavlan är tom just nu.");
+                    rustaProjekt(p, IDAG);
+                    p.aktiv = p.tavlor.some((t) => t.id === x.tavla) ? x.tavla : p.tavlor[0].id;
+                    angraForeAvbryt();
+                    plan4 = { version: VERSION, aktivtProjekt: p.id, projekt: [p] };
+                    state = p;
+                    vyOffset = 0;
+                    document.title = (x.namn || p.projekt) + " · Wimo";
+                    if (!document.body.classList.contains("visning")) vaxlaVisning(true);
+                    visaVeckor = veckor;
+                    visaVy("app");
+                }, (e) => {
+                    console.warn("Wimo skärm:", e);
+                    visaVy("laddar", "Ingen kontakt just nu. Försöker igen…");
+                    setTimeout(koppla, Math.min(60000, 5000 * ++forsok));
+                });
+            } catch (e) {
+                visaVy("laddar", "Ingen kontakt just nu. Försöker igen…");
+                setTimeout(koppla, Math.min(60000, 5000 * ++forsok));
+            }
+        };
+        koppla();
+        // ladda om sidan en gång per natt, så att skärmen alltid kör senaste versionen
+        const natt = new Date(); natt.setHours(24, 3 + Math.floor(Math.random() * 20), 0, 0);
+        setTimeout(() => location.reload(), natt - new Date());
+    }
+
     nyttProjektDialog = barSkapare(nyttProjektDialog);
     raderaProjektDialog = barAdmin(raderaProjektDialog, "radera projekt");
 
     // ---------- start ----------
+    if (SKARM && aktiverat) { startaSkarm(); return; }   // länk till en skärm: bara tavlan, ingen inloggning
     kopplaFormular();
     uppdateraUI();
     if (!aktiverat) { visaVy("app"); return; }        // utan Firebase-konfiguration: lokalt läge som förut

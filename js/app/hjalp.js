@@ -173,6 +173,7 @@ const HJALP_SEKTIONER = [
       html:
         "<ul>" +
         "<li>Allt sparas <b>automatiskt i molnet</b> och synkas mellan datorer. En kopia ligger i webbläsaren, så Wimo fungerar även utan nät och synkar när du är uppkopplad igen.</li>" +
+        "<li><b>Länk till skärm:</b> i visningsläget finns knappen <i>Länk till skärm</i>. Projektadmin skapar en länk per tavla som läggs in som webbsida i Yodeck eller en annan skärmtjänst. Skärmen visar tavlan utan inloggning och uppdateras av sig själv. Med <i>Byt länk</i> slutar den gamla att fungera.</li>" +
         "<li>Varje kort, hinder och tavla sparas för sig. Ändrar två personer <b>olika kort</b> samtidigt går båda ändringarna igenom. Bara om samma kort ändrats på två ställen får du välja vilken version som gäller.</li>" +
         "<li>Rutan <b>Molnsynk</b> längst ner i menyn visar om allt är sparat.</li>" +
         "<li>Efter att du flyttat eller tagit bort något visas <b>Ångra</b> längst ner en kort stund.</li>" +
