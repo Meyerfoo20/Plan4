@@ -1678,3 +1678,26 @@ body.p4-skarm { cursor: none; }
 body.p4-skarm #status,
 body.p4-skarm .p4-hnotis,
 body.p4-skarm .notis-stack { display: none !important; }
+
+/* Skärmlänk: kalendern fyller hela skärmen */
+body.p4-skarm .p4-header,
+body.p4-skarm .p4-hero,
+body.p4-skarm .p4-hoppa,
+body.p4-skarm .varningsremsa,
+body.p4-skarm .pagaende { display: none !important; }
+body.p4-skarm .p4-main { padding: 0; }
+body.p4-skarm .tavla {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+body.p4-skarm .rutnat {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100vh;
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(0, 1fr);
+}
+body.p4-skarm .rutnat > * { min-height: 0; overflow: hidden; }
