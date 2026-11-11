@@ -2623,6 +2623,75 @@
         visaVy("laddar", "Hämtar tavlan…");
         // skärmen kan inte ändra något
         ["keydown", "dragstart", "dblclick", "contextmenu"].forEach((typ) => window.addEventListener(typ, (e) => { e.stopImmediatePropagation(); if (typ !== "keydown") e.preventDefault(); }, true));
+        // Många poster på en dag: inget får klippas. Veckor med mycket får mer höjd, en full dag
+        // lägger posterna i två eller tre spalter, och först därefter krymps de.
+        const passa = () => {
+            const g = document.querySelector(".rutnat");
+            if (!g) return;
+            const rutor = [...g.querySelectorAll(".ruta")];
+            const inneI = (ruta) => [...ruta.children].filter((c) => !c.classList.contains("dagnr") && !c.classList.contains("plus"));
+            g.style.gridTemplateRows = "";
+            rutor.forEach((r) => { r.classList.remove("sk-kol2", "sk-kol3"); inneI(r).forEach((c) => { c.style.zoom = ""; }); });
+            // hur mycket höjd varje vecka behöver
+            const behov = (ruta) => {
+                const top = ruta.getBoundingClientRect().top;
+                let max = 0;
+                inneI(ruta).forEach((c) => { max = Math.max(max, c.getBoundingClientRect().bottom - top); });
+                return max + 6;
+            };
+            const full = (ruta) => ruta.scrollHeight > ruta.clientHeight + 1;
+            // 1. veckor med mycket får mer höjd, de andra lite mindre
+            if (rutor.some(full)) {
+                const veckor = [];
+                for (let i = 0; i < rutor.length; i += 5) veckor.push(Math.max(...rutor.slice(i, i + 5).map(behov)));
+                const huvud = g.firstElementChild ? g.firstElementChild.getBoundingClientRect().height : 0;
+                const H = window.innerHeight - huvud, lika = H / Math.max(1, veckor.length);
+                const minst = Math.max(76, lika * 0.55);
+                const vikter = veckor.map((v) => Math.max(minst, v));
+                const summa = vikter.reduce((x, v) => x + v, 0);
+                let hojd;
+                if (summa <= H) hojd = vikter.map((v) => v + (H - summa) / vikter.length);
+                else {
+                    // allt får inte plats: varje vecka minst sin miniminivå, resten i proportion till behovet
+                    const extra = vikter.map((v) => v - minst), ex = extra.reduce((x, v) => x + v, 0) || 1;
+                    hojd = extra.map((e) => minst + (e / ex) * Math.max(0, H - minst * vikter.length));
+                }
+                g.style.gridTemplateRows = "auto " + hojd.map((h) => "minmax(0, " + Math.floor(h) + "px)").join(" ");
+            }
+            const krymp = (ruta, golv) => {
+                const inne = inneI(ruta);
+                let z = parseFloat((inne[0] && inne[0].style.zoom) || 1);
+                for (let i = 0; i < 12 && full(ruta) && z > golv; i++) {
+                    z = Math.max(golv, z * Math.min(0.95, Math.sqrt(ruta.clientHeight / ruta.scrollHeight)));
+                    inne.forEach((c) => { c.style.zoom = String(z); });
+                }
+            };
+            // 2. en full dag: två spalter och något mindre poster, sedan tre spalter, sist ännu mindre
+            rutor.forEach((ruta) => {
+                if (!full(ruta)) return;
+                krymp(ruta, 0.85);
+                if (!full(ruta)) return;
+                inneI(ruta).forEach((c) => { c.style.zoom = ""; });
+                ruta.classList.add("sk-kol2");
+                krymp(ruta, 0.7);
+                if (!full(ruta)) return;
+                inneI(ruta).forEach((c) => { c.style.zoom = ""; });
+                ruta.classList.remove("sk-kol2");
+                ruta.classList.add("sk-kol3");
+                krymp(ruta, 0.4);
+            });
+        };
+        const ursRitaSk = rita;
+        rita = function () {
+            const r = ursRitaSk.apply(this, arguments);
+            // hörnet ovanför veckorna: vilken tavla skärmen visar
+            const horn = document.querySelector(".rutnat .hornruta");
+            if (horn && state && T()) horn.innerHTML = '<span class="sk-tavla">' + esc(T().namn || "Tavla") + '</span><span class="sk-proj">' + esc(state.projekt || "") + "</span>";
+            requestAnimationFrame(passa);
+            return r;
+        };
+        window.addEventListener("resize", () => requestAnimationFrame(passa));
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(passa));
         let forsok = 0;
         const koppla = async () => {
             try {

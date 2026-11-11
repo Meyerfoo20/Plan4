@@ -1701,3 +1701,44 @@ body.p4-skarm .rutnat {
   grid-auto-rows: minmax(0, 1fr);
 }
 body.p4-skarm .rutnat > * { min-height: 0; overflow: hidden; }
+/* skärmlänk: full dag i två eller tre spalter */
+body.p4-skarm .ruta.sk-kol2,
+body.p4-skarm .ruta.sk-kol3 {
+  display: grid;
+  align-content: start;
+  column-gap: 3px;
+}
+body.p4-skarm .ruta.sk-kol2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.p4-skarm .ruta.sk-kol3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.p4-skarm .ruta.sk-kol2 > .pagaende,
+body.p4-skarm .ruta.sk-kol3 > .pagaende { grid-column: 1 / -1; }
+/* skärmlänk: tavlans namn i hörnet ovanför veckorna */
+body.p4-skarm .hornruta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+body.p4-skarm .sk-tavla {
+  font-family: var(--rubrik);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+body.p4-skarm .sk-proj {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
