@@ -16,6 +16,8 @@ const GANTT_DAGKORT = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"];
 
 let gantt = lasGantt();
 let ganttSteg = 0;              // bläddring bakåt/framåt från dagens period
+let ganttBlink = {};            // kortId → tid då blinkningen slutar (nyss skapat i schemat)
+function ganttBlinkar(id) { return !!ganttBlink[id] && ganttBlink[id] > Date.now(); }
 
 function lasGantt() {
     const grund = { valda: null, period: "manad", milstolpar: true, klara: true, arkiverade: false, ihop: [] };
@@ -150,10 +152,13 @@ function ganttUrval() {
     return { valda, per, data };
 }
 
+let ganttVantar = false;        // omritning som väntar tills en dragning är klar
 function ritaGantt(andraForsok) {
+    if (typeof gDrag !== "undefined" && gDrag && gDrag.flyttat && !gDrag.slut) { ganttVantar = true; return; }
+    ganttVantar = false;
     const box = document.getElementById("gantt");
     const gammal = box.querySelector(".g-skroll");
-    const skrollY = gammal ? gammal.scrollTop : 0;
+    const skrollY = gammal ? gammal.scrollTop : 0, skrollX = gammal ? gammal.scrollLeft : null, perFore = gammal ? gammal.dataset.per : "";
     const { valda, per, data } = ganttUrval(), { fran, till } = per;
 
     // dagbredden anpassas så att perioden fyller schemats bredd (året får rulla på smala skärmar)
@@ -193,7 +198,7 @@ function ritaGantt(andraForsok) {
     if (!valda.length)
         html += '<div class="g-tom"><b>Inga projekt valda</b><span>Kryssa i ett eller flera projekt till vänster.</span></div>';
     else
-        html += ganttTabell(data, { fran, till, dagar, dw, x, bredd, per });
+        html += ganttTabell(data, { fran, till, dagar, dw, x, bredd, per, dra: true });
     html += "</div></div>";
     box.innerHTML = '<div class="p4-gantt">' + html + "</div>";
 
@@ -206,9 +211,14 @@ function ritaGantt(andraForsok) {
             return ritaGantt(true);
         }
         sk.scrollTop = skrollY;
-        if (per.per === "ar" && sk.scrollWidth > sk.clientWidth)
+        if (skrollX !== null && perFore === per.per + ganttSteg)
+            sk.scrollLeft = skrollX;
+        else if (per.per === "ar" && sk.scrollWidth > sk.clientWidth)
             sk.scrollLeft = Math.max(0, x(IDAG) - 4 * 7 * dw);
+        sk.dataset.per = per.per + ganttSteg;
     }
+    if (typeof ganttEfterRita === "function")
+        ganttEfterRita();
 }
 
 function ganttValHtml() {
@@ -293,40 +303,50 @@ function ganttTabell(data, o) {
             const tips = m.namn + "\n" + dagarTxt + " · " + st.text + "\n" + p.projekt + " · " + m.t.namn +
                 (kortDel(m.k, m.t) ? " · " + kortDel(m.k, m.t) : "") + (m.k.vem ? "\nAnsvarig: " + m.k.vem : "");
             const textInne = w >= m.namn.length * 6.6 + 18 || (w >= 60 && v + w + m.namn.length * 6.6 + 12 > bredd);
-            rader += '<div class="g-rad" style="--gf:' + farg + '">' +
+            const dra = o.dra && !m.klar && ganttKanRedigera(p, m.t);
+            rader += '<div class="g-rad' + (ganttBlinkar(m.k.id) ? " g-blinkrad" : "") + '" style="--gf:' + farg + '">' +
                 '<button type="button" class="g-etikett g-mom" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id + '">' +
                 '<span class="g-etext"><b>' + esc(m.namn) + "</b><small>" + esc(dagarTxt) +
                 (p.tavlor.length > 1 ? " · " + esc(m.t.namn) : "") + (kortDel(m.k, m.t) ? " · " + esc(kortDel(m.k, m.t)) : "") + "</small></span>" +
                 (st.klass ? '<span class="g-status ' + st.klass + '">' + st.text + "</span>" : "") + "</button>" +
                 '<div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' +
-                '<button type="button" class="g-stapel ' + st.klass + kant + '" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id + '" style="left:' +
-                v.toFixed(1) + "px;width:" + w.toFixed(1) + 'px" title="' + esc(tips) + '">' + (textInne ? "<span>" + esc(m.namn) + "</span>" : "") + "</button>" +
+                '<button type="button" class="g-stapel ' + st.klass + kant + (dra ? " g-dra" : "") + (ganttBlinkar(m.k.id) ? " g-blink" : "") +
+                '" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id + '" style="left:' +
+                v.toFixed(1) + "px;width:" + w.toFixed(1) + 'px" title="' + esc(tips + (dra ? "\nDra för att flytta, dra i kanterna för att ändra start och slut" : "")) + '">' +
+                (dra ? '<i class="g-hand v" data-ghand="fran"></i>' : "") + (textInne ? "<span>" + esc(m.namn) + "</span>" : "") +
+                (dra ? '<i class="g-hand h" data-ghand="till"></i>' : "") + "</button>" +
                 (textInne || dw < 4 ? "" : v + Math.max(w, 6) + 12 + m.namn.length * 6.6 > bredd
                     ? '<span class="g-utetext" style="right:' + (bredd - v + 6).toFixed(1) + 'px">' + esc(m.namn) + "</span>"
                     : '<span class="g-utetext" style="left:' + (v + Math.max(w, 6) + 6).toFixed(1) + 'px">' + esc(m.namn) + "</span>") +
-                (gantt.milstolpar ? m.mil.map(ml => ganttDiamant(ml, x, dw)).join("") : "") +
+                (gantt.milstolpar ? m.mil.map(ml => ganttDiamant(ml, x, dw, o.dra)).join("") : "") +
                 "</div></div>";
         });
         if (gantt.milstolpar && d.losa.length)
-            rader += '<div class="g-rad g-milrad" style="--gf:' + farg + '">' +
+            rader += '<div class="g-rad g-milrad' + (d.losa.some(m => ganttBlinkar(m.k.id)) ? " g-blinkrad" : "") + '" style="--gf:' + farg + '">' +
                 '<div class="g-etikett"><span class="g-etext"><b>Avrop och leveranser</b><small>' + d.losa.length +
                 " utan kopplat moment</small></span></div>" +
-                '<div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' + d.losa.map(m => ganttDiamant(m, x, dw)).join("") + "</div></div>";
+                '<div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' + d.losa.map(m => ganttDiamant(m, x, dw, o.dra)).join("") + "</div></div>";
+        // tom rad: skriv ett namn så skapas ett nytt moment, avrop eller en leverans
+        if (o.dra && p.tavlor.some(t => ganttKanRedigera(p, t)))
+            rader += '<div class="g-rad g-nyrad" style="--gf:' + farg + '"><div class="g-etikett g-mom">' +
+                '<input class="g-nyin" data-gny="' + p.id + '" maxlength="120" placeholder="+ Nytt namn, tryck Enter" aria-label="Nytt i ' + esc(p.projekt) + '">' +
+                '</div><div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '"></div></div>';
     });
-    if (tom)
+    if (tom && !o.dra)
         rader += '<div class="g-rad g-tomrad"><div class="g-etikett"></div><div class="g-spar" style="width:' + bredd + "px;" + bakgrund + '">' +
             "<span>" + "Inga produktionsmoment i perioden." + "</span></div></div>";
     const markdag = IDAG;
     const idag = markdag >= fran && markdag <= till ? '<div class="g-idaglinje" style="left:calc(var(--g-et) + ' + (x(markdag) + dw / 2).toFixed(1) + 'px)"></div>' : "";
-    return '<div class="g-skroll"><div class="g-tabell' + (dw < 12 ? " grov" : "") + (7 * dw < 20 ? " tat" : "") + (medDagar ? " meddagar" : "") + '" style="width:calc(var(--g-et) + ' + bredd + 'px)">' +
+    return '<div class="g-skroll"><div class="g-tabell' + (dw < 12 ? " grov" : "") + (7 * dw < 20 ? " tat" : "") + (medDagar ? " meddagar" : "") + '" data-gdw="' + dw + '" style="width:calc(var(--g-et) + ' + bredd + 'px)">' +
         '<div class="g-rad g-huvud"><div class="g-etikett g-horn">Moment</div>' +
         '<div class="g-tid" style="width:' + bredd + 'px">' + veckor + "</div></div>" +
         rader + idag + "</div></div>";
 }
 
-function ganttDiamant(m, x, dw) {
-    const tips = (m.typ === "avrop" ? "Avrop: " : "Leverans: ") + m.text + "\n" + dagEtikett(m.dag) + (m.klar ? " · klar" : "");
-    return '<button type="button" class="g-dia g-' + m.typ + (m.klar ? " klar" : "") + '" data-gkort="' + m.p.id + "|" + m.t.id + "|" + m.k.id +
+function ganttDiamant(m, x, dw, kanDra) {
+    const dra = kanDra && !m.klar && ganttKanRedigera(m.p, m.t);
+    const tips = (m.typ === "avrop" ? "Avrop: " : "Leverans: ") + m.text + "\n" + dagEtikett(m.dag) + (m.klar ? " · klar" : "") + (dra ? "\nDra för att flytta" : "");
+    return '<button type="button" class="g-dia g-' + m.typ + (m.klar ? " klar" : "") + (dra ? " g-dra" : "") + (ganttBlinkar(m.k.id) ? " g-blink" : "") + '" data-gkort="' + m.p.id + "|" + m.t.id + "|" + m.k.id +
         '" style="left:' + (x(m.dag) + dw / 2).toFixed(1) + 'px" title="' + esc(tips) + '"></button>';
 }
 
