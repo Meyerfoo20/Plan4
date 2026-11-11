@@ -92,8 +92,8 @@ function ganttMoment(p) {
                 moment.push({ p, t, k, namn: momentNamn(k) || "Produktionsmoment", fran: k.dag, till,
                     klar: slut ? !!slut.klar : !!k.klar, mil: [] });
             }
-            else if (k.typ === "avrop" || k.typ === "leverans")
-                mil.push({ p, t, k, typ: k.typ, dag: k.dag, klar: !!k.klar, text: k.text || (k.typ === "avrop" ? "Avrop" : "Leverans") });
+            else if (k.typ === "avrop" || k.typ === "leverans" || k.typ === "ue")
+                mil.push({ p, t, k, typ: k.typ, dag: k.dag, klar: !!k.klar, text: k.text || TYPNAMN[k.typ] });
         });
         mil.forEach(m => {
             const agare = m.k.kedja ? moment.find(x => x.t === t && x.k.kedja === m.k.kedja) : null;
@@ -251,6 +251,7 @@ function ganttValHtml() {
         '<li><span class="g-fk g-fk-klar"></span>Klart</li>' +
         '<li><span class="g-dia g-avrop"></span>Avrop</li>' +
         '<li><span class="g-dia g-leverans"></span>Leverans</li>' +
+        '<li><span class="g-dia g-ue"></span>UE</li>' +
         "</ul></aside>";
 }
 
@@ -345,7 +346,7 @@ function ganttTabell(data, o) {
 
 function ganttDiamant(m, x, dw, kanDra) {
     const dra = kanDra && !m.klar && ganttKanRedigera(m.p, m.t);
-    const tips = (m.typ === "avrop" ? "Avrop: " : "Leverans: ") + m.text + "\n" + dagEtikett(m.dag) + (m.klar ? " · klar" : "") + (dra ? "\nDra för att flytta" : "");
+    const tips = (m.typ === "avrop" ? "Avrop: " : m.typ === "ue" ? "UE: " : "Leverans: ") + m.text + "\n" + dagEtikett(m.dag) + (m.klar ? " · klar" : "") + (dra ? "\nDra för att flytta" : "");
     return '<button type="button" class="g-dia g-' + m.typ + (m.klar ? " klar" : "") + (dra ? " g-dra" : "") + (ganttBlinkar(m.k.id) ? " g-blink" : "") + '" data-gkort="' + m.p.id + "|" + m.t.id + "|" + m.k.id +
         '" style="left:' + (x(m.dag) + dw / 2).toFixed(1) + 'px" title="' + esc(tips) + '"></button>';
 }
@@ -582,7 +583,7 @@ function ganttRitaBild() {
     const v = (n, alt) => (css.getPropertyValue(n) || "").trim() || alt;
     const F = { text: v("--text-main", "#1d2125"), mutad: v("--text-muted", "#5b636b"), svag: v("--text-faint", "#8b939b"),
         linje: v("--border-light", "#ece7de"), kant: v("--border-color", "#ddd6ca"), bg: "#ffffff", alt: v("--bg-main", "#f6f3ee"),
-        rod: v("--leverans", "#b32d22"), rodfyll: v("--leverans-fyll", "#fbe9e7"), avrop: v("--avrop", "#6b4a9c"), lev: v("--leverans", "#b32d22") };
+        rod: v("--leverans", "#b32d22"), rodfyll: v("--leverans-fyll", "#fbe9e7"), avrop: v("--avrop", "#6b4a9c"), lev: v("--leverans", "#b32d22"), ue: v("--ue", "#b85a0d") };
     const font = (vikt, storlek) => vikt + " " + storlek + "px Inter, system-ui, sans-serif";
     const blanda = (hex, andel) => {        // hex blandad med vitt
         const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
@@ -716,9 +717,9 @@ function ganttRitaBild() {
     function diamant(ml, cy) {
         const cx = x(ml.dag) + dw / 2, r = 6;
         g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r, cy); g.closePath();
-        g.fillStyle = ml.klar ? "#ffffff" : ml.typ === "avrop" ? F.avrop : F.lev;
+        g.fillStyle = ml.klar ? "#ffffff" : ml.typ === "avrop" ? F.avrop : ml.typ === "ue" ? F.ue : F.lev;
         g.fill();
-        g.strokeStyle = ml.typ === "avrop" ? F.avrop : F.lev;
+        g.strokeStyle = ml.typ === "avrop" ? F.avrop : ml.typ === "ue" ? F.ue : F.lev;
         g.lineWidth = 1.5;
         g.stroke();
     }
@@ -761,6 +762,7 @@ function ganttRitaBild() {
         };
         fk("Avrop", dia(F.avrop));
         fk("Leverans", dia(F.lev));
+        fk("UE", dia(F.ue));
     }
     return c;
 }
@@ -785,7 +787,8 @@ document.getElementById("gantt").addEventListener("keydown", (e) => {
 const GANTT_NYTT = {
     produktion: { namn: "Produktionsmoment", text: "T.ex. Montage innerväggar plan 3" },
     avrop: { namn: "Avrop", text: "T.ex. Gips, reglar och skenor" },
-    leverans: { namn: "Leverans / UE", text: "T.ex. Leverans NP Nilsson" },
+    leverans: { namn: "Leverans", text: "T.ex. Leverans NP Nilsson" },
+    ue: { namn: "UE", text: "T.ex. Flytspackling Golvbolaget" },
     mote: { namn: "Möte", text: "T.ex. Byggmöte" },
     ovrigt: { namn: "Övrigt", text: "Vad ska hända?" }
 };
@@ -813,7 +816,7 @@ function ganttLaggTill(nyckel) {
     const mt = tid ? p.tavlor.find(t => t.id === tid) : null;
     const mk = mt && kid ? mt.kort.find(k => k.id === kid) : null;
     const slut = mk ? slutPostI(mt, mk) : null;
-    const typer = mk ? ["avrop", "leverans", "produktion", "mote", "ovrigt"] : ["produktion", "avrop", "leverans", "mote", "ovrigt"];
+    const typer = mk ? ["avrop", "leverans", "ue", "produktion", "mote", "ovrigt"] : ["produktion", "avrop", "leverans", "ue", "mote", "ovrigt"];
     const startTavla = mk && tavlor.includes(mt) ? mt : (tavlor.find(t => p === state && t.id === state.aktiv) || tavlor[0]);
     const dag0 = mk ? (mk.dag >= IDAG ? mk.dag : IDAG) : IDAG;
     const kropp =
@@ -883,7 +886,7 @@ function ganttSparaNytt(p, tavlor, mt, mk) {
     }
     else {
         // avrop och leveranser kopplas till momentet (samma kedja) när de läggs till från en momentrad på samma tavla
-        const kedja = mk && mt === t && mk.kedja && (typ === "avrop" || typ === "leverans") ? mk.kedja : null;
+        const kedja = mk && mt === t && mk.kedja && (typ === "avrop" || typ === "leverans" || typ === "ue") ? mk.kedja : null;
         patch = opNyttKort({ dag, typ, text, vem, kedja, roll: kedja ? (typ === "avrop" ? "A" : "L") : null }, t.id);
     }
     if (!patch || !patch.ok || !appliceraPatch(patch, { tavla: t, projekt: p }))

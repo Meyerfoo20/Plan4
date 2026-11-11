@@ -1249,7 +1249,7 @@ function ritaHindermark() {
 // Delar upp korttexten i en liten typetikett och själva namnet.
 // "Avrop · Optimera · gör idag" → etikett "Avrop", namn "Optimera", Gör idag-märke.
 const KORT_ETIKETT = { A: "Avrop", L: "Leverans", S: "Start", K: "Klart", P: "Produktion" };
-const TYP_ETIKETT = { mote: "Möte", produktion: "Produktion", avrop: "Avrop", leverans: "Leverans / UE", ovrigt: "Övrigt", franvaro: "Frånvaro" };
+const TYP_ETIKETT = { mote: "Möte", produktion: "Produktion", avrop: "Avrop", leverans: "Leverans", ue: "UE", ovrigt: "Övrigt", franvaro: "Frånvaro" };
 function kortRubrik(k, text) {
     let titel = text || "", gorIdag = false;
     if (/ · gör idag$/i.test(titel)) {
@@ -1266,7 +1266,7 @@ function kortRubrik(k, text) {
     // avrop och leveranser: leverantören på en egen rad under det som levereras
     let under = "";
     const delar = titel.split(" · ");
-    if ((k.typ === "avrop" || k.typ === "leverans") && delar.length > 1) {
+    if ((k.typ === "avrop" || k.typ === "leverans" || k.typ === "ue") && delar.length > 1) {
         under = delar.pop();
         titel = delar.join(" · ");
     }

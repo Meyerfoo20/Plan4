@@ -145,7 +145,7 @@ function visaKort(k) {
     }
     if (kanDupliceras(k))
         knappar.push({ txt: "Duplicera", fn: () => { sparaNot(k); dupliceraDialog(k); } });
-    if (!k.virtuell && (k.typ === "avrop" || k.typ === "leverans"))
+    if (!k.virtuell && (k.typ === "avrop" || k.typ === "leverans" || k.typ === "ue"))
         knappar.push({ txt: "Flytta denna post", fn: () => { sparaNot(k); flyttaEnskildDialog(k); } });
     if (!k.virtuell && k.typ === "produktion" && k.roll !== "K")
         knappar.push({ txt: "Bemanning", fn: () => { sparaNot(k); bemanningDialog(k); } });
@@ -398,8 +398,11 @@ function dupliceraDialog(k) {
     const kropp = '<p class="hjalp" style="margin-top:0">En ny post skapas med uppgifterna nedan. ' +
         'Originalet ändras inte, och varken avbockning, flytthistorik eller kopplingar följer med.</p>' +
         '<div class="falt"><label for="duText">Text</label><input class="f" id="duText" value="' + esc(k.text) + '"></div>' +
-        '<div class="falt"><label for="duDag">Nytt datum</label>' +
+        '<div class="tva"><div class="falt"><label for="duDag">Nytt datum</label>' +
         '<input class="f" id="duDag" type="date" value="' + dag + '"></div>' +
+        (fr ? "" : '<div class="falt"><label for="duTill">Till och med (valfritt)</label>' +
+        '<input class="f" id="duTill" type="date"></div>') + '</div>' +
+        (fr ? "" : '<p class="hjalp" style="margin-top:-4px">Med Till och med blir det en kopia per vardag, t.ex. måndag till onsdag.</p>') +
         (mote ? '<div class="tva"><div class="falt"><label for="duStart">Börjar</label>' +
             '<input class="f" id="duStart" type="time" value="' + esc(k.tid || "") + '"></div>' +
             '<div class="falt"><label for="duSlut">Slutar</label>' +
@@ -438,17 +441,30 @@ function dupliceraDialog(k) {
                 else
                     tid = document.getElementById("duTid").value.trim();
                 const t = T();
-                const patch = opDupliceraKort(k, { dag: d,
-                    text: document.getElementById("duText").value.trim() || k.text,
-                    tid: tid, vem: document.getElementById("duVem").value.trim(),
-                    mote: mote, slutTid: slut, plats: plats, franvaro: fr, franvaroOrsak: orsak }, t.id, null, null);
-                if (!appliceraPatch(patch, { tavla: t, projekt: state }))
+                // en kopia per vardag från Nytt datum till och med Till och med
+                const tillEl = document.getElementById("duTill"), till = tillEl ? tillEl.value : "";
+                if (till && till < d) {
+                    fel.innerHTML = '<div class="notis rod">Till och med måste vara samma dag eller senare.</div>';
                     return;
-                patch.historik.forEach(h => logg(h));
+                }
+                const dagarna = [];
+                for (let x = d; x <= (till || d) && dagarna.length < 60; x = plus(x, 1))
+                    if ((iso2d(x).getDay() + 6) % 7 < 5) dagarna.push(x);
+                for (const dg of dagarna) {
+                    const patch = opDupliceraKort(k, { dag: dg,
+                        text: document.getElementById("duText").value.trim() || k.text,
+                        tid: tid, vem: document.getElementById("duVem").value.trim(),
+                        mote: mote, slutTid: slut, plats: plats, franvaro: fr, franvaroOrsak: orsak }, t.id, null, null);
+                    if (!appliceraPatch(patch, { tavla: t, projekt: state }))
+                        return;
+                    patch.historik.forEach(h => logg(h));
+                }
                 stangModal();
                 spara();
                 rita();
-                status("Kopia skapad " + kortDatum(d) + (inomTavlan(d) ? "" : " · utanför aktuell plan"));
+                const sista = dagarna[dagarna.length - 1];
+                status((dagarna.length > 1 ? dagarna.length + " kopior skapade " + kortDatum(d) + "–" + kortDatum(sista) : "Kopia skapad " + kortDatum(d)) +
+                    (inomTavlan(d) && inomTavlan(sista) ? "" : " · utanför aktuell plan"));
             } }
     ]);
     document.querySelectorAll("#duOrsak button").forEach(b => b.addEventListener("click", () => {

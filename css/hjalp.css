@@ -381,6 +381,7 @@ body.p4-kontovy #hjalp {
 .hj-prick.c-produktion { background: var(--produktion); }
 .hj-prick.c-avrop { background: var(--avrop); }
 .hj-prick.c-leverans { background: var(--leverans); }
+.hj-prick.c-ue { background: var(--ue); }
 .hj-prick.c-franvaro { background: var(--franvaro); }
 .hj-prick.c-ovrigt { background: var(--ovrigt); }
 

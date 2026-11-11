@@ -180,6 +180,9 @@
 .snabbtyp button.vald[data-t="leverans"] {
   background: var(--leverans);
 }
+.snabbtyp button.vald[data-t="ue"] {
+  background: var(--ue);
+}
 .snabbtyp button.vald[data-t="ovrigt"] {
   background: var(--ovrigt);
 }
@@ -773,6 +776,9 @@ body.visning .varningsremsa.har {
 }
 .dvrad.t-leverans b {
   color: var(--leverans);
+}
+.dvrad.t-ue b {
+  color: var(--ue);
 }
 .dvrad.t-franvaro b {
   color: var(--franvaro);

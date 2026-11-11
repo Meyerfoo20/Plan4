@@ -83,7 +83,7 @@
     // i molnet än räknas som ändrat om jag får skapa projekt.
     function arAndrad(p) {
         if (!anvandare || !kanSkriva(p)) return false;
-        if (!moln.delar[p.id]) return !projektMeta.has(p.id) && !kanda(p.id) && kanSkapaProjekt();
+        if (!moln.delar[p.id]) return !projektMeta.has(p.id) && !kanda(p.id) && kanSkapaProjekt() && !(p.reserv && arTomt(p));
         return andringar(p).length > 0 || !!metaAndring(p);
     }
 
@@ -595,6 +595,7 @@
         if (!plan4.projekt.length) {
             const p = nyttProjekt("Projekt", "Produktion", IDAG);
             rustaProjekt(p, IDAG);
+            p.reserv = true;            // tomt reservprojekt: laddas inte upp så länge det är tomt
             plan4.projekt.push(p);
         }
         if (state.id === id) valjProjekt((aktivaProjekt()[0] || plan4.projekt[0]).id);
@@ -651,6 +652,7 @@
         if (!kanSkriva(p)) return;
         const ny = !m && !moln.delar[pid] && !kanda(pid);
         if (ny && !kanSkapaProjekt()) return;                     // bara den som får skapa projekt lägger till nya
+        if (ny && p.reserv) { if (arTomt(p)) return; delete p.reserv; }   // reservprojektet laddas upp först när det fått innehåll
         if (!ny && (!m || m.version !== 2 || !moln.delar[pid])) return;   // gamla formatet: flyttas av projektadmin först
         let ops;
         if (ny) {
@@ -682,7 +684,17 @@
             try {
                 await bt.commit();
                 del.forEach((o) => { b[o.key] = [o.rev, o.h]; });
-                if (ny && i === 0) { moln.delar[pid] = b; moln.tid[pid] = {}; moln.meta[pid] = metaBas(p); moln.uid = anvandare.uid; }
+                if (ny && i === 0) {
+                    moln.delar[pid] = b; moln.tid[pid] = {}; moln.meta[pid] = metaBas(p); moln.uid = anvandare.uid;
+                    // ett riktigt projekt finns nu: det tomma reservprojektet behövs inte, och lobbyn öppnar appen
+                    const reserv = plan4.projekt.filter((x) => x.id !== pid && x.reserv && arTomt(x) && !kanda(x.id));
+                    if (reserv.length) {
+                        plan4.projekt = plan4.projekt.filter((x) => reserv.indexOf(x) < 0);
+                        if (reserv.indexOf(state) >= 0) { state = p; plan4.aktivtProjekt = p.id; }
+                        ursSparaNu(); rita();
+                    }
+                    setTimeout(kontrolleraTillgang, 0);
+                }
             } catch (e) {
                 if (!e || e.code !== "permission-denied") { sparaMoln(); throw e; }
                 del.forEach((o) => skickat.delete(pid + "|" + o.key));
@@ -1116,6 +1128,7 @@
         angraForeAvbryt();
         const p = nyttProjekt("Projekt", "Produktion", IDAG);
         rustaProjekt(p, IDAG);
+        p.reserv = true;                // tomt reservprojekt: laddas inte upp så länge det är tomt
         plan4 = { version: VERSION, aktivtProjekt: p.id, projekt: [p] };
         state = p;
         moln = tomtMoln();
@@ -1873,11 +1886,13 @@
         const sokt = pnamn && !nekad ? (ansokanFinns
             ? " Du har ansökt om att gå med i " + pnamn + ". Projektadmin för " + pnamn + " godkänner dig."
             : " Din ansökan till " + pnamn + " är avslutad utan att du lagts till. Fråga projektadmin, eller skriv in en ny kod nedan.") : "";
+        $("p4VantarSkapa").classList.toggle("dold", !(ingaProjekt && behorighet.skapa));
         if (ingaProjekt) {
-            $("p4VantarRubrik").textContent = "Du har inte tillgång till något projekt än";
+            // lobbyn: godkänd men inte med i något projekt än
+            $("p4VantarRubrik").textContent = "Välkommen till Wimo" + (anvandare.displayName ? ", " + anvandare.displayName.split(" ")[0] : "");
             $("p4VantarText").textContent = (pnamn && ansokanFinns ? "Ditt konto är godkänt." + sokt
-                : "Ditt konto är godkänt, men en administratör behöver lägga till dig i ett projekt." + (pnamn ? sokt : "")) +
-                " Sidan öppnas av sig själv så fort det är klart — du behöver inte ladda om.";
+                : "Ditt konto är godkänt. Du är inte med i något projekt än: när en projektadmin lägger till dig öppnas projektet här av sig självt, du behöver inte ladda om." + (pnamn ? sokt : "")) +
+                (behorighet.skapa ? " Du får också skapa egna projekt." : " Har du fått en projektkod skriver du in den nedan.");
             $("p4Vantar").classList.remove("nekad");
             return;
         }
@@ -2020,6 +2035,9 @@
             ["ksKod", "p4VantarKod"].forEach((id) => { if ($(id)) $(id).value = ""; });
         } catch (e) { svar(svarId, "Kunde inte skicka ansökan: " + (e.code || e.message)); }
     }
+    document.addEventListener("click", (e) => {
+        if (e.target.closest && e.target.closest("#p4VantarSkapa")) nyttProjektDialog();
+    });
     document.addEventListener("submit", (e) => {
         if (!e.target || e.target.id !== "p4VantarKodForm") return;
         e.preventDefault();
@@ -2295,13 +2313,15 @@
     // Godkänn (kräver minst ett projekt) eller ändra vilka projekt en användare är med i (huvudadmin).
     function projektvalDialog(a, godkann) {
         const lista = valbaraProjekt();
-        if (!lista.length) {
+        if (!lista.length && !godkann) {
             return fraga("Det finns inga projekt än", "Skapa ett projekt först, så kan du godkänna " + (a.namn || a.epost) + " och ge tillgång till det.",
                 [{ txt: "OK", primar: true, fn: stangModal }], false);
         }
         const kropp =
             '<p class="hjalp" style="margin-top:0">' + (godkann
-                ? "Välj vilka projekt " + esc(a.namn || a.epost) + " ska få tillgång till och vilken roll personen har i varje. Minst ett projekt krävs."
+                ? (lista.length ? "Välj vilka projekt " + esc(a.namn || a.epost) + " ska få tillgång till och vilken roll personen har i varje. " +
+                    "Du kan också godkänna utan projekt: då hamnar personen i lobbyn och väntar på att bli tillagd." : "Det finns inga projekt än. " +
+                    esc(a.namn || a.epost) + " hamnar i lobbyn och väntar på att bli tillagd i ett projekt.")
                 : "Bocka i projekten " + esc(a.namn || a.epost) + " ska vara med i och välj roll. Utan projekt kommer personen inte åt något.") +
             " En projektadmin bestämmer själv vilka som är med i projektet. Behörighet per tavla väljer du under Medlemmar… på projektet.</p>" +
             '<ul class="p4-ks-valista">' + lista.map((p) => {
@@ -2311,24 +2331,27 @@
                     "<small>" + (p.medlemmar.filter((u) => u !== a.uid).length) + " andra medlemmar</small></span></label>" +
                     rollval("data-pbeh", p.id, med ? rollI(p, a.uid) : "red", !med) + "</li>";
             }).join("") + "</ul>" +
+            (godkann ? '<label class="kryssrad p4-ks-skaparad"><input type="checkbox" id="pvSkapa"' + (a.skapa === true ? " checked" : "") +
+                "> <span><b>Får skapa egna projekt</b><small>Personen kan starta egna projekt och blir projektadmin i dem.</small></span></label>" : "") +
             '<div class="notis rod dold" id="pvFel"></div>';
         modal(godkann ? "Godkänn " + (a.namn || a.epost) : "Projekt för " + (a.namn || a.epost), a.namn ? a.epost : "", kropp, [
             { txt: "Avbryt", fn: stangModal },
-            { txt: godkann ? "Godkänn och ge tillgång" : "Spara", primar: true, fn: async () => {
+            { txt: godkann ? "Godkänn" : "Spara", primar: true, fn: async () => {
                 const valda = [...document.querySelectorAll("[data-pval]")].filter((x) => x.checked).map((x) => x.dataset.pval);
                 const roller = new Map([...document.querySelectorAll("[data-pbeh]")].map((x) => [x.dataset.pbeh, x.value]));
-                if (godkann && !valda.length) { const f = $("pvFel"); f.textContent = "Välj minst ett projekt."; f.classList.remove("dold"); return; }
+                const skapa = godkann && $("pvSkapa") ? $("pvSkapa").checked : null;
                 stangModal();
                 try {
                     await sattProjektFor(a.uid, valda, roller);
                     if (godkann) {
                         await fb.fs.setDoc(fb.fs.doc(fb.db, "anvandare", a.uid),
-                            { status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() }, { merge: true });
+                            Object.assign({ status: "godkand", behandladAv: anvandare.uid, behandladTid: fb.fs.serverTimestamp() },
+                                skapa === null ? {} : { skapa: skapa }), { merge: true });
                     }
                     // ansökningar till projekten personen nu är med i är klara
                     for (const x of ansokningar.filter((x) => x.uid === a.uid && valda.includes(x.pid)))
                         await fb.fs.deleteDoc(ansokDoc(x.pid, x.uid)).catch(() => { });
-                    status((a.namn || a.epost) + (godkann ? " är godkänd" : ": projekten är sparade"));
+                    status((a.namn || a.epost) + (godkann ? " är godkänd" + (valda.length ? "" : " och väntar i lobbyn") : ": projekten är sparade"));
                 } catch (e) { status("Kunde inte spara: " + (e.code || e.message), true); }
             } },
         ]);

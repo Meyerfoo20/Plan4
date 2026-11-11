@@ -34,7 +34,7 @@ function gPost(nyckel) {
     const k = t && t.kort.find(x => x.id === kid);
     if (!k)
         return null;
-    const mil = k.typ === "avrop" || k.typ === "leverans";
+    const mil = k.typ === "avrop" || k.typ === "leverans" || k.typ === "ue";
     const slut = mil ? null : slutPostI(t, k);
     const kedja = !mil && k.kedja ? t.kort.filter(x => x.kedja === k.kedja) : [k];
     const klar = slut ? !!slut.klar : !!k.klar;
@@ -85,7 +85,7 @@ function gTillKedja(m, fran, till, fore) {
     return true;
 }
 
-function gNamn(m) { return m.mil ? (m.k.text || (m.k.typ === "avrop" ? "Avrop" : "Leverans")) : momentNamn(m.k); }
+function gNamn(m) { return m.mil ? (m.k.text || TYPNAMN[m.k.typ]) : momentNamn(m.k); }
 
 // Hela momentet (eller milstolpen) flyttas ett antal arbetsdagar.
 function gFlytta(nyckel, arbDelta) {
@@ -155,7 +155,8 @@ function gSattSlut(nyckel, ny) {
 const G_TYPER = [
     { typ: "produktion", namn: "Produktionsmoment", text: "En stapel från idag och en vecka fram" },
     { typ: "avrop", namn: "Avrop", text: "En diamant på idag" },
-    { typ: "leverans", namn: "Leverans", text: "En diamant på idag" }
+    { typ: "leverans", namn: "Leverans", text: "En diamant på idag" },
+    { typ: "ue", namn: "UE", text: "En diamant på idag" }
 ];
 
 function gValjTyp(pid, namn) {
@@ -227,7 +228,7 @@ function gSkapa(p, namn) {
         patch = opNyttKort({ dag, typ, text: namn, vem: "" }, t.id);
     if (!patch || !patch.ok || !appliceraPatch(patch, { tavla: t, projekt: p }))
         return status("Det gick inte att skapa", true);
-    (patch.historik && patch.historik.length ? patch.historik : [(typ === "avrop" ? "Avrop" : "Leverans") + " skapat i Gantt-schemat: " + namn]).forEach(h => logg2(t, h));
+    (patch.historik && patch.historik.length ? patch.historik : [TYPNAMN[typ].split(" /")[0] + " skapat i Gantt-schemat: " + namn]).forEach(h => logg2(t, h));
     // det nya kortet blinker några sekunder
     const nya = patch.andringar.filter(a => a.typ === "lagg" && a.objekt === "kort").map(a => a.id || (a.varde && a.varde.id));
     const forsta = typ === "produktion" ? t.kort.find(k => nya.includes(k.id) && k.roll === "S") : t.kort.find(k => nya.includes(k.id));

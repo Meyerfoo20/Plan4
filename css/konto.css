@@ -652,7 +652,7 @@ a.mknapp {
 body.p4-vantar .p4-vantesida {
   display: flex;
 }
-body.p4-vantar > :not(.p4-vantesida):not(#utskrift):not(#utskriftsfot) {
+body.p4-vantar > :not(.p4-vantesida):not(#utskrift):not(#utskriftsfot):not(#overlay):not(.p4-status):not(#status) {
   display: none !important;
 }
 .p4-vantar-kort {
@@ -920,3 +920,7 @@ body.p4-projlas .flik.plus {
 .p4-ks-gamed { display: flex; gap: 8px; }
 .p4-ks-gamed .f { flex: 1; min-width: 0; }
 .p4-ks-tabell .p4-ks-kodliten { font-weight: 700; font-size: 14px; }
+.p4-vantar-skapa { width: 100%; justify-content: center; }
+.p4-ks-skaparad { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 12px 14px; border: 2px solid var(--border-color); border-radius: var(--r-m, 10px); }
+.p4-ks-skaparad span { display: grid; gap: 2px; }
+.p4-ks-skaparad small { color: var(--text-muted); font-size: 12px; }

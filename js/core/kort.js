@@ -105,7 +105,10 @@ function kanDupliceras(k) {
         return false;
     if ((k.material || []).length || (k.forutsattningar || []).length || k.beredning)
         return false;
-    return ["mote", "franvaro", "ovrigt", "produktion"].indexOf(k.typ) >= 0;
+    // ett avrop med uppgifter i avropslistan dupliceras inte (det hör till listan)
+    if (k.typ === "avrop" && k.avrop)
+        return false;
+    return ["mote", "franvaro", "ovrigt", "produktion", "avrop", "leverans", "ue"].indexOf(k.typ) >= 0;
 }
 
 // Bara delen ur Plats / del, t.ex. "Prenadhuset Del 1:2" → "Del 1:2". Ingen del → tom text.
@@ -151,7 +154,7 @@ function lankadRad(t, k) {
     }
     if (k.typ === "avrop" && k.avrop)
         return { rad: k.avrop, del: "A" };
-    if (k.typ === "leverans" && !k.kedja) {
+    if ((k.typ === "leverans" || k.typ === "ue") && !k.kedja) {
         const a = t.kort.find(x => x.avrop && x.avrop.levKortId === k.id);
         if (a)
             return { rad: a.avrop, del: "L" };

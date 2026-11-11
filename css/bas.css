@@ -41,6 +41,9 @@
   --leverans: #b32d22;
   --leverans-fyll: #fbece8;
   --leverans-kant: #efcdc5;
+  --ue: #b85a0d;
+  --ue-fyll: #fdf0e2;
+  --ue-kant: #f1d3b2;
   --ovrigt: #254e9c;
   --ovrigt-fyll: #eaf0f8;
   --ovrigt-kant: #c9d6ec;
@@ -402,6 +405,9 @@ button, input, select, textarea {
 }
 .kort.t-leverans .txt {
   color: var(--leverans);
+}
+.kort.t-ue .txt {
+  color: var(--ue);
 }
 .kort.t-ovrigt .txt {
   color: var(--ovrigt);
@@ -943,6 +949,7 @@ details[open] > summary::before {
 .kort.t-produktion { --kc: var(--produktion); }
 .kort.t-avrop { --kc: var(--avrop); }
 .kort.t-leverans { --kc: var(--leverans); }
+.kort.t-ue { --kc: var(--ue); }
 .kort.t-ovrigt { --kc: var(--ovrigt); }
 .kort.t-franvaro { --kc: var(--franvaro); }
 .kort.klar { --kc: var(--text-faint); }
@@ -952,6 +959,7 @@ details[open] > summary::before {
 .kort.t-produktion .txt,
 .kort.t-avrop .txt,
 .kort.t-leverans .txt,
+.kort.t-ue .txt,
 .kort.t-ovrigt .txt {
   color: var(--text-main);
   font-weight: 500;

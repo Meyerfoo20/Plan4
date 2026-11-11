@@ -150,6 +150,10 @@
     border-left-color: var(--leverans);
     background: var(--leverans-fyll);
   }
+  .ukort.t-ue {
+    border-left-color: var(--ue);
+    background: var(--ue-fyll);
+  }
   .ukort.t-ovrigt {
     border-left-color: var(--ovrigt);
     background: var(--ovrigt-fyll);

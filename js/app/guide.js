@@ -29,10 +29,12 @@ function snabbPost(dag) {
     const kropp = '<div class="falt"><label for="sbText">Vad?</label>' +
         '<input class="f" id="sbText" placeholder="Håltagning Hus A"></div>' +
         '<div class="tva"><div class="falt"><label for="sbDag">Dag</label><select class="f" id="sbDag">' + dagOptioner(d) + '</select></div>' +
-        '<div class="falt"><label for="sbVem">Vem</label><input class="f" id="sbVem" placeholder="Håltagaren"></div></div>' +
+        '<div class="falt" id="sbTillFalt"><label for="sbTill">Till och med</label><select class="f" id="sbTill">' + tillOptioner(d, "") + '</select></div></div>' +
+        '<div id="sbFlera" class="hjalp dold" style="margin:-4px 0 10px"></div>' +
+        '<div class="falt"><label for="sbVem">Vem</label><input class="f" id="sbVem" placeholder="Håltagaren"></div>' +
         '<div class="tva"><div class="falt"><label>Typ</label><div class="snabbtyp" id="sbTyp">' +
         TYPER.map(t => '<button type="button" data-t="' + t + '"' + (t === "produktion" ? ' class="vald"' : "") + '>' +
-            ({ produktion: "Produktion", mote: "Möte", avrop: "Avrop", leverans: "Leverans", franvaro: "Frånvaro", ovrigt: "Övrigt" })[t] + '</button>').join("") +
+            ({ produktion: "Produktion", mote: "Möte", avrop: "Avrop", leverans: "Leverans", ue: "UE", franvaro: "Frånvaro", ovrigt: "Övrigt" })[t] + '</button>').join("") +
         '</div></div>' +
         '<div class="falt" id="sbTidFalt"><label for="sbTid">Klockslag / plats</label><input class="f" id="sbTid" placeholder="Valfritt"></div></div>' +
         '<div id="sbMote" class="dold"><div class="tva">' +
@@ -105,13 +107,18 @@ function snabbPost(dag) {
                 levDag: document.getElementById("sbLevDag").value });
         }
         else {
-            const t = T();
-            const patch = opSkapaSnabbPost({ dag: dagVal, typ: typ, text: txt, tid: tid, vem: vem,
-                slutTid: slutTid, plats: plats, franvaroOrsak: fOrsak }, t.id, null, null);
-            if (!patch.ok)
-                return;
-            if (!appliceraPatch(patch, { tavla: t, projekt: state }))
-                return;
+            // en post per vardag från Dag till och med Till och med
+            const t = T(), dagarna = valdaDagar();
+            for (const dg of dagarna) {
+                const patch = opSkapaSnabbPost({ dag: dg, typ: typ, text: txt, tid: tid, vem: vem,
+                    slutTid: slutTid, plats: plats, franvaroOrsak: fOrsak }, t.id, null, null);
+                if (!patch.ok || !appliceraPatch(patch, { tavla: t, projekt: state }))
+                    return;
+            }
+            if (dagarna.length > 1) {
+                logg(txt + " upplagd " + dagarna.length + " dagar, " + kortDatum(dagarna[0]) + "–" + kortDatum(dagarna[dagarna.length - 1]));
+                status(dagarna.length + " poster skapade: " + txt + " " + kortDatum(dagarna[0]) + "–" + kortDatum(dagarna[dagarna.length - 1]));
+            }
         }
         stangModal();
         spara();
@@ -126,8 +133,28 @@ function snabbPost(dag) {
         { txt: "Avbryt", fn: stangModal },
         { txt: "Lägg till", primar: true, fn: laggUpp }
     ]);
+    // dagarna från Dag till och med Till och med (bara vardagar, tavlan har inga helger)
+    function valdaDagar() {
+        const fran = document.getElementById("sbDag").value, till = document.getElementById("sbTill").value;
+        if (!till || till <= fran || typ === "avrop" || document.getElementById("sbRepet").value !== "nej")
+            return [fran];
+        return dagar().filter(x => x >= fran && x <= till);
+    }
+    function visaFlera() {
+        const n = valdaDagar().length, el = document.getElementById("sbFlera");
+        el.classList.toggle("dold", n < 2);
+        el.textContent = n > 1 ? "Blir " + n + " poster, en per dag " + kortDatum(valdaDagar()[0]) + "–" + kortDatum(valdaDagar()[n - 1]) + "." : "";
+    }
+    document.getElementById("sbDag").addEventListener("change", () => {
+        const s = document.getElementById("sbTill"), v = s.value;
+        s.innerHTML = tillOptioner(document.getElementById("sbDag").value, v);
+        visaFlera();
+    });
+    document.getElementById("sbTill").addEventListener("change", visaFlera);
     function visaAvrop() {
         const repet = document.getElementById("sbRepet").value !== "nej";
+        document.getElementById("sbTillFalt").classList.toggle("dold", typ === "avrop" || repet);
+        if (typeof visaFlera === "function") visaFlera();
         document.getElementById("sbAvrop").classList.toggle("dold", typ !== "avrop" || repet);
         document.getElementById("sbAvropRepet").classList.toggle("dold", !(typ === "avrop" && repet));
         document.getElementById("sbMote").classList.toggle("dold", typ !== "mote");
@@ -187,6 +214,12 @@ function skapaSnabbAvrop(o) {
         return null;
     const id = patch.andringar[0].id;
     return t.kort.find(x => x.id === id) || null;
+}
+
+// Till och med: samma dag eller en senare dag i planen.
+function tillOptioner(fran, vald) {
+    return '<option value="">Bara den dagen</option>' + dagar().filter(iso => iso > fran)
+        .map(iso => '<option value="' + iso + '"' + (iso === vald ? " selected" : "") + '>' + dagEtikett(iso) + '</option>').join("");
 }
 
 function dagOptioner(vald) {
@@ -738,7 +771,7 @@ function planeradeKort() {
         const sent = iso2d(m.avropDag) < iso2d(tavlaStart());
         ut.push({ dag: arbetsdag(m.avropDag), typ: "avrop", roll: "A", mid: m.id,
             text: avropText(m) + (sent ? " · gör idag" : ""), vem: g.vem, kedja: kedja });
-        ut.push({ dag: m.levDag, typ: "leverans", roll: "L", mid: m.id,
+        ut.push({ dag: m.levDag, typ: m.slag === "ue" ? "ue" : "leverans", roll: "L", mid: m.id,
             text: levText(m), vem: g.vem, kedja: kedja });
     });
     if (g.start === g.klar) {

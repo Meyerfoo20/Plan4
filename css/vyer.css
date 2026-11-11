@@ -613,6 +613,7 @@ table.lista .kvitt {
 .dk-kort.t-produktion { background: var(--produktion-fyll); border-color: var(--produktion-kant); border-left-color: var(--produktion); }
 .dk-kort.t-avrop { background: var(--avrop-fyll); border-color: var(--avrop-kant); border-left-color: var(--avrop); }
 .dk-kort.t-leverans { background: var(--leverans-fyll); border-color: var(--leverans-kant); border-left-color: var(--leverans); }
+.dk-kort.t-ue { background: var(--ue-fyll); border-color: var(--ue-kant); border-left-color: var(--ue); }
 .dk-kort.t-ovrigt { background: var(--ovrigt-fyll); border-color: var(--ovrigt-kant); border-left-color: var(--ovrigt); }
 .dk-kort.t-franvaro { background: var(--franvaro-fyll); border-color: var(--franvaro-kant); border-left-color: var(--franvaro); }
 .dk-kort.klar {

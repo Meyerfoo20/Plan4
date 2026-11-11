@@ -50,7 +50,9 @@ const HJALP_SEKTIONER = [
         '<li><span class="hj-prick c-mote"></span><b>Möte</b> — byggmöten, samordning, besiktningar.</li>' +
         '<li><span class="hj-prick c-produktion"></span><b>Produktion</b> — det laget lovar att göra. Räknas i planpålitligheten.</li>' +
         '<li><span class="hj-prick c-avrop"></span><b>Avrop</b> — dagen beställningen ska gå iväg.</li>' +
-        '<li><span class="hj-prick c-leverans"></span><b>Leverans / UE / viktigt</b> — leveranser, UE-starter och sådant som inte får missas.</li>' +
+        '<li><span class="hj-prick c-leverans"></span><b>Leverans / viktigt</b> — leveranser och sådant som inte får missas.</li>' +
+        '<li><span class="hj-prick c-ue"></span><b>UE</b> — underentreprenörernas arbeten och starter på plats, t.ex. flytspackling eller håltagning.</li>' +
+        '<li>I <b>Snabb post</b> väljer du <i>Till och med</i> för att lägga in samma sak flera dagar i rad, t.ex. måndag till onsdag: det blir en post per dag. Med <b>Duplicera</b> på ett kort gör du en kopia, eller en kopia per dag med Till och med.</li>' +
         '<li><span class="hj-prick c-franvaro"></span><b>Frånvaro</b> — semester, sjukdom, utbildning. Kan gå över flera dagar.</li>' +
         '<li><span class="hj-prick c-ovrigt"></span><b>Övrigt</b> — allt annat.</li>' +
         "</ul>" +
@@ -166,7 +168,7 @@ const HJALP_SEKTIONER = [
         "<li>Projektadmin öppnar <i>Mitt konto → Medlemmar…</i> på projektet och kopierar <b>projektkoden</b> (sex tecken).</li>" +
         "<li>Den nya personen väljer <i>Skapa konto</i> och skriver in koden. Har hen redan ett konto skrivs koden in under <i>Gå med i ett projekt</i> på kontosidan.</li>" +
         "<li>Projektadmin ser personen under <b>Ansökningar</b> på kontosidan, väljer roll och trycker <i>Godkänn</i>. Projektet öppnas direkt för personen.</li>" +
-        "<li>Utan kod hamnar nya konton hos huvudadmin. Med <i>Byt kod</i> slutar den gamla koden att gälla.</li></ol></div>" +
+        "<li>Utan kod hamnar nya konton hos huvudadmin, som kan godkänna utan att välja projekt. Då väntar personen i <b>lobbyn</b> tills någon lägger till hen i ett projekt, eller skapar ett eget projekt där om hen får skapa projekt. Med <i>Byt kod</i> slutar den gamla koden att gälla.</li></ol></div>" +
         "<p>Projekt som är klara kan arkiveras under <i>Mina projekt</i>. Arkiverade projekt kan tas fram igen; radering är permanent.</p>" },
 
     { id: "data", ik: "ik-historik", rubrik: "Data och synk", ingress: "Var allt sparas och vad som händer utan nät.",

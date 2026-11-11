@@ -694,6 +694,10 @@ body.p4-dashvy .flik.aktiv {
   background: var(--leverans-fyll);
   border-color: var(--leverans);
 }
+.c-ue .p4-chipprick {
+  background: var(--ue-fyll);
+  border-color: var(--ue);
+}
 .c-franvaro .p4-chipprick {
   background: var(--franvaro-fyll);
   border-color: var(--franvaro);
@@ -853,6 +857,11 @@ body.p4-dashvy .flik.aktiv {
   background: var(--leverans-fyll);
   border-color: var(--leverans-kant);
   border-left-color: var(--leverans);
+}
+.kort.t-ue {
+  background: var(--ue-fyll);
+  border-color: var(--ue-kant);
+  border-left-color: var(--ue);
 }
 .kort.t-ovrigt {
   background: var(--ovrigt-fyll);

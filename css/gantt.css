@@ -491,6 +491,7 @@ button.g-etikett:hover {
 }
 .g-dia.g-avrop { background: var(--avrop); }
 .g-dia.g-leverans { background: var(--leverans); }
+.g-dia.g-ue { background: var(--ue); }
 .g-dia.klar { opacity: .4; }
 .g-dia:hover {
   transform: rotate(45deg) scale(1.3);
@@ -932,3 +933,4 @@ body.g-drarlage * { cursor: grabbing !important; user-select: none !important; }
 .g-typik-leverans { width: 12px; height: 12px; border-radius: 2px; transform: rotate(45deg); }
 .g-typik-avrop { background: var(--avrop); }
 .g-typik-leverans { background: var(--leverans); }
+.g-typik-ue { width: 12px; height: 12px; border-radius: 2px; transform: rotate(45deg); background: var(--ue); }

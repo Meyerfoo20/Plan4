@@ -372,7 +372,7 @@ function opSkapaSnabbAvrop(o, foretagId, tavlaId, klocka, genId) {
     const kAvr = avr.andringar[0].varde;
     let lev = null;
     if (o.levDag) {
-        lev = opNyttKort({ dag: o.levDag, typ: "leverans", vem: o.vem, text: levText(rad) }, tavlaId, klocka, genId);
+        lev = opNyttKort({ dag: o.levDag, typ: rad.slag === "ue" ? "ue" : "leverans", vem: o.vem, text: levText(rad) }, tavlaId, klocka, genId);
         if (!lev.ok)
             return lev;
     }

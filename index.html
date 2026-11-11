@@ -14,18 +14,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap">
 
-  <link rel="stylesheet" href="css/bas.css?v=20261111h">
-  <link rel="stylesheet" href="css/dialoger.css?v=20261111h">
-  <link rel="stylesheet" href="css/vyer.css?v=20261111h">
-  <link rel="stylesheet" href="css/utskrift.css?v=20261111h">
-  <link rel="stylesheet" href="css/skal.css?v=20261111h">
-  <link rel="stylesheet" href="css/konto.css?v=20261111h">
-  <link rel="stylesheet" href="css/datumval.css?v=20261111h">
-  <link rel="stylesheet" href="css/gantt.css?v=20261111h">
-  <link rel="stylesheet" href="css/backup.css?v=20261111h">
-  <link rel="stylesheet" href="css/hjalp.css?v=20261111h">
-  <link rel="stylesheet" href="css/hindernotis.css?v=20261111h">
-  <link rel="stylesheet" href="css/mobil.css?v=20261111h">
+  <link rel="stylesheet" href="css/bas.css?v=20261111j">
+  <link rel="stylesheet" href="css/dialoger.css?v=20261111j">
+  <link rel="stylesheet" href="css/vyer.css?v=20261111j">
+  <link rel="stylesheet" href="css/utskrift.css?v=20261111j">
+  <link rel="stylesheet" href="css/skal.css?v=20261111j">
+  <link rel="stylesheet" href="css/konto.css?v=20261111j">
+  <link rel="stylesheet" href="css/datumval.css?v=20261111j">
+  <link rel="stylesheet" href="css/gantt.css?v=20261111j">
+  <link rel="stylesheet" href="css/backup.css?v=20261111j">
+  <link rel="stylesheet" href="css/hjalp.css?v=20261111j">
+  <link rel="stylesheet" href="css/hindernotis.css?v=20261111j">
+  <link rel="stylesheet" href="css/mobil.css?v=20261111j">
 </head>
 <body class="p4-laddar">
   <!-- Laddning medan inloggningen kontrolleras -->
@@ -47,6 +47,7 @@
         <div class="p4-vantar-kodrad"><input class="f p4-kodfalt" id="p4VantarKod" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="T.ex. K7M4QX"><button type="submit" class="mknapp primar">Skicka ansökan</button></div>
         <div class="notis dold" id="p4VantarKodSvar" role="status"></div>
       </form>
+      <button type="button" class="mknapp primar p4-vantar-skapa dold" id="p4VantarSkapa">+ Skapa ett projekt</button>
       <button type="button" class="mknapp" id="p4VantarLoggaUt">Logga ut</button>
     </div>
   </div>
@@ -185,7 +186,8 @@
           <label class="p4-chip c-mote"><input type="checkbox" id="v-mote" checked><span class="p4-chipprick"></span>Möte</label>
           <label class="p4-chip c-produktion"><input type="checkbox" id="v-produktion" checked><span class="p4-chipprick"></span>Produktion</label>
           <label class="p4-chip c-avrop"><input type="checkbox" id="v-avrop" checked><span class="p4-chipprick"></span>Avrop</label>
-          <label class="p4-chip c-leverans"><input type="checkbox" id="v-leverans" checked><span class="p4-chipprick"></span>Leverans / UE / viktigt</label>
+          <label class="p4-chip c-leverans"><input type="checkbox" id="v-leverans" checked><span class="p4-chipprick"></span>Leverans / viktigt</label>
+          <label class="p4-chip c-ue"><input type="checkbox" id="v-ue" checked><span class="p4-chipprick"></span>UE</label>
           <label class="p4-chip c-franvaro"><input type="checkbox" id="v-franvaro" checked><span class="p4-chipprick"></span>Frånvaro</label>
           <label class="p4-chip c-ovrigt"><input type="checkbox" id="v-ovrigt" checked><span class="p4-chipprick"></span>Övrigt</label>
           <span class="p4-sokinfo dold" id="p4SokInfo"></span>
@@ -273,41 +275,41 @@
   <div id="utskriftsfot"></div>
 
   <!-- Domänlogik (core) -->
-  <script src="js/core/konstanter.js?v=20261111h"></script>
-  <script src="js/core/datum.js?v=20261111h"></script>
-  <script src="js/core/kort.js?v=20261111h"></script>
-  <script src="js/core/operationer.js?v=20261111h"></script>
-  <script src="js/core/avrop.js?v=20261111h"></script>
-  <script src="js/core/resurser.js?v=20261111h"></script>
-  <script src="js/core/franvaro.js?v=20261111h"></script>
-  <script src="js/core/foretag.js?v=20261111h"></script>
-  <script src="js/core/projekt.js?v=20261111h"></script>
+  <script src="js/core/konstanter.js?v=20261111j"></script>
+  <script src="js/core/datum.js?v=20261111j"></script>
+  <script src="js/core/kort.js?v=20261111j"></script>
+  <script src="js/core/operationer.js?v=20261111j"></script>
+  <script src="js/core/avrop.js?v=20261111j"></script>
+  <script src="js/core/resurser.js?v=20261111j"></script>
+  <script src="js/core/franvaro.js?v=20261111j"></script>
+  <script src="js/core/foretag.js?v=20261111j"></script>
+  <script src="js/core/projekt.js?v=20261111j"></script>
 
   <!-- Gränssnitt, lagring och dialoger -->
-  <script src="js/app/grund.js?v=20261111h"></script>
-  <script src="js/app/tavla.js?v=20261111h"></script>
-  <script src="js/app/flytt.js?v=20261111h"></script>
-  <script src="js/app/guide.js?v=20261111h"></script>
-  <script src="js/app/redigera.js?v=20261111h"></script>
-  <script src="js/app/utfall-vader.js?v=20261111h"></script>
-  <script src="js/app/utskrift.js?v=20261111h"></script>
-  <script src="js/app/register.js?v=20261111h"></script>
-  <script src="js/app/oversikt.js?v=20261111h"></script>
-  <script src="js/app/projekt.js?v=20261111h"></script>
-  <script src="js/app/gantt.js?v=20261111h"></script>
-  <script src="js/app/gantt-dra.js?v=20261111h"></script>
-  <script src="js/app/backup.js?v=20261111h"></script>
-  <script src="js/app/hjalp.js?v=20261111h"></script>
-  <script src="js/app/hindernotis.js?v=20261111h"></script>
+  <script src="js/app/grund.js?v=20261111j"></script>
+  <script src="js/app/tavla.js?v=20261111j"></script>
+  <script src="js/app/flytt.js?v=20261111j"></script>
+  <script src="js/app/guide.js?v=20261111j"></script>
+  <script src="js/app/redigera.js?v=20261111j"></script>
+  <script src="js/app/utfall-vader.js?v=20261111j"></script>
+  <script src="js/app/utskrift.js?v=20261111j"></script>
+  <script src="js/app/register.js?v=20261111j"></script>
+  <script src="js/app/oversikt.js?v=20261111j"></script>
+  <script src="js/app/projekt.js?v=20261111j"></script>
+  <script src="js/app/gantt.js?v=20261111j"></script>
+  <script src="js/app/gantt-dra.js?v=20261111j"></script>
+  <script src="js/app/backup.js?v=20261111j"></script>
+  <script src="js/app/hjalp.js?v=20261111j"></script>
+  <script src="js/app/hindernotis.js?v=20261111j"></script>
 
   <!-- Det nya skalet: navigering, sök, kortkommandon och säkerhetskopia -->
-  <script src="js/skal.js?v=20261111h"></script>
+  <script src="js/skal.js?v=20261111j"></script>
 
   <!-- Egen datumväljare för alla datumfält -->
-  <script src="js/app/datumval.js?v=20261111h"></script>
+  <script src="js/app/datumval.js?v=20261111j"></script>
 
   <!-- Konto och molnsynk (Firebase) -->
-  <script src="js/konto/firebase-config.js?v=20261111h"></script>
-  <script src="js/konto/konto.js?v=20261111h"></script>
+  <script src="js/konto/firebase-config.js?v=20261111j"></script>
+  <script src="js/konto/konto.js?v=20261111j"></script>
 </body>
 </html>

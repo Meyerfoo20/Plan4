@@ -14,7 +14,7 @@ const ORSAKSORD = ["Material", "Bemanning", "Föregående ej klart", "Handling",
 
 const ABTEXT = { behovs: "Behöver utföras", planerad: "Planerad", utford: "Utförd" };
 
-const TYPNAMN = { mote: "Möte", produktion: "Produktion", avrop: "Avrop", leverans: "Leverans / UE / viktigt",
+const TYPNAMN = { mote: "Möte", produktion: "Produktion", avrop: "Avrop", leverans: "Leverans / viktigt", ue: "UE",
     franvaro: "Frånvaro", ovrigt: "Övrigt" };
 
 const FRANVARO = ["Sjukdom", "Ledighet", "VAB", "Annat"];
