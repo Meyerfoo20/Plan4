@@ -46,6 +46,11 @@
                 stangHjalp();
         }
         catch (e) { }
+        try {
+            if (dagbokOppen())
+                stangDagbok();
+        }
+        catch (e) { }
     }
     document.querySelectorAll("[data-nav]").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -80,6 +85,10 @@
                 oppnaHjalp();
                 window.scrollTo({ top: 0 });
             }
+            else if (vy === "dagbok") {
+                oppnaDagbok();
+                window.scrollTo({ top: 0 });
+            }
             markeraNav();
         });
     });
@@ -105,6 +114,8 @@
                 return "backup";
             if (hjalpOppen())
                 return "hjalp";
+            if (dagbokOppen())
+                return "dagbok";
         }
         catch (e) { }
         return "tavla";
@@ -128,6 +139,7 @@
         obs.observe($("gantt"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("backup"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("hjalp"), { attributes: true, attributeFilter: ["class"] });
+        obs.observe($("dagbok"), { attributes: true, attributeFilter: ["class"] });
     }
     function stangMeny() { document.body.classList.remove("p4-menyoppen"); $("p4Meny").setAttribute("aria-expanded", "false"); }
     $("p4Meny").addEventListener("click", function () {

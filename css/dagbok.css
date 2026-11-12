@@ -1,0 +1,342 @@
+/* ======================================================================
+   Wimo · Dagbok
+   ====================================================================== */
+
+.ik-dagbok {
+  --ik: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4.5A1.5 1.5 0 0 1 6.5 3H19v16H6.5A1.5 1.5 0 0 0 5 20.5z'/%3E%3Cpath d='M5 20.5A1.5 1.5 0 0 0 6.5 22H19v-3'/%3E%3Cpath d='M9 8h6M9 12h4'/%3E%3C/svg%3E");
+}
+
+#dagbok {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+body.p4-kontovy #dagbok { display: none !important; }
+
+.db-sida { display: grid; gap: 16px; }
+
+/* ---------- listan ---------- */
+.db-topp {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.db-topp h2 {
+  margin: 0;
+  font-family: var(--rubrik);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.db-topp p { margin: 4px 0 0; color: var(--text-muted); font-size: 14px; }
+.db-ny {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-main);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.db-ny span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  font-size: 20px;
+  line-height: 1;
+}
+.db-ny:hover { filter: brightness(1.08); }
+.db-verktyg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.db-filter { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.db-filter .f { width: auto; min-width: 180px; }
+.db-sok { width: 280px; max-width: 100%; }
+
+.db-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.db-manad {
+  margin: 10px 0 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.db-rad {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--r-l, 14px);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s, transform .12s;
+}
+.db-rad:hover { border-color: var(--border-strong); }
+.db-datum {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  background: var(--bg-main);
+  line-height: 1;
+}
+.db-datum b { font-family: var(--rubrik); font-size: 22px; font-weight: 800; }
+.db-datum small { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-top: -10px; }
+.db-mitt { display: grid; gap: 2px; min-width: 0; }
+.db-mitt b { font-size: 15px; }
+.db-mitt small { color: var(--text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-taggar { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.db-tagg {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-main);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.db-tagg.gron { background: color-mix(in srgb, var(--produktion) 14%, transparent); color: var(--produktion); }
+.db-tagg.gul { background: #fbf1d9; color: #8a5a00; }
+.db-tagg.rod { background: var(--leverans-fyll); color: var(--leverans); }
+.db-tagg.stor { padding: 6px 12px; font-size: 12.5px; }
+.db-tom {
+  padding: 40px 20px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--r-l, 14px);
+  text-align: center;
+  color: var(--text-muted);
+}
+.db-tom b { display: block; color: var(--text-main); font-size: 16px; margin-bottom: 4px; }
+.db-tom p { margin: 0; }
+
+/* ---------- kalendern ---------- */
+.db-kal { border: 2px solid var(--border-color); border-radius: var(--r-l, 14px); padding: 12px; }
+.db-kalhuvud { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.db-kalhuvud b { font-size: 15px; }
+.db-kalpil {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  background: var(--bg-card);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-main);
+}
+.db-kalpil:disabled { opacity: .35; cursor: default; }
+.db-kalveckodagar, .db-kalgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.db-kalveckodagar span { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; padding: 4px 0; }
+.db-kd {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg-main);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.db-kd.tom { background: none; }
+.db-kd.helg { color: var(--text-muted); background: transparent; }
+.db-kd:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-pop) 18%, var(--bg-main)); }
+.db-kd.idag { box-shadow: inset 0 0 0 2px var(--accent-pop); }
+.db-kd.har { background: var(--accent-main); color: #fff; }
+.db-kd.har i {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #fff;
+}
+.db-kd:disabled { opacity: .3; cursor: default; }
+.db-kalinfo { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; }
+.db-prick { display: inline-block; width: 12px; height: 12px; border-radius: 4px; background: var(--accent-main); flex: none; }
+
+/* ---------- en dagbok ---------- */
+.db-tillbaka { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.db-sparad { font-size: 12.5px; color: var(--text-faint); }
+.db-entopp {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.db-proj { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
+.db-entopp h2 { margin: 2px 0 0; font-family: var(--rubrik); font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+.db-entopp p { margin: 4px 0 0; color: var(--text-muted); font-size: 13.5px; }
+.db-enknappar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.db-notis { margin: 0; }
+.db-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start; }
+.db-kol { display: grid; gap: 16px; min-width: 0; }
+.db-kort,
+.db-fraga {
+  padding: 16px 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--r-l, 14px);
+  background: var(--bg-card);
+  min-width: 0;
+}
+.db-kort h3,
+.db-fraga h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.db-kort > h3 { margin-bottom: 10px; }
+.db-kortrubrik { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.db-kortrubrik h3 span { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--bg-main); font-size: 12px; color: var(--text-muted); }
+.db-kalla { margin: 0 0 10px; font-size: 12px; color: var(--text-faint); }
+.mknapp.liten { height: 30px; padding: 0 12px; font-size: 12.5px; }
+
+.db-vader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-main);
+  margin-bottom: 12px;
+}
+.db-vader.tom { font-size: 13px; color: var(--text-muted); gap: 10px; flex-wrap: wrap; }
+.db-vsym { font-size: 34px; line-height: 1; }
+.db-vader > div { display: grid; gap: 2px; }
+.db-vader b { font-size: 18px; }
+.db-vader small { font-size: 12.5px; color: var(--text-muted); }
+.db-vader .db-kalla { margin: 0; font-size: 11.5px; }
+.db-lbl { display: grid; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--text-main); }
+.db-lbl span { font-weight: 500; color: var(--text-faint); }
+label.db-lbl[for] { margin-bottom: 5px; display: block; }
+
+.db-poster { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.db-post {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--kc, var(--border-strong));
+  border-radius: 6px;
+  background: var(--bg-main);
+}
+.db-post.t-produktion { --kc: var(--produktion); }
+.db-post.t-mote { --kc: var(--mote); }
+.db-post.t-avrop { --kc: var(--avrop); }
+.db-post.t-leverans { --kc: var(--leverans); }
+.db-post.t-ue { --kc: var(--ue); }
+.db-post.t-franvaro { --kc: var(--franvaro); }
+.db-post.t-ovrigt { --kc: var(--ovrigt); }
+.db-ptyp { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--kc); }
+.db-ptext { display: grid; gap: 3px; min-width: 0; }
+.db-ptext b { font-size: 13.5px; }
+.db-ptext small { font-size: 12px; color: var(--text-muted); }
+.db-ok { color: var(--produktion); font-weight: 700; }
+.db-pval { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.db-pval .f { width: auto; height: 34px; padding-top: 0; padding-bottom: 0; font-size: 13px; }
+.db-pkom { height: 34px; font-size: 13px; margin-top: 2px; }
+.db-post.s-utford { background: color-mix(in srgb, var(--produktion) 8%, var(--bg-main)); }
+.db-post.s-ej { background: var(--leverans-fyll); }
+.db-inga { margin: 0; font-size: 13px; color: var(--text-muted); }
+
+.db-fraga header { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.db-nr {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-main);
+  font-weight: 800;
+  font-size: 14px;
+}
+.db-fraga.besvarad .db-nr { background: var(--accent-main); color: #fff; }
+.db-fraga p { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+.db-ta { resize: vertical; min-height: 76px; line-height: 1.45; }
+.db-tva { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 10px; }
+.db-janej { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg-main); margin-bottom: 10px; }
+.db-janej button {
+  min-width: 70px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.db-janej button.vald { background: var(--text-main); color: var(--bg-card); }
+.db-orsaker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.db-chip { position: relative; }
+.db-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.db-chip span {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-card);
+}
+.db-chip input:checked + span { background: var(--leverans-fyll); border-color: var(--leverans); color: var(--leverans); }
+.db-chip input:focus-visible + span { outline: 2px solid var(--accent-pop); outline-offset: 2px; }
+.db-juridik {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fbf1d9;
+  color: #6b4800 !important;
+  font-size: 12.5px !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.db-historik ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; font-size: 12.5px; color: var(--text-muted); }
+.db-historik b { color: var(--text-main); font-weight: 600; margin-right: 4px; }
+
+@media (max-width: 1100px) {
+  .db-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .db-topp h2 { font-size: 28px; }
+  .db-entopp h2 { font-size: 24px; }
+  .db-rad { grid-template-columns: 46px minmax(0, 1fr); padding: 10px 12px; gap: 10px; }
+  .db-datum { width: 46px; height: 46px; }
+  .db-taggar { grid-column: 2; justify-content: flex-start; }
+  .db-ny { height: 42px; }
+  .db-sok, .db-filter, .db-filter .f { width: 100%; }
+  .db-tva { grid-template-columns: minmax(0, 1fr); }
+}
+.db-projnamn{font-weight:500;color:var(--text-muted)}
+/* listan: bara datumet */
+.db-rad.db-rad-enkel { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 15px; font-weight: 600; color: var(--text-main); text-align: left; padding: 14px 16px; }
+.db-rad-enkel .db-pil { color: var(--text-faint); font-size: 20px; line-height: 1; }

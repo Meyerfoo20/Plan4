@@ -337,6 +337,8 @@ function rustaTavla(t) {
 
 function rustaProjekt(p, idag, genId) {
     p.tavlor = p.tavlor || [];
+    if (!Array.isArray(p.dagbok))
+        p.dagbok = [];
     if (!p.tavlor.length)
         p.tavlor.push(nyTavla("Produktion", idag, genId));
     p.tavlor.forEach(rustaTavla);

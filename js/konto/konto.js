@@ -221,12 +221,19 @@
     const arV2 = (pid) => { const m = projektMeta.get(pid); return !!(m && m.version === 2); };
     const kanda = (pid) => !!(moln.delar[pid] || pid in moln.v1);
     const docNamn = (id) => String(id).replace(/[\/\s.]/g, "_");
+    // Dagböckerna ligger i en egen samling, projekt/{id}/dagbok/{dagbok}. Äldre versioner av appen
+    // känner inte till den och kan därför aldrig råka ta bort en dagbok.
+    const DBN = "dagbok:";
+    const arDbNyckel = (key) => key.indexOf(DBN) === 0;
+    const nyckelFor = (coll, id) => coll === "delar" ? id : coll === "dagbok" ? DBN + id : coll + "/" + id;
     function delRef(pid, key) {
+        if (arDbNyckel(key)) return fb.fs.doc(fb.db, "projekt", pid, "dagbok", key.slice(DBN.length));
         if (key.indexOf("/") < 0) return fb.fs.doc(fb.db, "projekt", pid, "delar", key);
         const i = key.indexOf("/");
         return fb.fs.doc(fb.db, "projekt", pid, "tavlor", key.slice(0, i), "poster", key.slice(i + 1));
     }
     const delSamling = (pid, coll) => coll === "delar" ? fb.fs.collection(fb.db, "projekt", pid, "delar")
+        : coll === "dagbok" ? fb.fs.collection(fb.db, "projekt", pid, "dagbok")
         : fb.fs.collection(fb.db, "projekt", pid, "tavlor", coll, "poster");
     const kopiaDoc = (pid) => fb.fs.doc(fb.db, "projektkopior", pid);
     const msAv = (t) => t && typeof t.toMillis === "function" ? t.toMillis() : 0;
@@ -246,9 +253,11 @@
     function dela(p) {
         const delar = new Map(), pos = new Map();
         const x = JSON.parse(innehall(p));
-        const logo = x.logotyp, tavlor = x.tavlor || [];
-        delete x.logotyp; delete x.tavlor;
+        const logo = x.logotyp, tavlor = x.tavlor || [], dagbok = Array.isArray(x.dagbok) ? x.dagbok : [];
+        delete x.logotyp; delete x.tavlor; delete x.dagbok;
         delar.set("bas", JSON.stringify(x));
+        // varje dagbok är en egen del, så att den aldrig försvinner och inte krockar med andra
+        dagbok.forEach((d) => { if (d && d.id) delar.set(DBN + docNamn(d.id), JSON.stringify(d)); });
         if (logo) delar.set("logo", JSON.stringify(logo));
         tavlor.forEach((t, i) => {
             SAMLINGAR.forEach((s) => {
@@ -272,9 +281,19 @@
         p.id = pid;
         try { p.logotyp = L.has("logo") ? JSON.parse(L.get("logo")) : null; } catch (e) { p.logotyp = null; }
         const tav = new Map();
+        p.dagbok = [];
         for (const [key, data] of L) {
             const i = key.indexOf("/");
-            if (i < 0) continue;
+            if (i < 0) {
+                // dagbok_… i delar/ är det tidigare sättet: flyttas till dagbok/ vid nästa uppladdning
+                if (arDbNyckel(key) || key.indexOf("dagbok_") === 0) {
+                    try {
+                        const d = JSON.parse(data), i = d && d.id ? p.dagbok.findIndex((x) => x.id === d.id) : -2;
+                        if (i === -1) p.dagbok.push(d); else if (i >= 0 && arDbNyckel(key)) p.dagbok[i] = d;
+                    } catch (e) { }
+                }
+                continue;
+            }
             const tid = key.slice(0, i), namn = key.slice(i + 1);
             if (!tav.has(tid)) tav.set(tid, { t: null, s: {} });
             const e = tav.get(tid);
@@ -508,14 +527,14 @@
             const s = await fb.fs.getDocs(delSamling(pid, coll));
             let max = 0;
             s.docs.forEach((d) => {
-                const x = d.data(), key = coll === "delar" ? d.id : coll + "/" + d.id;
+                const x = d.data(), key = nyckelFor(coll, d.id);
                 b[key] = [x.rev || 0, x.borttagen ? null : hash(x.data || "")];
                 if (!x.borttagen) { delar.set(key, x.data || ""); pos.set(key, x.pos || 0); }
                 max = Math.max(max, msAv(x.andrad));
             });
             tid[coll] = max;
         };
-        await Promise.all([las("delar")].concat(synligaTavlor(pid).map(las)));
+        await Promise.all([las("delar"), las("dagbok").catch(() => { })].concat(synligaTavlor(pid).map(las)));
         return { delar, pos, tid, b };
     }
     // Ett hämtat projekt blir den lokala kopian.
@@ -849,6 +868,7 @@
         projektMeta.forEach((m, pid) => {
             if (m.version !== 2 || !moln.delar[pid]) return;
             vill.set(pid + "|delar", [pid, "delar"]);
+            vill.set(pid + "|dagbok", [pid, "dagbok"]);
             synligaTavlor(pid).forEach((tid) => vill.set(pid + "|" + tid, [pid, tid]));
         });
         for (const [k, av] of delLyss) {
@@ -856,7 +876,7 @@
             av(); delLyss.delete(k);
             const [pid, coll] = k.split("|");
             // tavlan syns inte längre för mig: den tas bort från datorn
-            if (coll !== "delar" && projektMeta.has(pid) && moln.delar[pid]) inkFor(pid).rensa.add(coll);
+            if (coll !== "delar" && coll !== "dagbok" && projektMeta.has(pid) && moln.delar[pid]) inkFor(pid).rensa.add(coll);
         }
         for (const [k, [pid, coll]] of vill) if (!delLyss.has(k)) startaDelLyss(pid, coll);
     }
@@ -872,7 +892,7 @@
             const ink = inkFor(pid);
             snap.docChanges().forEach((c) => {
                 if (c.type === "removed" || c.doc.metadata.hasPendingWrites) return;
-                const x = c.doc.data(), key = coll === "delar" ? c.doc.id : coll + "/" + c.doc.id;
+                const x = c.doc.data(), key = nyckelFor(coll, c.doc.id);
                 const fore = ink.delar.get(key), rev = x.rev || 0;
                 if (!fore || rev > fore.rev) ink.delar.set(key, { key, rev, data: x.data || "", pos: x.pos || 0, borttagen: !!x.borttagen });
                 ink.tider[coll] = Math.max(ink.tider[coll] || 0, msAv(x.andrad));
@@ -1339,6 +1359,9 @@
         rita();
     }
     window.p4OppnaKonto = oppnaKontosida;
+    // Vem är inloggad, och får hen ändra i projektet? (Används av dagboken.)
+    window.p4Jag = () => anvandare ? { uid: anvandare.uid, namn: anvandare.displayName || anvandare.email || "", epost: anvandare.email || "" } : null;
+    window.p4KanProjekt = (pid) => !anvandare || arAdmin() || !arLas(pid);
     // Får användaren ändra i den här tavlan? (Används av Gantt-schemat, som kan lägga till i andra projekt än det öppna.)
     window.p4KanRedigera = (pid, tid) => !anvandare || ["admin", "red"].includes(tavlaRatt(pid, tid));
     // Är jag med i projektet? (Gantt-schemat visar bara de egna projekten, även för huvudadmin.)
@@ -2537,6 +2560,7 @@
         const x = JSON.parse(innehall(p)), tk = x.tavlor.find((y) => y.id === tid);
         tk.kort = tk.kort.filter((k) => !k.dag || k.dag >= fran || !k.klar);
         tk.historik = [];
+        x.dagbok = [];
         tk.hinder = tk.hinder.filter((h) => h.status !== "lost" || !h.lostTid || String(h.lostTid).slice(0, 10) >= fran);
         x.tavlor = [tk];
         x.aktiv = tid;
