@@ -8,6 +8,30 @@ function omradeHint(id) { const o = FOMRADEN.find(x => x.id === id); return o ? 
 
 function lageDef(id) { return LAGEN.find(l => l.id === id) || null; }
 
+// Automatisk avstämning för en passerad dag utan egen bedömning: hur stor del av dagens poster
+// som bockades av. Poster som flyttades bort från dagen samma dag eller senare räknas som ej gjorda.
+// Frånvaro räknas inte. Ingen post den dagen = ingen bedömning.
+function autoDagslage(t, iso) {
+    if (!t || !iso || iso >= IDAG)
+        return null;
+    let klara = 0, totalt = 0;
+    (t.kort || []).forEach(k => {
+        if (k.virtuell || k.typ === "franvaro")
+            return;
+        if (k.dag === iso) {
+            totalt++;
+            if (k.klar)
+                klara++;
+        }
+        else if ((k.flyttar || []).some(f => f.fran === iso && String(f.tid || "").slice(0, 10) >= iso))
+            totalt++;
+    });
+    if (!totalt)
+        return null;
+    const andel = klara / totalt;
+    return { lage: andel >= 0.8 ? "gron" : andel >= 0.5 ? "gul" : "rod", klara, totalt };
+}
+
 function startMinut(k) {
     const m = /^\s*(\d{1,2})[:.](\d{2})/.exec(k.tid || "");
     if (!m)

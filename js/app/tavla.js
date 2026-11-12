@@ -122,11 +122,15 @@ function rita() {
 function lageKnapp(iso) {
     const dl = (T().dagslage || {})[iso];
     const def = dl ? lageDef(dl.lage) : null;
+    // passerad dag utan egen bedömning: räknas fram från hur många poster som bockades av
+    const au = def ? null : autoDagslage(T(), iso), adef = au ? lageDef(au.lage) : null;
     const b = document.createElement("button");
-    b.className = "lagemark" + (def ? " satt " + dl.lage : "");
+    b.className = "lagemark" + (def ? " satt " + dl.lage : adef ? " satt auto " + au.lage : "");
     b.type = "button";
-    b.textContent = def ? def.ikon : "○";
-    b.title = def ? (def.txt + (dl.kommentar ? " — " + dl.kommentar : "")) + " · klicka för att ändra" : "Dagens avstämning";
+    b.textContent = def ? def.ikon : adef ? adef.ikon : "○";
+    b.title = def ? (def.txt + (dl.kommentar ? " — " + dl.kommentar : "")) + " · klicka för att ändra"
+        : adef ? "Automatiskt: " + au.klara + " av " + au.totalt + " poster avbockade (" + adef.txt.toLowerCase() + ") · klicka för att sätta själv"
+        : "Dagens avstämning";
     b.addEventListener("click", e => { e.stopPropagation(); lageDialog(iso); });
     return b;
 }
@@ -136,6 +140,7 @@ function lageDialog(iso) {
     const dl = (t.dagslage || {})[iso] || null;
     const kropp = '<p class="fraga">Hur upplevde ni att planen höll?</p>' +
         '<p class="hjalp">Er egen bedömning vid eftermiddagspulsen. Den räknas inte in i planpålitligheten eller någon annan siffra.</p>' +
+        (function () { const au = dl ? null : autoDagslage(t, iso); return au ? '<div class="notis">Just nu satt automatiskt till ' + lageDef(au.lage).ikon + ": " + au.klara + " av " + au.totalt + " poster avbockade. Väljer du själv gäller ditt val.</div>" : ""; })() +
         '<div class="lageval" id="lageval">' +
         LAGEN.map(l => '<button type="button" data-l="' + l.id + '"' + (dl && dl.lage === l.id ? ' class="vald"' : "") + '>' +
             '<span class="ikon">' + l.ikon + '</span><span>' + l.txt + '</span></button>').join("") + '</div>' +

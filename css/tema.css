@@ -178,3 +178,6 @@ html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
   html[data-tema="mork"] { --milstolpe: #f2c14e; --milstolpe-kant: #f2c14e; --milstolpe-fyll: #3b2e0c; --milstolpe-text: #f6d47e; }
 }
 .g-forklaring .g-dia.g-milstolpe { margin: 0 2px; width: 11px; height: 11px; }
+
+/* automatisk avstämning (räknad från avbockade poster) – streckad ram skiljer den från en egen bedömning */
+.lagemark.satt.auto { border-style: dashed; }
