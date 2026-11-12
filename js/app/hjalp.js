@@ -36,6 +36,7 @@ const HJALP_SEKTIONER = [
         '<div class="hj-ruta"><h4>1, 2 eller 4 veckor</h4><p>Välj hur många veckor som visas samtidigt. En vecka ger störst kort, bra på storskärm.</p></div>' +
         '<div class="hj-ruta"><h4>Filter</h4><p>Under <i>Visa</i> slår du av och på posttyper, t.ex. bara Produktion och Leverans. Sök med <kbd>/</kbd>.</p></div>' +
         '<div class="hj-ruta"><h4>Pågående</h4><p>Visar flerdagarsmoment på alla dagar mellan start och klart. Gäller den tavla du står på.</p></div>' +
+        '<div class="hj-ruta"><h4>Wimo som app</h4><p>Wimo kan installeras som en app på datorn och mobilen och öppnas då i ett eget fönster. På datorn: tryck <b>Installera appen</b> längst ner i sidomenyn, eller installationsikonen till höger i adressfältet i Chrome och Edge. På iPhone: Dela → Lägg till på hemskärmen. På Android: menyn ⋮ → Installera app.</p></div>' +
         '<div class="hj-ruta"><h4>Dagsläget</h4><p>Klicka på ringen i dagens hörn och välj 😀 😐 ☹️ — er egen känsla av hur planen höll. Räknas inte in i någon siffra. Har ingen valt något när dagen passerat sätts en automatiskt (streckad ram) efter hur många av dagens poster som bockades av: minst 80 % 😀, minst 50 % 😐, annars ☹️.</p></div>' +
         "</div>" +
         "<h4>Flera tavlor i samma projekt</h4>" +

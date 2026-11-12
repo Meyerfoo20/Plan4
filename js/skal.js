@@ -371,3 +371,29 @@ function sattTema(t) {
     sattTema(document.documentElement.getAttribute("data-tema") === "mork" ? "mork" : "ljus");
     k.addEventListener("click", () => sattTema(document.documentElement.getAttribute("data-tema") === "mork" ? "ljus" : "mork"));
 })();
+
+/* ==== Wimo som app (installera på datorn / mobilen) ================= */
+(function () {
+    const k = document.getElementById("p4Installera");
+    let fraga = null;
+    const installerad = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
+        window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch((e) => console.warn("Wimo service worker:", e)));
+    window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        fraga = e;
+        if (k && !installerad()) k.classList.remove("dold");
+    });
+    window.addEventListener("appinstalled", () => {
+        fraga = null;
+        if (k) k.classList.add("dold");
+        try { status("Wimo är installerad som app"); } catch (e) { }
+    });
+    if (k) k.addEventListener("click", async () => {
+        if (!fraga) return;
+        fraga.prompt();
+        try { await fraga.userChoice; } catch (e) { }
+        fraga = null;
+        k.classList.add("dold");
+    });
+})();
