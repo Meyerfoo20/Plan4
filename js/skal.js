@@ -51,6 +51,11 @@
                 stangDagbok();
         }
         catch (e) { }
+        try {
+            if (forslagOppen())
+                stangForslag();
+        }
+        catch (e) { }
     }
     document.querySelectorAll("[data-nav]").forEach(function (b) {
         b.addEventListener("click", function () {
@@ -89,6 +94,10 @@
                 oppnaDagbok();
                 window.scrollTo({ top: 0 });
             }
+            else if (vy === "forslag") {
+                oppnaForslag();
+                window.scrollTo({ top: 0 });
+            }
             markeraNav();
         });
     });
@@ -116,6 +125,8 @@
                 return "hjalp";
             if (dagbokOppen())
                 return "dagbok";
+            if (forslagOppen())
+                return "forslag";
         }
         catch (e) { }
         return "tavla";
@@ -140,6 +151,7 @@
         obs.observe($("backup"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("hjalp"), { attributes: true, attributeFilter: ["class"] });
         obs.observe($("dagbok"), { attributes: true, attributeFilter: ["class"] });
+        obs.observe($("forslag"), { attributes: true, attributeFilter: ["class"] });
     }
     function stangMeny() { document.body.classList.remove("p4-menyoppen"); $("p4Meny").setAttribute("aria-expanded", "false"); }
     $("p4Meny").addEventListener("click", function () {

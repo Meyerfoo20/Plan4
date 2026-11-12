@@ -1414,6 +1414,7 @@
             ritaSynkkort();
             ritaAnsokningar();
             ritaAdmin();
+            ritaForslagAdmin();
         } catch (e) {
             console.error("Wimo kontosidan:", e);
             sida.innerHTML = '<div class="p4-ks-kort"><h2>Kontosidan kunde inte visas</h2>' +
@@ -1449,6 +1450,7 @@
             '<section class="p4-ks-kort p4-ks-projekt" id="ksSynk"></section>' +
             '<section class="p4-ks-kort p4-ks-projekt dold" id="ksAnsok"></section>' +
             '<section class="p4-ks-kort p4-ks-projekt dold" id="ksAdmin"></section>' +
+            '<section class="p4-ks-kort dold" id="ksForslag"></section>' +
 
             '<div class="p4-ks-rutnat">' +
 
@@ -1753,8 +1755,13 @@
         if (kontoOppen()) ritaSynkkort();
         // huvudadmin: väntande konton och ansökningar; projektadmin: ansökningar till sina projekt
         const vantar = new Set(ansokningar.map((a) => a.uid).concat(arAdmin() ? vantandeAnvandare().map((a) => a.uid) : [])).size;
+        const nyaForslag = arAdmin() ? forslagLista.filter((x) => x.status !== "klar").length : 0;
         const badge = $("p4KontoBadge");
-        if (badge) { badge.textContent = String(vantar); badge.classList.toggle("dold", !vantar); badge.title = vantar + (vantar === 1 ? " person väntar" : " personer väntar") + " på godkännande"; }
+        if (badge) {
+            badge.textContent = String(vantar + nyaForslag); badge.classList.toggle("dold", !(vantar + nyaForslag));
+            badge.title = [vantar ? vantar + (vantar === 1 ? " person väntar" : " personer väntar") + " på godkännande" : "",
+                nyaForslag ? nyaForslag + (nyaForslag === 1 ? " nytt förslag" : " nya förslag") : ""].filter(Boolean).join(" · ");
+        }
         if (knapp) knapp.classList.toggle("admin-vantar", !!vantar);
     }
 
@@ -1945,6 +1952,7 @@
             if (kontoOppen()) { ritaAdmin(); ritaAnsokningar(); }
             synkaPersoner();
         }, (e) => console.warn("Wimo användarlista:", e));
+        startaForslag();
     }
     // Projektadmin och tavla-admin ser bara personerna i sina egna projekt (projekt/{id}/personer).
     function startaAnvandarlista() {
@@ -1971,7 +1979,80 @@
     }
     function stoppaAdmin() {
         if (adminLyssnare) { adminLyssnare(); adminLyssnare = null; allaAnvandare = []; }
+        if (forslagLyss) { forslagLyss(); forslagLyss = null; forslagLista = []; }
     }
+
+    // ---------- förslag från användarna (forslag/{id}) ----------
+    // Alla inloggade kan skicka ett förslag; bara huvudadmin läser dem, under Mitt konto.
+    let forslagLyss = null, forslagLista = [], forslagFilter = "nya";
+    const FORSLAG_TYP = { ny: "Ny funktion", battre: "Förbättring", fel: "Något fungerar inte", annat: "Övrigt" };
+    function startaForslag() {
+        if (forslagLyss || !arAdmin()) return;
+        forslagLyss = fb.fs.onSnapshot(fb.fs.collection(fb.db, "forslag"), (snap) => {
+            forslagLista = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))
+                .sort((a, b) => ((tidAv(b.skapad) || 0) - (tidAv(a.skapad) || 0)));
+            uppdateraUI();
+            if (kontoOppen()) ritaForslagAdmin();
+        }, (e) => console.warn("Wimo förslag:", e));
+    }
+    window.p4KanSkickaForslag = () => !!(anvandare && behorighet.status === "godkand");
+    window.p4SkickaForslag = async (o) => {
+        if (!anvandare) throw new Error("Logga in för att skicka ett förslag.");
+        const text = String(o && o.text || "").trim().slice(0, 4000);
+        if (!text) throw new Error("Skriv ditt förslag först.");
+        const typ = FORSLAG_TYP[o.typ] ? o.typ : "annat";
+        const ref = fb.fs.doc(fb.fs.collection(fb.db, "forslag"));
+        await fb.fs.setDoc(ref, {
+            text, typ, uid: anvandare.uid,
+            namn: String(anvandare.displayName || "").slice(0, 200), epost: String(anvandare.email || "").slice(0, 200),
+            projekt: String(state && state.projekt || "").slice(0, 200), status: "ny", skapad: fb.fs.serverTimestamp()
+        });
+        return ref.id;
+    };
+    function ritaForslagAdmin() {
+        const kort = $("ksForslag");
+        if (!kort) return;
+        if (!arAdmin()) { kort.classList.add("dold"); return; }
+        kort.classList.remove("dold");
+        const nya = forslagLista.filter((x) => x.status !== "klar");
+        const lista = forslagFilter === "nya" ? nya : forslagLista;
+        const rader = lista.map((x) => {
+            const t = tidAv(x.skapad), klar = x.status === "klar";
+            return '<li class="p4-fs-rad' + (klar ? " klar" : "") + '">' +
+                '<div class="p4-fs-topp"><span class="p4-ks-tagg' + (x.typ === "fel" ? " fara" : "") + '">' + esc(FORSLAG_TYP[x.typ] || "Övrigt") + "</span>" +
+                  "<b>" + esc(x.namn || x.epost || "Okänd") + "</b>" + (x.namn && x.epost ? " <small>" + esc(x.epost) + "</small>" : "") +
+                  '<small class="p4-fs-tid">' + esc(t ? t.toLocaleString("sv-SE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "just nu") +
+                  (x.projekt ? " · " + esc(x.projekt) : "") + "</small></div>" +
+                '<p class="p4-fs-text">' + esc(x.text || "") + "</p>" +
+                '<span class="p4-ks-atgarder">' +
+                  '<button type="button" class="mknapp' + (klar ? "" : " primar") + '" data-forslag="' + (klar ? "ny" : "klar") + '" data-id="' + esc(x.id) + '">' + (klar ? "Markera som ny" : "Klar") + "</button>" +
+                  (x.epost ? '<a class="mknapp" href="mailto:' + esc(x.epost) + "?subject=" + encodeURIComponent("Ditt förslag till Wimo") + '">Svara</a>' : "") +
+                  '<button type="button" class="mknapp fara" data-forslag="tabort" data-id="' + esc(x.id) + '">Ta bort</button>' +
+                "</span></li>";
+        }).join("");
+        kort.innerHTML =
+            '<div class="p4-ks-rubrikrad"><h2>Förslag från användarna</h2>' +
+              (nya.length ? '<span class="p4-ks-status vantar">' + nya.length + (nya.length === 1 ? " nytt" : " nya") + "</span>" : "") +
+              '<span class="p4-ks-hoger-knappar lage" role="tablist">' +
+                '<button type="button" data-forslagfilter="nya"' + (forslagFilter === "nya" ? ' class="vald"' : "") + ">Nya (" + nya.length + ")</button>" +
+                '<button type="button" data-forslagfilter="alla"' + (forslagFilter === "alla" ? ' class="vald"' : "") + ">Alla (" + forslagLista.length + ")</button>" +
+              "</span></div>" +
+            '<p class="hjalp">Det som användarna skriver under Förslag i sidomenyn hamnar här. Bara du som huvudadmin ser dem.</p>' +
+            (rader ? '<ul class="p4-fs-lista">' + rader + "</ul>" : '<p class="hjalp">' + (forslagFilter === "nya" ? "Inga nya förslag just nu." : "Inga förslag ännu.") + "</p>");
+    }
+    document.addEventListener("click", async (e) => {
+        const f = e.target.closest("#ksForslag [data-forslagfilter]");
+        if (f) { forslagFilter = f.dataset.forslagfilter; return ritaForslagAdmin(); }
+        const b = e.target.closest("#ksForslag [data-forslag]");
+        if (!b || !arAdmin()) return;
+        const ref = fb.fs.doc(fb.db, "forslag", b.dataset.id);
+        try {
+            if (b.dataset.forslag === "tabort") {
+                if (!confirm("Ta bort förslaget?")) return;
+                await fb.fs.deleteDoc(ref);
+            } else await fb.fs.updateDoc(ref, { status: b.dataset.forslag === "klar" ? "klar" : "ny" });
+        } catch (err) { console.warn("Wimo förslag:", err); status("Förslaget kunde inte ändras", true); }
+    });
 
     // ---------- projektens namnlistor ----------
     const persLyss = new Map(), persPer = new Map();     // projektId → avregistrering / [{ uid, namn, epost }]
