@@ -285,7 +285,7 @@ function opSattBeredning(kort, status, hinder, txt, etikett, abtext, klocka, gen
 
 function redigeraFalt(o) {
     const ut = [];
-    for (const namn of ["text", "tid", "slutTid", "plats", "vem", "not", "franvaroOrsak", "typ"])
+    for (const namn of ["text", "tid", "slutTid", "plats", "vem", "not", "franvaroOrsak", "typ", "milstolpe"])
         if (Object.prototype.hasOwnProperty.call(o, namn))
             ut.push([namn, o[namn]]);
     return ut;
@@ -348,6 +348,8 @@ function snabbPostFalt(o) {
     }
     if (o.typ === "franvaro")
         ut.push(["franvaroOrsak", o.franvaroOrsak === undefined ? "" : o.franvaroOrsak]);
+    if (o.typ === "produktion" && o.milstolpe)
+        ut.push(["milstolpe", true]);
     return ut;
 }
 
@@ -535,6 +537,8 @@ function opDupliceraKort(kalla, val, tavlaId, klocka, genId) {
     }
     if (val.franvaro)
         k.franvaroOrsak = val.franvaroOrsak;
+    if (kalla.milstolpe && kalla.typ === "produktion")
+        k.milstolpe = true;
     return { ok: true, fel: null,
         andringar: [{ typ: "lagg", objekt: "kort", id: k.id, varde: k, bo: { typ: "tavla", id: tavlaId } }],
         fore: [{ objekt: "kort", id: k.id, varde: null, bo: { typ: "tavla", id: tavlaId } }],
@@ -1064,6 +1068,9 @@ function opGuideLaggUpp(o, tavlaId, klocka, genId) {
     bar.beredning = o.beredning || null;
     if (o.plats)
         bar.plats = o.plats;
+    // milstolpen sitter på momentets sista post (Klart), annars på startposten
+    if (o.milstolpe)
+        (skapade.find(k => k.roll === "K") || bar).milstolpe = true;
     bar.bemanning = tomBemanning(o.bemanning) ? null :
         { behov: o.bemanning.behov.slice(), personer: o.bemanning.personer.slice() };
     bar.forutsattningar = (o.grund || []).map(f => ({ id: f.id, omrade: f.omrade, txt: f.txt, status: f.status,

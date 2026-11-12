@@ -10,7 +10,7 @@ function startDag(dag) { return dag && inomTavlan(dag) ? dag : (inomTavlan(IDAG)
 
 function nollstall(d) {
     g = { steg: 0, dag: d, typ: null, text: "", vem: "", tid: "", start: d, klar: d,
-        mtrl: [], forval: [], grund: {}, beredning: null, kedja: null, plats: "", bemanning: { behov: [], personer: [] } };
+        mtrl: [], forval: [], grund: {}, beredning: null, kedja: null, plats: "", milstolpe: false, bemanning: { behov: [], personer: [] } };
 }
 
 function planeraMoment(dag, text) {
@@ -37,6 +37,7 @@ function snabbPost(dag) {
             ({ produktion: "Produktion", mote: "Möte", avrop: "Avrop", leverans: "Leverans", ue: "UE", franvaro: "Frånvaro", ovrigt: "Övrigt" })[t] + '</button>').join("") +
         '</div></div>' +
         '<div class="falt" id="sbTidFalt"><label for="sbTid">Klockslag / plats</label><input class="f" id="sbTid" placeholder="Valfritt"></div></div>' +
+        '<label class="milstolpeval" id="sbMilFalt"><input type="checkbox" id="sbMil"><span class="milstolpe-ik" aria-hidden="true"></span><span><b>Milstolpe</b><small>Märks med en symbol på tavlan och i Gantt-schemat</small></span></label>' +
         '<div id="sbMote" class="dold"><div class="tva">' +
         '<div class="falt"><label for="sbStart">Börjar</label><input class="f" id="sbStart" type="time"></div>' +
         '<div class="falt"><label for="sbSlut">Slutar</label><input class="f" id="sbSlut" type="time"></div></div>' +
@@ -111,7 +112,8 @@ function snabbPost(dag) {
             const t = T(), dagarna = valdaDagar();
             for (const dg of dagarna) {
                 const patch = opSkapaSnabbPost({ dag: dg, typ: typ, text: txt, tid: tid, vem: vem,
-                    slutTid: slutTid, plats: plats, franvaroOrsak: fOrsak }, t.id, null, null);
+                    slutTid: slutTid, plats: plats, franvaroOrsak: fOrsak,
+                    milstolpe: typ === "produktion" && document.getElementById("sbMil").checked }, t.id, null, null);
                 if (!patch.ok || !appliceraPatch(patch, { tavla: t, projekt: state }))
                     return;
             }
@@ -160,6 +162,7 @@ function snabbPost(dag) {
         document.getElementById("sbMote").classList.toggle("dold", typ !== "mote");
         document.getElementById("sbFranvaro").classList.toggle("dold", typ !== "franvaro");
         document.getElementById("sbTidFalt").classList.toggle("dold", typ === "mote");
+        document.getElementById("sbMilFalt").classList.toggle("dold", typ !== "produktion" || repet);
         document.getElementById("sbDagar").classList.toggle("dold", document.getElementById("sbRepet").value !== "dagar");
     }
     document.querySelectorAll("#sbTyp button").forEach(b => b.addEventListener("click", () => {
@@ -242,6 +245,7 @@ function stegVad() {
         '<div class="tva"><div class="falt"><label for="pPlats">Plats / del (frivilligt)</label>' +
         '<input class="f" id="pPlats" value="' + esc(g.plats || "") + '" placeholder="Plan 2 – Hus A"></div>' +
         '<div class="falt"><label for="pVem">Vem utför?</label><input class="f" id="pVem" value="' + esc(g.vem) + '" placeholder="Lag, lagbas eller UE"></div></div>' +
+        '<label class="milstolpeval"><input type="checkbox" id="pMil"' + (g.milstolpe ? " checked" : "") + '><span class="milstolpe-ik" aria-hidden="true"></span><span><b>Milstolpe</b><small>Märks med en symbol på tavlan och i Gantt-schemat</small></span></label>' +
         '<div id="delvarn"></div>';
     modal("Ny produktionspost", "Guiden frågar efter hela kedjan: avrop, leverans, start och färdigt.", kropp, [
         { txt: "◂ Snabb post", vanster: true, fn: () => snabbPost(g.dag) },
@@ -253,6 +257,7 @@ function stegVad() {
                 g.text = t;
                 g.vem = document.getElementById("pVem").value.trim();
                 g.plats = document.getElementById("pPlats").value.trim();
+                g.milstolpe = document.getElementById("pMil").checked;
                 g.steg = 2;
                 visaSteg();
             } }
@@ -826,7 +831,7 @@ function stegSammanst() {
                 const t = T();
                 const patch = opGuideLaggUpp({ kort: kort, hinder: hin, grund: grund, forval: g.forval,
                     mtrl: g.mtrl, text: g.text, start: g.start, plats: g.plats, beredning: g.beredning,
-                    bemanning: g.bemanning }, t.id, null, null);
+                    bemanning: g.bemanning, milstolpe: !!g.milstolpe }, t.id, null, null);
                 if (!patch.ok)
                     return;
                 if (!appliceraPatch(patch, { tavla: t, projekt: state }))

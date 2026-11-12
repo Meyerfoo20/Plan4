@@ -705,6 +705,7 @@ function redigeraKort(k) {
                     (momentBar ? '<p class="hjalp" style="margin:4px 0 0">Gäller hela momentet ' + esc(momentNamn(momentBar)) + "</p>" : "") +
                     "</div>") +
         '<div class="falt"><label for="rVem">Vem</label><input class="f" id="rVem" value="' + esc(k.vem || "") + '"></div></div>' +
+        (k.typ === "produktion" ? '<label class="milstolpeval"><input type="checkbox" id="rMil"' + (k.milstolpe ? " checked" : "") + '><span class="milstolpe-ik" aria-hidden="true"></span><span><b>Milstolpe</b><small>Märks med en symbol på tavlan och i Gantt-schemat</small></span></label>' : "") +
         (k.typ === "franvaro" ? '<div class="falt"><label for="rFOrsak">Orsak</label><select class="f" id="rFOrsak">' +
             FRANVARO.map(o => '<option' + (o === (k.franvaroOrsak || "Annat") ? " selected" : "") + '>' + o + '</option>').join("") +
             '</select></div>' : "") +
@@ -752,6 +753,8 @@ function redigeraKort(k) {
                 if (document.getElementById("rFOrsak"))
                     o.franvaroOrsak = document.getElementById("rFOrsak").value;
                 o.typ = nyTyp;
+                if (document.getElementById("rMil"))
+                    o.milstolpe = nyTyp === "produktion" && document.getElementById("rMil").checked;
                 const flytt = nyDag !== k.dag;
                 const kravOrsak = flytt && kraverOrsak(k, nyDag, nyTyp);
                 const patch = opRedigeraKort(k, o, t.id);

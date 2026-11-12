@@ -808,7 +808,7 @@ function bockaKort(k, efter) {
 
 function kortEl(k) {
     const el = document.createElement("div");
-    el.className = "kort t-" + k.typ + (k.attgora ? " attgora" : "") + (k.klar ? " klar" : "") + (k.virtuell ? " virtuell" : "") +
+    el.className = "kort t-" + k.typ + (k.attgora ? " attgora" : "") + (k.klar ? " klar" : "") + (k.milstolpe && k.typ === "produktion" ? " milstolpe" : "") + (k.virtuell ? " virtuell" : "") +
         (valdKedja && k.kedja === valdKedja ? " kedja-vald" : "");
     el.draggable = !k.virtuell && !(k.typ === "franvaro" && k.tillDag && k.tillDag > k.dag);
     el.dataset.id = k.id;
@@ -841,6 +841,13 @@ function kortEl(k) {
         const ov = document.createElement("span");
         ov.className = "kortetikett";
         ov.textContent = rub.etikett + (k.typ === "mote" && k.tid ? " · " + tidText(k) : "");
+        if (k.milstolpe && k.typ === "produktion") {
+            const ms = document.createElement("span");
+            ms.className = "milstolpe-mark";
+            ms.title = "Milstolpe";
+            ms.innerHTML = '<span class="milstolpe-ik" aria-hidden="true"></span>Milstolpe';
+            ov.appendChild(ms);
+        }
         if (rub.gorIdag) {
             const gi = document.createElement("span");
             gi.className = "gorIdag";

@@ -2001,9 +2001,10 @@
         const text = String(o && o.text || "").trim().slice(0, 4000);
         if (!text) throw new Error("Skriv ditt förslag först.");
         const typ = FORSLAG_TYP[o.typ] ? o.typ : "annat";
+        const bilder = (Array.isArray(o.bilder) ? o.bilder : []).filter((b) => typeof b === "string" && b.indexOf("data:image/") === 0).slice(0, 2);
         const ref = fb.fs.doc(fb.fs.collection(fb.db, "forslag"));
         await fb.fs.setDoc(ref, {
-            text, typ, uid: anvandare.uid,
+            text, typ, uid: anvandare.uid, bilder,
             namn: String(anvandare.displayName || "").slice(0, 200), epost: String(anvandare.email || "").slice(0, 200),
             projekt: String(state && state.projekt || "").slice(0, 200), status: "ny", skapad: fb.fs.serverTimestamp()
         });
@@ -2024,6 +2025,8 @@
                   '<small class="p4-fs-tid">' + esc(t ? t.toLocaleString("sv-SE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "just nu") +
                   (x.projekt ? " · " + esc(x.projekt) : "") + "</small></div>" +
                 '<p class="p4-fs-text">' + esc(x.text || "") + "</p>" +
+                (Array.isArray(x.bilder) && x.bilder.length ? '<div class="p4-fs-bilder">' + x.bilder.filter((b) => typeof b === "string" && b.indexOf("data:image/") === 0)
+                    .map((b, i) => '<button type="button" class="p4-fs-bild" data-forslagbild="' + esc(x.id) + "|" + i + '" title="Visa bilden"><img src="' + esc(b) + '" alt="Bild ' + (i + 1) + '"></button>').join("") + "</div>" : "") +
                 '<span class="p4-ks-atgarder">' +
                   '<button type="button" class="mknapp' + (klar ? "" : " primar") + '" data-forslag="' + (klar ? "ny" : "klar") + '" data-id="' + esc(x.id) + '">' + (klar ? "Markera som ny" : "Klar") + "</button>" +
                   (x.epost ? '<a class="mknapp" href="mailto:' + esc(x.epost) + "?subject=" + encodeURIComponent("Ditt förslag till Wimo") + '">Svara</a>' : "") +
@@ -2041,6 +2044,19 @@
             (rader ? '<ul class="p4-fs-lista">' + rader + "</ul>" : '<p class="hjalp">' + (forslagFilter === "nya" ? "Inga nya förslag just nu." : "Inga förslag ännu.") + "</p>");
     }
     document.addEventListener("click", async (e) => {
+        const bild = e.target.closest("#ksForslag [data-forslagbild]");
+        if (bild) {
+            const [id, i] = bild.dataset.forslagbild.split("|"), x = forslagLista.find((y) => y.id === id);
+            const src = x && x.bilder && x.bilder[+i];
+            if (!src) return;
+            const lager = document.createElement("div");
+            lager.className = "p4-fs-lager";
+            lager.innerHTML = '<img alt="Bild från förslaget"><button type="button" aria-label="Stäng">×</button>';
+            lager.querySelector("img").src = src;
+            lager.addEventListener("click", () => lager.remove());
+            document.body.appendChild(lager);
+            return;
+        }
         const f = e.target.closest("#ksForslag [data-forslagfilter]");
         if (f) { forslagFilter = f.dataset.forslagfilter; return ritaForslagAdmin(); }
         const b = e.target.closest("#ksForslag [data-forslag]");

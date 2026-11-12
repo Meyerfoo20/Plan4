@@ -89,8 +89,9 @@ function ganttMoment(p) {
             if (k.typ === "produktion" && k.roll !== "K") {
                 const slut = slutPostI(t, k);
                 const till = slut && slut.dag > k.dag ? slut.dag : k.dag;
+                const ms = k.milstolpe || (slut && slut.milstolpe);
                 moment.push({ p, t, k, namn: momentNamn(k) || "Produktionsmoment", fran: k.dag, till,
-                    klar: slut ? !!slut.klar : !!k.klar, mil: [] });
+                    klar: slut ? !!slut.klar : !!k.klar, mil: [], milstolpe: ms ? till : null });
             }
             else if (k.typ === "avrop" || k.typ === "leverans" || k.typ === "ue")
                 mil.push({ p, t, k, typ: k.typ, dag: k.dag, klar: !!k.klar, text: k.text || TYPNAMN[k.typ] });
@@ -252,6 +253,7 @@ function ganttValHtml() {
         '<li><span class="g-dia g-avrop"></span>Avrop</li>' +
         '<li><span class="g-dia g-leverans"></span>Leverans</li>' +
         '<li><span class="g-dia g-ue"></span>UE</li>' +
+        '<li><span class="g-dia g-milstolpe"></span>Milstolpe</li>' +
         "</ul></aside>";
 }
 
@@ -320,6 +322,8 @@ function ganttTabell(data, o) {
                     ? '<span class="g-utetext" style="right:' + (bredd - v + 6).toFixed(1) + 'px">' + esc(m.namn) + "</span>"
                     : '<span class="g-utetext" style="left:' + (v + Math.max(w, 6) + 6).toFixed(1) + 'px">' + esc(m.namn) + "</span>") +
                 (gantt.milstolpar ? m.mil.map(ml => ganttDiamant(ml, x, dw, o.dra)).join("") : "") +
+                (m.milstolpe && m.milstolpe >= fran && m.milstolpe <= till ? '<button type="button" class="g-dia g-milstolpe' + (m.klar ? " klar" : "") + '" data-gkort="' + p.id + "|" + m.t.id + "|" + m.k.id +
+                    '" style="left:' + (x(m.milstolpe) + dw - 1).toFixed(1) + 'px" title="' + esc("Milstolpe: " + m.namn + "\n" + dagEtikett(m.milstolpe) + (m.klar ? " · klar" : "")) + '"></button>' : "") +
                 "</div></div>";
         });
         if (gantt.milstolpar && d.losa.length)
@@ -699,6 +703,7 @@ function ganttRitaBild() {
             if (tw + 16 <= w) g.fillText(m.namn, xa + 8, y + h / 2 + 4);
             else if (xa + w + 8 + tw < KANT + ET + TID) { g.fillStyle = F.mutad; g.fillText(m.namn, xa + w + 6, y + h / 2 + 4); }
             if (gantt.milstolpar) m.mil.forEach(ml => diamant(ml, y + h / 2));
+            if (m.milstolpe && m.milstolpe >= fran && m.milstolpe <= till) diamant({ dag: m.milstolpe, typ: "milstolpe", klar: m.klar, slut: true }, y + h / 2);
         }
         else {
             g.fillStyle = F.mutad;
@@ -715,11 +720,12 @@ function ganttRitaBild() {
         y += h;
     });
     function diamant(ml, cy) {
-        const cx = x(ml.dag) + dw / 2, r = 6;
+        const cx = x(ml.dag) + (ml.slut ? dw : dw / 2), r = ml.typ === "milstolpe" ? 7 : 6;
         g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r, cy); g.closePath();
-        g.fillStyle = ml.klar ? "#ffffff" : ml.typ === "avrop" ? F.avrop : ml.typ === "ue" ? F.ue : F.lev;
+        const fd = ml.typ === "milstolpe" ? "#d9a21b" : ml.typ === "avrop" ? F.avrop : ml.typ === "ue" ? F.ue : F.lev;
+        g.fillStyle = ml.klar ? "#ffffff" : fd;
         g.fill();
-        g.strokeStyle = ml.typ === "avrop" ? F.avrop : ml.typ === "ue" ? F.ue : F.lev;
+        g.strokeStyle = fd;
         g.lineWidth = 1.5;
         g.stroke();
     }

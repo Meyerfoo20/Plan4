@@ -131,3 +131,50 @@ html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
   html[data-tema="mork"] .dk-ruta.idag .dk-datum { color: var(--accent-pop); }
   html[data-tema="mork"] .dashlogotyp { filter: invert(1) hue-rotate(180deg); }
 }
+
+/* ---- Milstolpe ---- */
+.milstolpe-ik {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--milstolpe, #d9a21b);
+  border: 1.5px solid var(--milstolpe-kant, #8a6100);
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+}
+.kort .milstolpe-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 2px;
+  padding: 1px 7px 1px 6px;
+  border-radius: 999px;
+  background: var(--milstolpe-fyll, #fbefc9);
+  border: 1px solid var(--milstolpe, #d9a21b);
+  color: var(--milstolpe-text, #6e4d00);
+  font-size: .95em;
+  letter-spacing: .02em;
+  text-transform: none;
+}
+.kort .milstolpe-mark .milstolpe-ik { width: 7px; height: 7px; border-width: 1px; }
+.milstolpeval {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-s);
+  background: var(--bg-main);
+  cursor: pointer;
+}
+.milstolpeval input { width: 18px; height: 18px; margin: 0; accent-color: #b98500; }
+.milstolpeval > span:last-child { display: grid; gap: 1px; }
+.milstolpeval small { color: var(--text-muted); font-size: 12.5px; }
+.milstolpeval:has(input:checked) { border-color: var(--milstolpe, #d9a21b); background: var(--milstolpe-fyll, #fbefc9); }
+.g-dia.g-milstolpe { background: var(--milstolpe, #d9a21b); width: 13px; height: 13px; margin: -7px 0 0 -7px; z-index: 3; border-color: var(--bg-card); }
+@media screen {
+  html[data-tema="mork"] { --milstolpe: #f2c14e; --milstolpe-kant: #f2c14e; --milstolpe-fyll: #3b2e0c; --milstolpe-text: #f6d47e; }
+}
+.g-forklaring .g-dia.g-milstolpe { margin: 0 2px; width: 11px; height: 11px; }
