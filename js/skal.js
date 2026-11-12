@@ -340,3 +340,22 @@
         try { localStorage.setItem(NYCKEL, oppen ? "1" : "0"); } catch (e) { }
     });
 })();
+
+/* ==== Ljust / mörkt läge ============================================ */
+function sattTema(t) {
+    const mork = t === "mork";
+    if (mork) document.documentElement.setAttribute("data-tema", "mork");
+    else document.documentElement.removeAttribute("data-tema");
+    try { localStorage.setItem("wimo-tema", mork ? "mork" : "ljus"); } catch (e) { }
+    const k = document.getElementById("p4Tema");
+    if (k) {
+        const txt = mork ? "Byt till ljust läge" : "Byt till mörkt läge";
+        k.title = txt; k.setAttribute("aria-label", txt); k.setAttribute("aria-pressed", mork ? "true" : "false");
+    }
+}
+(function () {
+    const k = document.getElementById("p4Tema");
+    if (!k) return;
+    sattTema(document.documentElement.getAttribute("data-tema") === "mork" ? "mork" : "ljus");
+    k.addEventListener("click", () => sattTema(document.documentElement.getAttribute("data-tema") === "mork" ? "ljus" : "mork"));
+})();

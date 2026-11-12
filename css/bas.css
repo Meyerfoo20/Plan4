@@ -997,7 +997,7 @@ details[open] > summary::before {
   font-weight: 700;
   line-height: 1.28;
   letter-spacing: -.005em;
-  color: color-mix(in srgb, var(--kc) 28%, #16191c);
+  color: color-mix(in srgb, var(--kc) 28%, var(--text-main));
   overflow-wrap: break-word;
   hyphens: auto;
   -webkit-hyphens: auto;

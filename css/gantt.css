@@ -242,10 +242,10 @@ body.p4-kontovy #gantt {
   border-radius: 3px;
   --gf: var(--text-muted);
 }
-.g-fk-plan { background: color-mix(in srgb, var(--gf) 22%, #fff); border-left: 3px solid var(--gf); }
-.g-fk-pagar { background: color-mix(in srgb, var(--gf) 55%, #fff); border-left: 3px solid var(--gf); }
+.g-fk-plan { background: color-mix(in srgb, var(--gf) 22%, var(--bg-card)); border-left: 3px solid var(--gf); }
+.g-fk-pagar { background: color-mix(in srgb, var(--gf) 55%, var(--bg-card)); border-left: 3px solid var(--gf); }
 .g-fk-sen { background: var(--leverans-fyll); border: 1.5px solid var(--leverans); }
-.g-fk-klar { background: repeating-linear-gradient(135deg, var(--bg-alt) 0 3px, #fff 3px 6px); border: 1px solid var(--border-strong); }
+.g-fk-klar { background: repeating-linear-gradient(135deg, var(--bg-alt) 0 3px, var(--bg-card) 3px 6px); border: 1px solid var(--border-strong); }
 
 /* ---------- tabellen ---------- */
 .g-skroll {
@@ -385,7 +385,7 @@ button.g-etikett:hover {
   border: 0;
   border-left: 3px solid var(--gf);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--gf) 22%, #fff);
+  background: color-mix(in srgb, var(--gf) 22%, var(--bg-card));
   color: color-mix(in srgb, var(--gf) 80%, #000);
   font: inherit;
   font-size: 12px;
@@ -409,7 +409,7 @@ button.g-etikett:hover {
   box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--gf);
 }
 .g-stapel.pagar {
-  background: color-mix(in srgb, var(--gf) 55%, #fff);
+  background: color-mix(in srgb, var(--gf) 55%, var(--bg-card));
   color: #fff;
   color: color-mix(in srgb, var(--gf) 15%, #000);
 }
@@ -420,7 +420,7 @@ button.g-etikett:hover {
   color: var(--leverans);
 }
 .g-stapel.klar {
-  background: repeating-linear-gradient(135deg, var(--bg-alt) 0 4px, #fff 4px 8px);
+  background: repeating-linear-gradient(135deg, var(--bg-alt) 0 4px, var(--bg-card) 4px 8px);
   border-left-color: var(--border-strong);
   color: var(--text-muted);
   text-decoration: line-through;
@@ -768,7 +768,7 @@ button.g-etikett:hover {
 }
 .g-plus:hover {
   opacity: 1;
-  color: #fff;
+  color: var(--btn-text);
   background: var(--accent-main);
   border-color: var(--accent-main);
 }
@@ -928,7 +928,7 @@ body.g-drarlage * { cursor: grabbing !important; user-select: none !important; }
 .g-typknapp b { font-size: 14px; }
 .g-typknapp small { grid-column: 2; font-size: 12px; color: var(--text-muted); }
 .g-typik { grid-row: 1 / span 2; justify-self: center; }
-.g-typik-produktion { width: 24px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--produktion) 30%, #fff); border-left: 3px solid var(--produktion); }
+.g-typik-produktion { width: 24px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--produktion) 30%, var(--bg-card)); border-left: 3px solid var(--produktion); }
 .g-typik-avrop,
 .g-typik-leverans { width: 12px; height: 12px; border-radius: 2px; transform: rotate(45deg); }
 .g-typik-avrop { background: var(--avrop); }

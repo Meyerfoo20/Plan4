@@ -1,0 +1,133 @@
+/* ==== Tydligare färgkoder på tavlan + mörkt läge ====================== */
+
+/* Ljust läge: starkare fyllnad och kant per posttyp, och en tjock färgad kant till vänster */
+:root {
+  --mote-fyll: #edeae2;
+  --mote-kant: #b7b0a1;
+  --produktion: #07695b;
+  --produktion-fyll: #d3ece4;
+  --produktion-kant: #84c3b1;
+  --avrop: #643f9a;
+  --avrop-fyll: #ebe0f6;
+  --avrop-kant: #bba1dc;
+  --leverans: #b0261b;
+  --leverans-fyll: #fadad3;
+  --leverans-kant: #e6a193;
+  --ue: #b35204;
+  --ue-fyll: #fce2c6;
+  --ue-kant: #e9ad76;
+  --ovrigt: #1f4ea8;
+  --ovrigt-fyll: #dae6f8;
+  --ovrigt-kant: #99b4e3;
+  --franvaro: #74552f;
+  --franvaro-fyll: #eee2d1;
+  --franvaro-kant: #cbb08d;
+}
+.kort { border-width: 3px; border-left-width: 3px; padding: 6px 7px 6px 8px; }
+.kort .kortetikett { font-weight: 800; }
+
+/* ---- Knappen för ljust/mörkt läge ---- */
+.p4-tema {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.p4-tema:hover { border-color: var(--accent-main); }
+.p4-tema:focus-visible { outline: none; box-shadow: var(--pop-ring); }
+.p4-tema svg { width: 18px; height: 18px; }
+.p4-tema .ik-sol { display: none; }
+html[data-tema="mork"] .p4-tema .ik-sol { display: block; }
+html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
+
+/* ---- Mörkt läge (bara på skärm; utskrift är alltid ljus) ---- */
+@media screen {
+  html[data-tema="mork"] {
+    color-scheme: dark;
+    --bg-main: #121517;
+    --bg-alt: #1a1e21;
+    --bg-card: #1e2327;
+    --bg-glass: rgba(18, 21, 23, 0.86);
+    --text-main: #eceeed;
+    --text-muted: #aab3ae;
+    --text-faint: #7f8984;
+    --border-color: #343b40;
+    --border-light: #2a3034;
+    --border-strong: #4a545b;
+    --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --btn-text: #121517;
+    --bg-footer: #0b0d0e;
+    --accent-main: #e8ebe9;
+    --accent-hover: #ffffff;
+    --accent-light: #2b3236;
+    --accent-lofte: #e3a63d;
+    --varning: #f1c27c;
+    --varning-fyll: #3a2c14;
+    --varning-kant: #6e5323;
+    --varning-stark: #e3a63d;
+
+    --mote: #d6dadd;
+    --mote-fyll: #272c30;
+    --mote-kant: #4c555c;
+    --produktion: #43d3b5;
+    --produktion-fyll: #113a32;
+    --produktion-kant: #22705f;
+    --avrop: #bb9bf0;
+    --avrop-fyll: #2d2244;
+    --avrop-kant: #5c4789;
+    --leverans: #ff7d6c;
+    --leverans-fyll: #45201b;
+    --leverans-kant: #8e3b31;
+    --ue: #ffa553;
+    --ue-fyll: #43290e;
+    --ue-kant: #8d5720;
+    --ovrigt: #82aaff;
+    --ovrigt-fyll: #1a2a4a;
+    --ovrigt-kant: #375892;
+    --franvaro: #d8b38b;
+    --franvaro-fyll: #352a1f;
+    --franvaro-kant: #6f5841;
+  }
+  html[data-tema="mork"] body { background: var(--bg-main); color: var(--text-main); }
+  html[data-tema="mork"] .p4-logotyp { filter: invert(1) hue-rotate(180deg); }
+
+  /* fasta ljusa färger i övriga stilmallar */
+  html[data-tema="mork"] .ruta:hover { background: var(--bg-alt); }
+  html[data-tema="mork"] .kort.klar { background: var(--bg-alt); }
+  html[data-tema="mork"] .ord.larm,
+  html[data-tema="mork"] .hinder li.forsenat,
+  html[data-tema="mork"] .p4-backup.fara { background: var(--leverans-fyll); }
+  html[data-tema="mork"] .p4d-falt:hover { background: var(--bg-alt); }
+  html[data-tema="mork"] .abmark.planerad,
+  html[data-tema="mork"] .db-juridik,
+  html[data-tema="mork"] .db-tagg.gul { background: var(--varning-fyll); color: var(--varning); }
+  html[data-tema="mork"] .fatabell tr.markerad td { background: var(--avrop-fyll); }
+  html[data-tema="mork"] .dvrad { border-bottom-color: var(--border-light); }
+  html[data-tema="mork"] .db-kd.har i { background: var(--bg-card); }
+  html[data-tema="mork"] .g-bubbla { background: var(--accent-main); color: var(--btn-text); }
+  html[data-tema="mork"] .g-stapel.pagar { color: #fff; }
+}
+
+/* Gantt och översikt i mörkt läge */
+@media screen {
+  html[data-tema="mork"] .g-spar {
+    background:
+      repeating-linear-gradient(90deg, transparent 0 calc(var(--db) - 1px), rgba(255,255,255,.05) calc(var(--db) - 1px) var(--db)),
+      repeating-linear-gradient(90deg, transparent 0 calc(var(--vb) - 1px), var(--border-light) calc(var(--vb) - 1px) var(--vb)),
+      repeating-linear-gradient(90deg, transparent 0 var(--hb), rgba(255,255,255,.035) var(--hb) var(--vb));
+  }
+  html[data-tema="mork"] .g-cell.g-dagcell.helg { background: rgba(255,255,255,.03); }
+  html[data-tema="mork"] .g-cell.g-dagcell.idag,
+  html[data-tema="mork"] .g-cell.idag,
+  html[data-tema="mork"] .ruta.idag .dagnr,
+  html[data-tema="mork"] .dk-ruta.idag .dk-datum { color: var(--accent-pop); }
+  html[data-tema="mork"] .dashlogotyp { filter: invert(1) hue-rotate(180deg); }
+}

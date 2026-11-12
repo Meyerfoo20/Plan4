@@ -103,7 +103,7 @@ body.p4-kontovy #hjalp {
   flex: none;
   border-radius: 50%;
   background: var(--accent-main);
-  color: #fff;
+  color: var(--btn-text);
   display: grid;
   place-items: center;
   font: 800 12.5px/1 var(--rubrik);

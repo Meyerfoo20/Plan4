@@ -39,7 +39,7 @@ body.p4-kontovy #dagbok { display: none !important; }
   border: 0;
   border-radius: 999px;
   background: var(--accent-main);
-  color: #fff;
+  color: var(--btn-text);
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -167,7 +167,7 @@ body.p4-kontovy #dagbok { display: none !important; }
 .db-kd.helg { color: var(--text-muted); background: transparent; }
 .db-kd:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-pop) 18%, var(--bg-main)); }
 .db-kd.idag { box-shadow: inset 0 0 0 2px var(--accent-pop); }
-.db-kd.har { background: var(--accent-main); color: #fff; }
+.db-kd.har { background: var(--accent-main); color: var(--btn-text); }
 .db-kd.har i {
   position: absolute;
   left: 50%;
@@ -274,7 +274,7 @@ label.db-lbl[for] { margin-bottom: 5px; display: block; }
   font-weight: 800;
   font-size: 14px;
 }
-.db-fraga.besvarad .db-nr { background: var(--accent-main); color: #fff; }
+.db-fraga.besvarad .db-nr { background: var(--accent-main); color: var(--btn-text); }
 .db-fraga p { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
 .db-ta { resize: vertical; min-height: 76px; line-height: 1.45; }
 .db-tva { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 10px; }
