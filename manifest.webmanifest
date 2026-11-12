@@ -1,16 +1,33 @@
 {
-  "name": "Wimo – fyraveckorsplanering",
+  "name": "Wimo",
   "short_name": "Wimo",
   "description": "Fyraveckorsplanering för byggarbetsplatser",
   "lang": "sv",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "background_color": "#f8f6f0",
-  "theme_color": "#15181b",
+  "theme_color": "#f8f6f0",
   "icons": [
-    { "src": "img/app-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "img/app-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "img/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "img/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "img/app-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

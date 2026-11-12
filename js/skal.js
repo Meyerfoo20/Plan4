@@ -359,6 +359,9 @@ function sattTema(t) {
     if (mork) document.documentElement.setAttribute("data-tema", "mork");
     else document.documentElement.removeAttribute("data-tema");
     try { localStorage.setItem("wimo-tema", mork ? "mork" : "ljus"); } catch (e) { }
+    // fönsterlisten i den installerade appen följer temat
+    const tf = document.getElementById("p4Temafarg");
+    if (tf) tf.setAttribute("content", mork ? "#121517" : "#f8f6f0");
     const k = document.getElementById("p4Tema");
     if (k) {
         const txt = mork ? "Byt till ljust läge" : "Byt till mörkt läge";
