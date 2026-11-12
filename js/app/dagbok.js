@@ -39,6 +39,10 @@ function dbJag() {
 function dbArMed(p) {
     try { return typeof window.p4ArMed !== "function" || window.p4ArMed(p.id); } catch (e) { return true; }
 }
+// Ny dagbok: bara huvudadmin eller projektadmin i projektet.
+function dbKanSkapa(p) {
+    try { return !!p && (typeof window.p4ArProjektAdmin !== "function" || window.p4ArProjektAdmin(p.id)); } catch (e) { return false; }
+}
 function dbKanAndra(p) {
     try { return typeof window.p4KanProjekt !== "function" || window.p4KanProjekt(p.id); } catch (e) { return true; }
 }
@@ -118,11 +122,11 @@ function ritaDagbokLista(el) {
         '<header class="db-topp"><div><h2>Dagbok' + (state && state.projekt ? ' <span class="db-projnamn">· ' + esc(state.projekt) + "</span>" : "") + "</h2><p>" + (alla.length
             ? alla.length + (alla.length === 1 ? " dagbok" : " dagböcker") + (utkast ? " · " + utkast + " inte godkända" : " · alla godkända")
             : "Byggdagbok per dag. Wimo fyller i datum, väder och dagens poster åt dig.") + "</p></div>" +
-        '<button type="button" class="db-ny" id="dbNy" title="Ny dagbok" aria-label="Ny dagbok"><span aria-hidden="true">+</span> Ny dagbok</button></header>' +
+        (dbKanSkapa(state) ? '<button type="button" class="db-ny" id="dbNy" title="Ny dagbok" aria-label="Ny dagbok"><span aria-hidden="true">+</span> Ny dagbok</button>' : "") + "</header>" +
         '<div class="db-verktyg">' + val + '<input class="f db-sok" id="dbSok" type="search" placeholder="Sök i dagböckerna" value="' + esc(dbVy.sok) + '"></div>' +
         (filtrerade.length ? '<ul class="db-lista">' + rader + "</ul>"
             : '<div class="db-tom"><b>' + (alla.length ? "Inga dagböcker matchar" : "Ingen dagbok än") + "</b><p>" +
-              (alla.length ? "Ändra sökningen eller projektvalet." : "Tryck på + Ny dagbok och välj dagen du vill skriva för.") + "</p></div>") +
+              (alla.length ? "Ändra sökningen eller projektvalet." : (dbKanSkapa(state) ? "Tryck på + Ny dagbok och välj dagen du vill skriva för." : "Dagböckerna skapas av projektadmin.")) + "</p></div>") +
         "</section>";
 }
 
@@ -140,6 +144,8 @@ function nyDagbokDialog() {
     const projekt = dbProjekt().filter(p => !p.arkiverad || p === state);
     if (!projekt.length)
         return status("Du är inte med i något projekt", true);
+    if (!dbKanSkapa(projekt[0]))
+        return status("Bara huvudadmin och projektadmin kan skapa en dagbok", true);
     const pid = projekt[0].id;
     dbKal = { pid, manad: IDAG.slice(0, 7) };
     modal("Ny dagbok", "Välj dagen du ska skriva dagbok för", '<div id="dbKalender"></div>', [{ txt: "Avbryt", fn: stangModal }]);
@@ -194,8 +200,8 @@ document.addEventListener("click", (e) => {
     const finns = (p.dagbok || []).find(d => d.datum === iso);
     if (finns)
         return visaDagbok(p.id, finns.id);
-    if (!dbKanAndra(p))
-        return status("Du har bara läsbehörighet i " + p.projekt, true);
+    if (!dbKanSkapa(p))
+        return status("Bara huvudadmin och projektadmin kan skapa en dagbok", true);
     skapaDagbok(p, iso);
 });
 document.addEventListener("change", (e) => {
@@ -249,6 +255,8 @@ async function dbHamtaVader(p, iso) {
 }
 
 function skapaDagbok(p, iso) {
+    if (!dbKanSkapa(p))
+        return status("Bara huvudadmin och projektadmin kan skapa en dagbok", true);
     const jag = dbJag();
     const d = { id: uid(), datum: iso, skapad: dbNu(), av: jag.namn, avUid: jag.uid, andrad: dbNu(), andradAv: jag.namn,
         vader: null, vaderText: "", poster: dbPosterFor(p, iso), postHamtade: dbNu(),

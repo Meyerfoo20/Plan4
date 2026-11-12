@@ -1362,6 +1362,8 @@
     // Vem är inloggad, och får hen ändra i projektet? (Används av dagboken.)
     window.p4Jag = () => anvandare ? { uid: anvandare.uid, namn: anvandare.displayName || anvandare.email || "", epost: anvandare.email || "" } : null;
     window.p4KanProjekt = (pid) => !anvandare || arAdmin() || !arLas(pid);
+    // Bara huvudadmin och projektets projektadmin skapar dagböcker.
+    window.p4ArProjektAdmin = (pid) => !anvandare || arAdmin() || arProjektAdmin(pid);
     // Får användaren ändra i den här tavlan? (Används av Gantt-schemat, som kan lägga till i andra projekt än det öppna.)
     window.p4KanRedigera = (pid, tid) => !anvandare || ["admin", "red"].includes(tavlaRatt(pid, tid));
     // Är jag med i projektet? (Gantt-schemat visar bara de egna projekten, även för huvudadmin.)

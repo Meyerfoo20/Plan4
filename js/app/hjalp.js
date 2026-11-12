@@ -119,7 +119,7 @@ const HJALP_SEKTIONER = [
         '<div class="hj-grid">' +
         '<div class="hj-ruta"><h4>Projektöversikt <kbd>O</kbd></h4><p>Det viktigaste på en sida: planpålitlighet, hinder, försenade avrop, obekräftade datum och det som kräver åtgärd. Under det Gantt-schemat för dina valda projekt och kalendern med projektets alla tavlor under varandra. Välj vilka projekt som visas i schemat direkt i översikten, och tryck <b>PP</b> för att visa allt i fullskärm.</p></div>' +
         '<div class="hj-ruta"><h4>Att göra <kbd>A</kbd></h4><p>Projektets öppna punkter med ansvarig och datum. Punkter med datum syns också på tavlan.</p></div>' +
-        '<div class="hj-ruta"><h4>Dagbok</h4><p>Byggdagbok per projekt och dag. Tryck <b>+ Ny dagbok</b>, välj dagen i kalendern, så fyller Wimo i datum, väder och dagens poster från tavlorna.</p><ul>' +
+        '<div class="hj-ruta"><h4>Dagbok</h4><p>Byggdagbok per projekt och dag. Huvudadmin och projektadmin trycker <b>+ Ny dagbok</b> och väljer dagen i kalendern. Sedan fyller Wimo i datum, väder och dagens poster från tavlorna.</p><ul>' +
         "<li>Bekräfta vad som faktiskt blev gjort: <i>Utfört</i>, <i>Pågår</i> eller <i>Ej utfört</i> med orsak. Planerat räknas inte som utfört förrän det är bekräftat.</li>" +
         "<li>Svara på de fem frågorna: påbörjat, pågående och avslutat · arbetsstyrka · avvikelser, störningar och hinder · ändringar och tilläggsarbeten (ÄTA) · övrigt.</li>" +
         "<li><b>Godkänn dagboken</b> när den är klar. Ändrar du efteråt sparas den godkända versionen och kompletteringen syns i historiken.</li>" +
