@@ -200,3 +200,81 @@ html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
     padding-right: calc(24px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
   }
 }
+
+/* Flikform: rundade hörn upptill, raka nedtill */
+#pagaendeKnapp, #nyTavlaKnapp { border-radius: 10px 10px 0 0; }
+.vp-tagg { border-radius: 8px 8px 0 0; }
+
+/* Korten: samma färgade kant nedtill som till vänster */
+.kort.t-mote { border-bottom-color: var(--mote); }
+.kort.t-produktion { border-bottom-color: var(--produktion); }
+.kort.t-avrop { border-bottom-color: var(--avrop); }
+.kort.t-leverans { border-bottom-color: var(--leverans); }
+.kort.t-ue { border-bottom-color: var(--ue); }
+.kort.t-ovrigt { border-bottom-color: var(--ovrigt); }
+.kort.t-franvaro { border-bottom-color: var(--franvaro); }
+.kort.klar { border-bottom-color: var(--border-strong); }
+
+/* ---- Filterchipsen "Visa": små kort i posttypens färger ----
+   På = fylld som korten på tavlan, med färgad kant till vänster och nedtill och en bock.
+   Av = streckad, blek och genomstruken. */
+.p4-chip { --cc: var(--mote); --cf: var(--mote-fyll); --ck: var(--mote-kant); }
+.p4-chip.c-produktion { --cc: var(--produktion); --cf: var(--produktion-fyll); --ck: var(--produktion-kant); }
+.p4-chip.c-avrop { --cc: var(--avrop); --cf: var(--avrop-fyll); --ck: var(--avrop-kant); }
+.p4-chip.c-leverans { --cc: var(--leverans); --cf: var(--leverans-fyll); --ck: var(--leverans-kant); }
+.p4-chip.c-ue { --cc: var(--ue); --cf: var(--ue-fyll); --ck: var(--ue-kant); }
+.p4-chip.c-franvaro { --cc: var(--franvaro); --cf: var(--franvaro-fyll); --ck: var(--franvaro-kant); }
+.p4-chip.c-ovrigt { --cc: var(--ovrigt); --cf: var(--ovrigt-fyll); --ck: var(--ovrigt-kant); }
+.p4-chip {
+  position: relative;
+  padding: 6px 13px 6px 9px;
+  border: 2px solid var(--ck);
+  border-left: 3px solid var(--cc);
+  border-bottom: 3px solid var(--cc);
+  border-radius: 10px 10px 10px 0;
+  background: var(--cf);
+  color: color-mix(in srgb, var(--cc) 35%, var(--text-main));
+  font-weight: 700;
+  transition: transform .15s ease, background .15s, opacity .15s, border-color .15s;
+}
+.p4-chip:hover { transform: translateY(-2px); border-color: var(--cc); }
+.p4-chip:active { transform: translateY(0); }
+.p4-chip .p4-chipprick,
+.c-mote .p4-chipprick, .c-produktion .p4-chipprick, .c-avrop .p4-chipprick, .c-leverans .p4-chipprick,
+.c-ue .p4-chipprick, .c-franvaro .p4-chipprick, .c-ovrigt .p4-chipprick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 2px solid var(--cc);
+  background: var(--cc);
+  transition: background .15s, transform .2s cubic-bezier(.3, 1.6, .5, 1);
+}
+.p4-chip .p4-chipprick::after {
+  content: "";
+  width: 3px;
+  height: 6px;
+  margin-top: -2px;
+  border: solid var(--bg-card);
+  border-width: 0 1.75px 1.75px 0;
+  transform: rotate(45deg);
+}
+.p4-chip:has(input:checked) .p4-chipprick { animation: chipPop .25s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes chipPop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+.p4-chip:has(input:not(:checked)) {
+  opacity: 1;
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+.p4-chip:has(input:not(:checked)) .p4-chipprick { background: transparent; border-color: var(--border-strong); }
+.p4-chip:has(input:not(:checked)) .p4-chipprick::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .p4-chip, .p4-chip .p4-chipprick { transition: none; animation: none !important; }
+  .p4-chip:hover { transform: none; }
+}
