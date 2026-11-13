@@ -279,3 +279,36 @@ html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
   .p4-chip, .p4-chip .p4-chipprick { transition: none; animation: none !important; }
   .p4-chip:hover { transform: none; }
 }
+
+/* ==== Platt och tydligt: inga mjuka skuggor eller glaseffekter ======= */
+:root {
+  --shadow-elevated: 0 1px 0 rgba(21, 24, 27, .05);
+  --skugga-hard: 5px 5px 0 rgba(21, 24, 27, .13);
+}
+.p4-header {
+  background: var(--bg-main);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 2px solid var(--border-color);
+}
+#overlay, .overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.hj-toc { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--bg-main) !important; }
+/* flytande rutor (dialoger, popupper, notiser) får en skarp skugga och tydlig kant i stället för suddigt dis */
+.modal, .p4d-pop, .g-expmeny, .p4-hnotis, .angrarad {
+  box-shadow: var(--skugga-hard);
+  border: 1.5px solid var(--border-strong);
+}
+.p4-btn-primar { box-shadow: none; }
+.p4-btn-primar:hover { box-shadow: 3px 3px 0 rgba(21, 24, 27, .18); }
+/* korten: när man håller musen över skjuts de upp med en skarp skugga i kortets egen färg */
+.kort:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--kc, #15181b) 35%, transparent);
+}
+@media screen {
+  html[data-tema="mork"] { --skugga-hard: 5px 5px 0 rgba(0, 0, 0, .55); }
+  html[data-tema="mork"] .p4-btn-primar:hover { box-shadow: 3px 3px 0 rgba(0, 0, 0, .6); }
+}
