@@ -205,7 +205,8 @@ html[data-tema="mork"] .p4-tema .ik-mane { display: none; }
 #pagaendeKnapp, #nyTavlaKnapp { border-radius: 10px 10px 0 0; }
 .vp-tagg { border-radius: 8px 8px 0 0; }
 
-/* Korten: samma färgade kant nedtill som till vänster */
+/* Korten: samma färgade kant nedtill som till vänster, rakt hörn där de möts */
+.kort { border-bottom-left-radius: 0; }
 .kort.t-mote { border-bottom-color: var(--mote); }
 .kort.t-produktion { border-bottom-color: var(--produktion); }
 .kort.t-avrop { border-bottom-color: var(--avrop); }
